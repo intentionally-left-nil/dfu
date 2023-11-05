@@ -20,7 +20,9 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = []
+dependencies = [
+  "dataclass-wizard >=0.22"
+]
 
 [project.urls]
 Documentation = "https://github.com/intentionally-left-nil/dfu#readme"
