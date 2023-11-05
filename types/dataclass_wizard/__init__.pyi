@@ -1,5 +1,6 @@
-from typing import Type, Any, TypeVar
-T = TypeVar('T')
+from typing import Any, TypeVar
+
+T = TypeVar("T")
 JSONObject = dict[str, Any]
 
-def fromdict(cls: Type[T], d: JSONObject) -> T: ...
+def fromdict(cls: type[T], d: JSONObject) -> T: ...

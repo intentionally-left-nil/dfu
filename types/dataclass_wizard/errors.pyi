@@ -1,9 +1,11 @@
-from _typeshed import Incomplete
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from dataclasses import Field as Field
-from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
+from typing import Any
 
-JSONObject = Dict[str, Any]
+from _typeshed import Incomplete
+
+JSONObject = dict[str, Any]
 
 class JSONWizardError(ABC, Exception):
     @property
@@ -16,15 +18,24 @@ class ParseError(JSONWizardError):
     ann_type: Incomplete
     base_error: Incomplete
     kwargs: Incomplete
-    def __init__(self, base_err: Exception, obj: Any, ann_type: Union[Type, Iterable], _default_class: Optional[type] = ..., _field_name: Optional[str] = ..., _json_object: Any = ..., **kwargs) -> None: ...
+    def __init__(
+        self,
+        base_err: Exception,
+        obj: Any,
+        ann_type: type | Iterable,
+        _default_class: type | None = ...,
+        _field_name: str | None = ...,
+        _json_object: Any = ...,
+        **kwargs,
+    ) -> None: ...
     @property
-    def class_name(self) -> Optional[str]: ...
+    def class_name(self) -> str | None: ...
     @class_name.setter
-    def class_name(self, cls: Optional[Type]): ...
+    def class_name(self, cls: type | None): ...
     @property
-    def field_name(self) -> Optional[str]: ...
+    def field_name(self) -> str | None: ...
     @field_name.setter
-    def field_name(self, name: Optional[str]): ...
+    def field_name(self, name: str | None): ...
     @property
     def json_object(self): ...
     @json_object.setter
@@ -34,34 +45,42 @@ class ParseError(JSONWizardError):
     @property
     def message(self) -> str: ...
 
-class MissingFields(JSONWizardError):
+class MissingFields(JSONWizardError):  # noqa: N818
     obj: Incomplete
     fields: Incomplete
     missing_fields: Incomplete
     base_error: Incomplete
     kwargs: Incomplete
     class_name: Incomplete
-    def __init__(self, base_err: Exception, obj: JSONObject, cls: Type, cls_kwargs: JSONObject, cls_fields: Tuple[Field], **kwargs) -> None: ...
+    def __init__(
+        self,
+        base_err: Exception,
+        obj: JSONObject,
+        cls: type,
+        cls_kwargs: JSONObject,
+        cls_fields: tuple[Field],
+        **kwargs,
+    ) -> None: ...
     @staticmethod
     def name(obj) -> str: ...
     @property
     def message(self) -> str: ...
 
-class UnknownJSONKey(JSONWizardError):
+class UnknownJSONKey(JSONWizardError):  # noqa: N818
     json_key: Incomplete
     obj: Incomplete
     fields: Incomplete
     kwargs: Incomplete
     class_name: Incomplete
-    def __init__(self, json_key: str, obj: JSONObject, cls: Type, cls_fields: Tuple[Field], **kwargs) -> None: ...
+    def __init__(self, json_key: str, obj: JSONObject, cls: type, cls_fields: tuple[Field], **kwargs) -> None: ...
     @staticmethod
     def name(obj) -> str: ...
     @property
     def message(self) -> str: ...
 
-class MissingData(ParseError):
+class MissingData(ParseError):  # noqa: N818
     nested_class_name: Incomplete
-    def __init__(self, nested_cls: Type, **kwargs) -> None: ...
+    def __init__(self, nested_cls: type, **kwargs) -> None: ...
     @staticmethod
     def name(obj) -> str: ...
     @property
