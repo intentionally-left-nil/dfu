@@ -1,7 +1,7 @@
-from dataclasses import dataclass
-import tomllib
-from typing import Union
 import os
+import tomllib
+from dataclasses import dataclass
+
 from dataclass_wizard import fromdict
 
 
@@ -20,8 +20,8 @@ class Config:
     btrfs: Btrfs
 
     @classmethod
-    def from_file(cls, path: Union[os.PathLike, str]) -> "Config":
-        with open(path, 'r') as f:
+    def from_file(cls, path: os.PathLike | str) -> "Config":
+        with open(path) as f:
             return cls.from_toml(f.read())
 
     @classmethod
