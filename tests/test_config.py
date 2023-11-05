@@ -1,10 +1,10 @@
-
 from dfu.config import Config, Btrfs
 import pytest
 import tempfile
 import tomllib
 import dataclass_wizard.errors
 from pathlib import Path
+
 
 def test_valid_config():
     toml = '''
@@ -17,8 +17,11 @@ def test_valid_config():
     snapshot = "/snaps"
 '''
     actual = Config.from_toml(toml)
-    expected = Config(btrfs=Btrfs(mounts=[Btrfs.Mounts(src="/home", snapshot="/snaps"), Btrfs.Mounts(src="/", snapshot="/snaps")]))
+    expected = Config(
+        btrfs=Btrfs(mounts=[Btrfs.Mounts(src="/home", snapshot="/snaps"), Btrfs.Mounts(src="/", snapshot="/snaps")])
+    )
     assert actual == expected
+
 
 def test_from_file():
     toml = '''
@@ -34,7 +37,6 @@ def test_from_file():
         assert actual == expected
 
 
-
 def test_invalid_types():
     toml = '''
 [btrfs]
@@ -42,6 +44,7 @@ mounts = 5
 '''
     with pytest.raises(dataclass_wizard.errors.ParseError):
         Config.from_toml(toml)
+
 
 def test_missing_field():
     toml = '''

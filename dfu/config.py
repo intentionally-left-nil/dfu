@@ -4,19 +4,21 @@ from typing import Union
 import os
 from dataclass_wizard import fromdict
 
+
 @dataclass
 class Btrfs:
     @dataclass
     class Mounts:
         src: str
         snapshot: str
+
     mounts: list[Mounts]
 
+
 @dataclass
-class Config: 
+class Config:
     btrfs: Btrfs
 
-    
     @classmethod
     def from_file(cls, path: Union[os.PathLike, str]) -> "Config":
         with open(path, 'r') as f:
