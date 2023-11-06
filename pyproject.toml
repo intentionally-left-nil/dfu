@@ -32,6 +32,12 @@ Source = "https://github.com/intentionally-left-nil/dfu"
 [tool.hatch.version]
 path = "dfu/__about__.py"
 
+[tool.hatch.build]
+exclude = [
+  "/tests",
+  "/types"
+]
+
 [tool.hatch.envs.default]
 dependencies = [
   "coverage[toml]>=6.5",
