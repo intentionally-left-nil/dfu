@@ -1,4 +1,4 @@
-name: Publish to PyPI and TestPyPI
+name: publish
 on:
   pull_request:
   push:
@@ -26,7 +26,7 @@ jobs:
         run: hatch build
       - uses: actions/upload-artifact@v3
         with:
-          name: packages
+          name: dist
           path: |
             dist/*.whl
             dist/*.tar.gz
@@ -38,10 +38,12 @@ jobs:
     environment:
       name: pypi
       url: https://pypi.org/p/dfu
+    permissions:
+      id-token: write
     steps:
-      - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
-          name: packages
+          name: dist
+          path: dist
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
