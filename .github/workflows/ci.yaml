@@ -24,10 +24,27 @@ jobs:
         run: pipx install hatch
       - name: Run tests
         run: hatch run test
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage-report
+          path: |
+            ./coverage.xml
+            htmlcov/
+      - name: Run linters
+        run: hatch run lint:all
+  display-coverage:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Download coverage report
+        uses: actions/download-artifact@v2
+        with:
+          name: coverage-report
       - name: Display coverage
         uses: orgoro/coverage@v3.1
         with:
           coverageFile: coverage.xml
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Run linters
-        run: hatch run lint:all
