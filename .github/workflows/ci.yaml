@@ -23,6 +23,11 @@ jobs:
       - name: Install hatch
         run: pipx install hatch
       - name: Run tests
-        run: hatch run cov
+        run: hatch run test
+      - name: Display coverage
+        uses: orgoro/coverage@v3.1
+        with:
+          coverageFile: coverage.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Run linters
         run: hatch run lint:all

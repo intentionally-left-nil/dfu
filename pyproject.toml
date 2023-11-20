@@ -40,29 +40,18 @@ exclude = [
 
 [tool.hatch.envs.default]
 dependencies = [
-  "coverage[toml]>=6.5",
   "pytest",
+  "pytest-cov>=4.1.0",
 ]
 [tool.hatch.envs.default.scripts]
 test = "pytest {args:tests}"
-test-cov = "coverage run -m pytest {args:tests}"
-cov-report = [
-  "- coverage combine",
-  "coverage report",
-  "coverage html",
-  "coverage xml",
-]
-cov = [
-  "test-cov",
-  "cov-report",
-]
-
 [[tool.hatch.envs.all.matrix]]
 python = ["3.12"]
 
 [tool.hatch.envs.lint]
 dependencies = [
   "pytest",
+  "pytest-cov>=4.1.0",
   "black>=23.1.0",
   "mypy>=1.0.0",
   "isort>=5.12.0"
@@ -82,6 +71,9 @@ all = [
   "style",
   "typing",
 ]
+
+[tool.pytest.ini_options]
+addopts = "--cov --cov-report=xml --cov-report=html"
 
 [tool.black]
 target-version = ["py311"]
