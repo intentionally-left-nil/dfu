@@ -9,6 +9,7 @@ from dfu.config import Btrfs, Config
 
 def test_valid_config():
     toml = """
+package_dir = "/path/to/package_dir"
 [[btrfs.mounts]]
     src = "/home"
     snapshot = "/snaps"
@@ -19,13 +20,15 @@ def test_valid_config():
 """
     actual = Config.from_toml(toml)
     expected = Config(
-        btrfs=Btrfs(mounts=[Btrfs.Mounts(src="/home", snapshot="/snaps"), Btrfs.Mounts(src="/", snapshot="/snaps")])
+        package_dir="/path/to/package_dir",
+        btrfs=Btrfs(mounts=[Btrfs.Mounts(src="/home", snapshot="/snaps"), Btrfs.Mounts(src="/", snapshot="/snaps")]),
     )
     assert actual == expected
 
 
 def test_from_file():
     toml = """
+package_dir = "/path/to/package_dir"
 [[btrfs.mounts]]
     src = "/home"
     snapshot = "/snaps"
@@ -34,12 +37,15 @@ def test_from_file():
         f.write(toml)
         f.flush()
         actual = Config.from_file(f.name)
-        expected = Config(btrfs=Btrfs(mounts=[Btrfs.Mounts(src="/home", snapshot="/snaps")]))
+        expected = Config(
+            package_dir="/path/to/package_dir", btrfs=Btrfs(mounts=[Btrfs.Mounts(src="/home", snapshot="/snaps")])
+        )
         assert actual == expected
 
 
 def test_invalid_types():
     toml = """
+package_dir = "/path/to/package_dir"
 [btrfs]
 mounts = 5
 """
@@ -49,6 +55,7 @@ mounts = 5
 
 def test_missing_field():
     toml = """
+package_dir = "/path/to/package_dir"
 [[btrfs.mounts]]
     src = "/home"
 """

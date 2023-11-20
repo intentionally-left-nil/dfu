@@ -18,6 +18,7 @@ class Btrfs:
 @dataclass
 class Config:
     btrfs: Btrfs
+    package_dir: str
 
     @classmethod
     def from_file(cls, path: os.PathLike | str) -> "Config":
