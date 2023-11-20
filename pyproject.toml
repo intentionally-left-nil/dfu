@@ -63,15 +63,18 @@ dependencies = [
   "pytest",
   "black>=23.1.0",
   "mypy>=1.0.0",
+  "isort>=5.12.0"
 ]
 [tool.hatch.envs.lint.scripts]
 typing = "mypy --install-types --non-interactive {args:dfu tests}"
 style = [
   "black --check --diff {args:.}",
+  "isort --check --diff {args:.}",
 ]
 fmt = [
   "black {args:.}",
   "style",
+  "isort {args:.}",
 ]
 all = [
   "style",
@@ -82,6 +85,10 @@ all = [
 target-version = ["py311"]
 line-length = 120
 skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+skip_glob = ["env/*"]
 
 [tool.mypy]
 mypy_path = "types/"

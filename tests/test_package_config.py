@@ -1,7 +1,9 @@
 import tempfile
-import pytest
-from dfu.package.package_config import PackageConfig, State
+
 import dataclass_wizard.errors
+import pytest
+
+from dfu.package.package_config import PackageConfig, State
 
 
 def test_valid_config():
