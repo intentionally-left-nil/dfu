@@ -1,9 +1,15 @@
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 from dataclass_wizard import fromdict
+
+
+@dataclass
+class Snapshot:
+    pre_id: int | None = None
+    post_id: int | None = None
 
 
 class State(StrEnum):
@@ -17,6 +23,7 @@ class PackageConfig:
     name: str
     description: str | None
     state: State
+    snapshots: dict[str, Snapshot] = field(default_factory=dict)
 
     @classmethod
     def from_file(cls, path: os.PathLike | str) -> "PackageConfig":

@@ -64,7 +64,6 @@ style = [
 ]
 fmt = [
   "black {args:.}",
-  "style",
   "isort {args:.}",
 ]
 all = [
