@@ -8,7 +8,8 @@ from dataclass_wizard import fromdict
 
 class State(StrEnum):
     new = 'NEW'
-    snapshot_created = 'SNAPSHOT_CREATED'
+    pre_snapshot_created = 'PRE_SNAPSHOT_CREATED'
+    post_snapshot_created = 'POST_SNAPSHOT_CREATED'
 
 
 @dataclass
