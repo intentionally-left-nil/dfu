@@ -7,12 +7,7 @@ from dataclass_wizard import fromdict
 
 @dataclass
 class Btrfs:
-    @dataclass
-    class Mounts:
-        src: str
-        snapshot: str
-
-    mounts: list[Mounts]
+    snapper_configs: list[str]
 
 
 @dataclass

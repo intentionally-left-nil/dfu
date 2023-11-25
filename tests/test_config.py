@@ -10,18 +10,13 @@ from dfu.config import Btrfs, Config
 def test_valid_config():
     toml = """
 package_dir = "/path/to/package_dir"
-[[btrfs.mounts]]
-    src = "/home"
-    snapshot = "/snaps"
-
-[[btrfs.mounts]]
-    src = "/"
-    snapshot = "/snaps"
+[btrfs]
+snapper_configs = ["/home", "/"]
 """
     actual = Config.from_toml(toml)
     expected = Config(
         package_dir="/path/to/package_dir",
-        btrfs=Btrfs(mounts=[Btrfs.Mounts(src="/home", snapshot="/snaps"), Btrfs.Mounts(src="/", snapshot="/snaps")]),
+        btrfs=Btrfs(snapper_configs=["/home", "/"]),
     )
     assert actual == expected
 
@@ -29,17 +24,14 @@ package_dir = "/path/to/package_dir"
 def test_from_file():
     toml = """
 package_dir = "/path/to/package_dir"
-[[btrfs.mounts]]
-    src = "/home"
-    snapshot = "/snaps"
+[btrfs]
+snapper_configs = ["/home"]
 """
     with tempfile.NamedTemporaryFile("w") as f:
         f.write(toml)
         f.flush()
         actual = Config.from_file(f.name)
-        expected = Config(
-            package_dir="/path/to/package_dir", btrfs=Btrfs(mounts=[Btrfs.Mounts(src="/home", snapshot="/snaps")])
-        )
+        expected = Config(package_dir="/path/to/package_dir", btrfs=Btrfs(snapper_configs=["/home"]))
         assert actual == expected
 
 
@@ -47,7 +39,7 @@ def test_invalid_types():
     toml = """
 package_dir = "/path/to/package_dir"
 [btrfs]
-mounts = 5
+snapper_configs = 5
 """
     with pytest.raises(dataclass_wizard.errors.ParseError):
         Config.from_toml(toml)

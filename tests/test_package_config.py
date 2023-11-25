@@ -3,13 +3,18 @@ import tempfile
 import dataclass_wizard.errors
 import pytest
 
-from dfu.package.package_config import PackageConfig, State
+from dfu.package.package_config import PackageConfig, Snapshot, State
 
 
 def test_valid_config():
-    json_data = '{"name": "expected_name", "description": "expected_description", "state": "NEW"}'
+    json_data = '{"name": "expected_name", "description": "expected_description", "state": "NEW", "snapshots": {"root": {"pre_id": 1, "post_id": 2}}}'
     actual = PackageConfig.from_json(json_data)
-    expected = PackageConfig(name='expected_name', description='expected_description', state=State.new)
+    expected = PackageConfig(
+        name='expected_name',
+        description='expected_description',
+        state=State.new,
+        snapshots={'root': Snapshot(pre_id=1, post_id=2)},
+    )
     assert actual == expected
 
 
