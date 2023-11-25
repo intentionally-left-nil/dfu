@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from dataclass_wizard import fromdict
+from dataclass_wizard import asdict, fromdict
 
 
 @dataclass
@@ -24,6 +24,10 @@ class PackageConfig:
     description: str | None
     state: State
     snapshots: dict[str, Snapshot] = field(default_factory=dict)
+
+    def write(self, path: os.PathLike | str):
+        with open(path, "w") as f:
+            json.dump(asdict(self), f, indent=4)
 
     @classmethod
     def from_file(cls, path: os.PathLike | str) -> "PackageConfig":
