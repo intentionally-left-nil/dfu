@@ -1,7 +1,9 @@
+import multiprocessing
 import random
 import shutil
 import time
 import uuid
+from multiprocessing.synchronize import Event
 from pathlib import Path
 
 from dfu.config import Config
@@ -10,6 +12,15 @@ from dfu.config import Config
 def get_version_number(config: Config, retry_count=0) -> int:
     """Returns an atomic, monotonically increasing number. The returned value is guaranteed to be unique, across multiple processes and in the future.
     This is accomplished by very carefully taking advantage that renaming a folder is an atomic operation"""
+    return _get_version_number(config, retry_count=retry_count)
+
+
+def _get_version_number(
+    config: Config,
+    retry_count: int = 0,
+    on_get_version_directory: Event | None = None,
+    pre_replace_directory: Event | None = None,
+) -> int:
     # This is accomplished with the following algorithm:
     # Initially, /package_ver/version folder does not exist
     # During the first run, the algorith creates /package_ver/version/0/do_not_delete.txt
@@ -24,15 +35,22 @@ def get_version_number(config: Config, retry_count=0) -> int:
 
     version_dir = _get_version_directory(config)
     version = int(version_dir.name)
+    if on_get_version_directory:
+        on_get_version_directory.set()
     try:
+        if pre_replace_directory:
+            pre_replace_directory.wait()
         # If there's a race here, then only one process will succeed in renaming the directory.
         # The next process will no longer have a valid source directory, and should fail with (src) FileNotFoundError
         version_dir.replace(version_dir.parent / str(version + 1))
+
         return version + 1
-    except (FileNotFoundError, OSError) as e:
+    except (FileNotFoundError, OSError):
         # We lost the race. This isn't a fatal error, just try again
         # Increment retry_count to prevent infinitely looping
-        time.sleep(random.uniform(0, 0.5))
+        time.sleep(random.uniform(0.25, 0.5))
+        # N.B. don't pass the events through for the recursive call, since it would complicate the tests
+        # It's not needed since we already know this process lost the race
         return get_version_number(config, retry_count=retry_count + 1)
 
 
