@@ -28,7 +28,7 @@ def _get_version_number(
     # The algorithm returns 1, and this is the only call that can use 1 as the version number.
     # The next time get_version_number is called, it will see that package_ver/version/1 exists, and will atomically rename it to package_ver/version/2, etc, etc.
     if retry_count > 5:
-        raise RuntimeError("Too many failures trying to determine the version number")
+        raise RuntimeError("Too many failures trying to determine the version number")  # pragma: no cover
 
     if retry_count == 0:
         _try_create_version_directory(config)
