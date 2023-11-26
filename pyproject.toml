@@ -21,7 +21,8 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "dataclass-wizard >=0.22"
+  "dataclass-wizard >=0.22",
+  "click >=8.1.7",
 ]
 
 [project.urls]
@@ -37,6 +38,12 @@ exclude = [
   "/tests",
   "/types"
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["dfu"]
+
+[project.scripts]
+dfu = "dfu.cli:main"
 
 [tool.hatch.envs.default]
 dependencies = [

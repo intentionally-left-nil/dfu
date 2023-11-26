@@ -38,3 +38,13 @@ def test_missing_field():
     invalid_json_data = '{"name": "expected_name", "state": "NEW"}'
     with pytest.raises(dataclass_wizard.errors.MissingFields):
         PackageConfig.from_json(invalid_json_data)
+
+
+def test_write_config():
+    config = PackageConfig(name='expected_name', description='expected_description', state=State.new)
+    with tempfile.NamedTemporaryFile("w") as f:
+        config.write(f.name)
+        f.flush()
+        actual = PackageConfig.from_file(f.name)
+        expected = PackageConfig(name='expected_name', description='expected_description', state=State.new)
+        assert actual == expected
