@@ -8,7 +8,7 @@ from dataclass_wizard import asdict, fromdict
 
 @dataclass
 class Snapshot:
-    pre_id: int | None = None
+    pre_id: int
     post_id: int | None = None
 
 
@@ -16,7 +16,7 @@ class Snapshot:
 class PackageConfig:
     name: str
     description: str | None
-    snapshots: dict[str, Snapshot] = field(default_factory=dict)
+    snapshots: list[dict[str, Snapshot]] = field(default_factory=list)
 
     def write(self, path: os.PathLike | str):
         with open(path, "w") as f:
