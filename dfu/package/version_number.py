@@ -1,4 +1,3 @@
-import multiprocessing
 import random
 import shutil
 import time
@@ -30,10 +29,11 @@ def _get_version_number(
     if retry_count > 5:
         raise RuntimeError("Too many failures trying to determine the version number")  # pragma: no cover
 
-    if retry_count == 0:
+    try:
+        version_dir = _get_version_directory(config)
+    except ValueError:
         _try_create_version_directory(config)
-
-    version_dir = _get_version_directory(config)
+        version_dir = _get_version_directory(config)
     version = int(version_dir.name)
     if on_get_version_directory:
         on_get_version_directory.set()
@@ -64,12 +64,6 @@ def _try_create_version_directory(config: Config):
     dest_dir = Path(config.package_dir) / "version"
     # N.B. it's important to set up the temp dir correctly before the rename, since that is the atomic operation
     (temp_dir / "0").mkdir(parents=True, exist_ok=False)
-    # N.B. Make sure the directory is non-empty, to ensure it's atomic.
-    # That's my understanding of https://docs.python.org/3/library/os.html#os.rename : If that turns out not to be the case, then this file creation can be removed
-    with open(temp_dir / "0" / "do_not_delete.txt", "w") as f:
-        f.write(
-            "This file is used to ensure the folder is not empty\n This is necessary to ensure atomic folder operations"
-        )
     try:
         # atomically move package_dir/version_aa-bbb-ccc-ddd to package_dir/version, failing if that directory already exists
         temp_dir.replace(dest_dir)
@@ -95,6 +89,4 @@ def _get_version_directory(config: Config) -> Path:
     if not version_dir.name.isnumeric():
         raise ValueError(f"Expected {version_dir} to be a number")
 
-    if next(version_dir.iterdir(), None) is None:
-        raise ValueError(f"Expected {version_dir} to contain files")
     return version_dir
