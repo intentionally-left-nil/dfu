@@ -1,4 +1,5 @@
 import multiprocessing
+import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -10,6 +11,7 @@ from dfu.package.version_number import (
     _get_version_directory,
     _get_version_number,
     _try_create_version_directory,
+    get_version_number,
 )
 
 TIMEOUT = 5
@@ -22,7 +24,7 @@ def temp_dir():
 
 
 @pytest.fixture
-def config(temp_dir):
+def config(temp_dir) -> Config:
     return Config(btrfs=Btrfs(snapper_configs=["root"]), package_dir=temp_dir)
 
 
@@ -34,6 +36,21 @@ def get_version_number_target(config, return_dict, on_get_version_directory, pre
 
 
 class TestGetVersionNumber:
+    def test_get_version_number_no_race(self, config):
+        assert get_version_number(config) == 1
+
+    def test_get_version_number_fails_after_5_retries(self, config):
+        version_dir = Path(config.package_dir) / "version"
+        version_dir.mkdir()
+        # Create the subdir, but ensure it's not writeable
+        try:
+            (version_dir / "0").mkdir(mode=0, parents=False, exist_ok=False)
+            with pytest.raises(RuntimeError, match="Too many failures trying to determine the version number"):
+                get_version_number(config)
+        finally:
+            (version_dir / "0").chmod(0o511)
+            shutil.rmtree(version_dir)
+
     def test_get_version_number_race_condition(self, config):
         manager = multiprocessing.Manager()
         p1_return = manager.dict()
