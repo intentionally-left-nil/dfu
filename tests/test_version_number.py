@@ -43,8 +43,8 @@ class TestGetVersionNumber:
         version_dir = Path(config.package_dir) / "version"
         version_dir.mkdir()
         # Create the subdir, but ensure it's not writeable
+        (version_dir / "0").mkdir(mode=0, parents=False, exist_ok=False)
         try:
-            (version_dir / "0").mkdir(mode=0, parents=False, exist_ok=False)
             with pytest.raises(RuntimeError, match="Too many failures trying to determine the version number"):
                 get_version_number(config)
         finally:
