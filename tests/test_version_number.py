@@ -1,7 +1,7 @@
 import multiprocessing
-import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import pytest
 
@@ -40,17 +40,11 @@ class TestGetVersionNumber:
         assert get_version_number(config) == 1
 
     def test_get_version_number_fails_after_5_retries(self, config):
-        version_dir = Path(config.package_dir) / "version"
-        version_dir.mkdir()
-        # Create the subdir, but ensure it's not writeable
-        (version_dir / "0").mkdir(parents=True, exist_ok=False)
-        (version_dir / "0").chmod(0)
-        try:
+        subdir = Path(config.package_dir) / "version" / "0"
+        subdir.mkdir(parents=True, exist_ok=False)
+        with patch('os.replace', side_effect=PermissionError):
             with pytest.raises(RuntimeError, match="Too many failures trying to determine the version number"):
                 get_version_number(config)
-        finally:
-            (version_dir / "0").chmod(0o511)
-            shutil.rmtree(version_dir)
 
     def test_get_version_number_race_condition(self, config):
         manager = multiprocessing.Manager()
