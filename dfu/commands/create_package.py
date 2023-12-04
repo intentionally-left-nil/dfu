@@ -9,6 +9,6 @@ def create_package(config: Config, name: str, description: str | None = None) ->
     package = PackageConfig(name=name, description=description)
     version_number = str(get_version_number(config)).zfill(5)
     package_name = Path(config.package_dir) / f"{version_number}_{name}" / "dfu_config.json"
-    package_name.mkdir(parents=True, exist_ok=False)
+    package_name.parent.mkdir(parents=True, exist_ok=False)
     package.write(package_name)
     return package_name
