@@ -1,7 +1,9 @@
 import click
 
 from dfu.commands.create_package import create_package
+from dfu.commands.create_snapshot import create_post_snapshot, create_pre_snapshot
 from dfu.commands.load_config import load_config
+from dfu.commands.load_package_config import get_package_path
 
 
 class NullableString(click.ParamType):
@@ -27,6 +29,22 @@ def new(name: str | None, description: str | None):
     config = load_config()
     path = create_package(config, name=final_name, description=final_description)
     print(path)
+
+
+@main.command()
+@click.argument("package_name")
+def begin(package_name: str):
+    config = load_config()
+    package_path = get_package_path(config, package_name)
+    create_pre_snapshot(config, package_path)
+
+
+@main.command()
+@click.argument("package_name")
+def end(package_name: str):
+    config = load_config()
+    package_path = get_package_path(config, package_name)
+    create_post_snapshot(package_path)
 
 
 if __name__ == "__main__":
