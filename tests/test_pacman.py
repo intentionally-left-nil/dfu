@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from dfu.installed_packages.pacman import get_installed_packages
+from dfu.installed_packages.pacman import Diff, diff_packages, get_installed_packages
 
 
 @patch('subprocess.run')
@@ -28,3 +28,30 @@ def test_get_installed_packages_failure(mock_run):
 
     with pytest.raises(CalledProcessError):
         get_installed_packages()
+
+
+class TestDiffPackages:
+    def test_no_changes(self):
+        old_packages = ['package1', 'package2', 'package3']
+        new_packages = ['package1', 'package2', 'package3']
+        assert diff_packages(old_packages, new_packages) == Diff(set(), set())
+
+    def test_added_packages(self):
+        old_packages = ['package1', 'package2']
+        new_packages = ['package1', 'package2', 'package3']
+        assert diff_packages(old_packages, new_packages) == Diff({'package3'}, set())
+
+    def test_removed_packages(self):
+        old_packages = ['package1', 'package2', 'package3']
+        new_packages = ['package1', 'package2']
+        assert diff_packages(old_packages, new_packages) == Diff(set(), {'package3'})
+
+    def test_added_and_removed_packages(self):
+        old_packages = ['package1', 'package2']
+        new_packages = ['package2', 'package3']
+        assert diff_packages(old_packages, new_packages) == Diff({'package3'}, {'package1'})
+
+    def test_diff_packages_with_duplicates(self):
+        old_packages = ['package1', 'package2', 'package2']
+        new_packages = ['package1', 'package2', 'package2', 'package3']
+        assert diff_packages(old_packages, new_packages) == Diff({'package3'}, set())

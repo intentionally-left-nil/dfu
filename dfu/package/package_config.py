@@ -17,6 +17,8 @@ class PackageConfig:
     name: str
     description: str | None
     snapshots: list[dict[str, Snapshot]] = field(default_factory=list)
+    programs_added: list[str] = field(default_factory=list)
+    programs_removed: list[str] = field(default_factory=list)
 
     def write(self, path: os.PathLike | str):
         with open(path, "w") as f:
