@@ -12,17 +12,10 @@ class Snapshot:
     post_id: int | None = None
 
 
-class State(StrEnum):
-    new = 'NEW'
-    pre_snapshot_created = 'PRE_SNAPSHOT_CREATED'
-    post_snapshot_created = 'POST_SNAPSHOT_CREATED'
-
-
 @dataclass
 class PackageConfig:
     name: str
     description: str | None
-    state: State
     snapshots: dict[str, Snapshot] = field(default_factory=dict)
 
     def write(self, path: os.PathLike | str):
