@@ -31,6 +31,7 @@ class Snapper:
             ],
             capture_output=True,
             text=True,
+            check=True,
         )
         return int(result.stdout.strip())
 
@@ -51,6 +52,7 @@ class Snapper:
             ],
             capture_output=True,
             text=True,
+            check=True,
         )
         return int(result.stdout.strip())
 
