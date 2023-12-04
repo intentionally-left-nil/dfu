@@ -1,6 +1,7 @@
 import multiprocessing
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import pytest
 
@@ -10,7 +11,10 @@ from dfu.package.version_number import (
     _get_version_directory,
     _get_version_number,
     _try_create_version_directory,
+    get_version_number,
 )
+
+TIMEOUT = 5
 
 
 @pytest.fixture
@@ -20,7 +24,7 @@ def temp_dir():
 
 
 @pytest.fixture
-def config(temp_dir):
+def config(temp_dir) -> Config:
     return Config(btrfs=Btrfs(snapper_configs=["root"]), package_dir=temp_dir)
 
 
@@ -32,6 +36,16 @@ def get_version_number_target(config, return_dict, on_get_version_directory, pre
 
 
 class TestGetVersionNumber:
+    def test_get_version_number_no_race(self, config):
+        assert get_version_number(config) == 1
+
+    def test_get_version_number_fails_after_5_retries(self, config):
+        subdir = Path(config.package_dir) / "version" / "0"
+        subdir.mkdir(parents=True, exist_ok=False)
+        with patch('os.replace', side_effect=PermissionError):
+            with pytest.raises(RuntimeError, match="Too many failures trying to determine the version number"):
+                get_version_number(config)
+
     def test_get_version_number_race_condition(self, config):
         manager = multiprocessing.Manager()
         p1_return = manager.dict()
@@ -64,14 +78,18 @@ class TestGetVersionNumber:
         p1.start()
         p2.start()
 
-        on_get_version_directory1.wait()
-        on_get_version_directory2.wait()
+        if not on_get_version_directory1.wait(timeout=TIMEOUT):
+            raise RuntimeError(f"Process 1 failed to get the version directory. Alive? {p1.is_alive()}")
+        if not on_get_version_directory2.wait(timeout=TIMEOUT):
+            raise RuntimeError(f"Process 2 failed to get the version directory. Alive? {p2.is_alive()}")
 
         pre_replace_directory1.set()
-        p1.join()
+        p1.join(timeout=TIMEOUT)
+        assert p1.is_alive() == False, "Process 1 failed to finish"
 
         pre_replace_directory2.set()
-        p2.join()
+        p2.join(timeout=TIMEOUT)
+        assert p2.is_alive() == False, "Proces 2 failed to finish"
         assert p1_return["result"] == 1
         assert p2_return["result"] == 2
 
@@ -105,11 +123,6 @@ class TestGetVersionDirectory:
         with pytest.raises(ValueError, match="Expected .* to be a number"):
             _get_version_directory(config)
 
-    def test_version_dir_no_files(self, config):
-        (Path(config.package_dir) / "version" / "1").mkdir(parents=True)
-        with pytest.raises(ValueError, match="Expected .* to contain files"):
-            _get_version_directory(config)
-
     def test_successful_case(self, config):
         version_dir = Path(config.package_dir) / "version" / "1"
         version_dir.mkdir(parents=True)
@@ -122,14 +135,13 @@ class TestTryCreateVersionDirectory:
         version_dir = Path(config.package_dir) / "version"
         version_dir.mkdir(parents=True, exist_ok=True)
         (version_dir / "42").mkdir(parents=True)
-        (version_dir / "42" / "do_not_delete.txt").touch()
         _try_create_version_directory(config)
 
         assert not any(path.name.startswith('version_') for path in Path(config.package_dir).iterdir())
-        assert (Path(config.package_dir) / "version" / "42" / "do_not_delete.txt").exists()
+        assert (Path(config.package_dir) / "version" / "42").exists()
 
     def test_version_dir_not_exists(self, config):
         _try_create_version_directory(config)
 
-        assert (Path(config.package_dir) / "version" / "0" / "do_not_delete.txt").exists()
+        assert (Path(config.package_dir) / "version" / "0").exists()
         assert not any(path.name.startswith('version_') for path in Path(config.package_dir).iterdir())
