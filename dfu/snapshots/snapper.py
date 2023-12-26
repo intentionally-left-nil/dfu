@@ -13,13 +13,16 @@ class Snapper:
         self.snapper_name = snapper_name
 
     def get_mountpoint(self) -> Path:
-        result = subprocess.run(['snapper', '-c', self.snapper_name, '--jsonout', 'get-config'], capture_output=True)
+        result = subprocess.run(
+            ['sudo', 'snapper', '-c', self.snapper_name, '--jsonout', 'get-config'], capture_output=True
+        )
         config = json.loads(result.stdout)
         return Path(config['SUBVOLUME'])
 
     def create_pre_snapshot(self, description: str) -> int:
         result = subprocess.run(
             [
+                'sudo',
                 'snapper',
                 '-c',
                 self.snapper_name,
@@ -39,6 +42,7 @@ class Snapper:
     def create_post_snapshot(self, pre_snapshot_id: int, description: str) -> int:
         result = subprocess.run(
             [
+                'sudo',
                 'snapper',
                 '-c',
                 self.snapper_name,
@@ -59,7 +63,7 @@ class Snapper:
 
     def get_delta(self, pre_snapshot_id: int, post_snapshot_id: int) -> list[SnapperDiff]:
         result = subprocess.run(
-            ['snapper', '-c', self.snapper_name, 'status', f'{pre_snapshot_id}..{post_snapshot_id}'],
+            ['sudo', 'snapper', '-c', self.snapper_name, 'status', f'{pre_snapshot_id}..{post_snapshot_id}'],
             capture_output=True,
             text=True,
         )

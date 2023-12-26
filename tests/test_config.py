@@ -3,6 +3,7 @@ import tomllib
 
 import dataclass_wizard.errors
 import pytest
+from platformdirs import PlatformDirs
 
 from dfu.config import Btrfs, Config
 
@@ -19,6 +20,17 @@ snapper_configs = ["/home", "/"]
         btrfs=Btrfs(snapper_configs=["/home", "/"]),
     )
     assert actual == expected
+
+
+def test_default_package_dir():
+    toml = """
+[btrfs]
+snapper_configs = ["/home", "/"]
+"""
+    actual = Config.from_toml(toml)
+    expected = Config(btrfs=Btrfs(snapper_configs=["/home", "/"]))
+    assert actual == expected
+    assert actual.get_package_dir() == PlatformDirs("dfu").user_config_path / "packages"
 
 
 def test_from_file():

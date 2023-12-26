@@ -23,6 +23,7 @@ classifiers = [
 dependencies = [
   "dataclass-wizard >=0.22",
   "click >=8.1.7",
+  "platformdirs >= 4.1.0"
 ]
 
 [project.urls]

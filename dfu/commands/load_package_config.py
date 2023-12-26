@@ -12,7 +12,7 @@ def load_package_config(config: Config, token: str):
 
 
 def get_package_path(config: Config, token: str) -> Path:
-    package_dir = Path(config.package_dir)
+    package_dir = config.get_package_dir()
     matches = list(package_dir.glob(f"{token}*/dfu_config.json"))
     if len(matches) == 0:
         raise ValueError(f"No package found matching {token}")

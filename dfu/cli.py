@@ -1,3 +1,6 @@
+import os
+import sys
+
 import click
 
 from dfu.commands.create_distribution import create_distribution
@@ -66,4 +69,7 @@ def dist(package_name: str):
 
 
 if __name__ == "__main__":
+    if os.geteuid() == 0:
+        click.echo("Don't run dfu as root")
+        sys.exit(1)
     main()

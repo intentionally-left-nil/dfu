@@ -6,7 +6,7 @@ from dfu.package.package_config import PackageConfig
 
 def create_package(config: Config, name: str, description: str | None = None) -> Path:
     package = PackageConfig(name=name, description=description)
-    root_dir = Path(config.package_dir)
+    root_dir = config.get_package_dir()
     package_dir = root_dir / name
     config_path = package_dir / 'dfu_config.json'
     if package_dir.parent.resolve() != root_dir.resolve():
