@@ -8,16 +8,6 @@ from dfu.snapshots.proot import proot
 from dfu.snapshots.snapper import Snapper
 
 
-@pytest.fixture
-def config() -> Config:
-    toml = """
-package_dir = "/path/to/package_dir"
-[btrfs]
-snapper_configs = ["root", "home", "log"]
-"""
-    return Config.from_toml(toml)
-
-
 def test_proot_raises_if_no_snapshots(config: Config):
     with pytest.raises(ValueError, match="No snapshots to mount"):
         proot(["hello"], config=config, snapshot_mapping={})

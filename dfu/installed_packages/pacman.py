@@ -1,11 +1,19 @@
 import subprocess
 from collections import namedtuple
 
+from dfu.config import Config
+from dfu.package.package_config import SnapshotMapping
+from dfu.snapshots.proot import proot
+
 Diff = namedtuple('Diff', ['added', 'removed'])
 
 
-def get_installed_packages():
-    result = subprocess.run(['pacman', '-Qqe'], capture_output=True, text=True, check=True)
+def get_installed_packages(config: Config, snapshot_mapping: SnapshotMapping | None = None):
+    args = ['pacman', '-Qqe']
+    if snapshot_mapping:
+        args = proot(args, config=config, snapshot_mapping=snapshot_mapping)
+
+    result = subprocess.run(args, capture_output=True, text=True, check=True)
     packages = result.stdout.split('\n')
     packages = [package.strip() for package in packages]
     packages = [package for package in packages if package]
