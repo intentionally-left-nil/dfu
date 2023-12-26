@@ -1,5 +1,6 @@
 import json
 import subprocess
+from pathlib import Path
 from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
@@ -17,7 +18,7 @@ def snapper_instance():
 def test_get_mountpoint_success(mock_run):
     mock_run.return_value = Mock(stdout='{"SUBVOLUME": "/test"}')
     snapper = Snapper('test')
-    assert snapper.get_mountpoint() == '/test'
+    assert snapper.get_mountpoint() == Path('/test')
 
 
 @patch('subprocess.run')
@@ -129,17 +130,8 @@ def test_get_delta_different_actions_and_permissions(mock_run, snapper_instance)
     assert result == expected_result
 
 
-def test_mount_snapshot():
-    with patch('subprocess.run') as mock_subprocess_run:
-        mock_subprocess_run.return_value = MagicMock(stdout='{"SUBVOLUME": "/path/to/mountpoint"}')
-        snapper_instance = Snapper('home')
-        snapshot_id = 1
-        directory = '/mnt'
-
-        snapper_instance.mount_snapshot(snapshot_id, directory)
-
-        expected_calls = [
-            call(['snapper', '-c', snapper_instance.snapper_name, '--jsonout', 'get-config'], capture_output=True),
-            call(['mount', '--bind', '/path/to/mountpoint/.snapshots/1/snapshot', directory], check=True),
-        ]
-        mock_subprocess_run.assert_has_calls(expected_calls, any_order=False)
+@patch('subprocess.run')
+def test_get_snapshot_path(mock_run):
+    mock_run.return_value = Mock(stdout='{"SUBVOLUME": "/test"}')
+    snapper = Snapper('test')
+    assert snapper.get_snapshot_path(1) == Path('/test/.snapshots/1/snapshot')

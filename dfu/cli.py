@@ -53,7 +53,7 @@ def end(package_name: str):
 def diff(package_name: str):
     config = load_config()
     package_path = get_package_path(config, package_name)
-    diff_snapshot(package_path)
+    diff_snapshot(config, package_path)
 
 
 if __name__ == "__main__":

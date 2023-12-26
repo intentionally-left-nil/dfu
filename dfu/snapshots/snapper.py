@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+from pathlib import Path
 
 from dfu.snapshots.snapper_diff import SnapperDiff
 
@@ -11,10 +12,10 @@ class Snapper:
     def __init__(self, snapper_name: str) -> None:
         self.snapper_name = snapper_name
 
-    def get_mountpoint(self) -> str:
+    def get_mountpoint(self) -> Path:
         result = subprocess.run(['snapper', '-c', self.snapper_name, '--jsonout', 'get-config'], capture_output=True)
         config = json.loads(result.stdout)
-        return config['SUBVOLUME']
+        return Path(config['SUBVOLUME'])
 
     def create_pre_snapshot(self, description: str) -> int:
         result = subprocess.run(
@@ -65,7 +66,5 @@ class Snapper:
         status_lines = result.stdout.splitlines()
         return [SnapperDiff.from_status(line) for line in status_lines]
 
-    def mount_snapshot(self, snapshot_id: int, directory: str) -> None:
-        mountpoint = self.get_mountpoint()
-        snapshot_path = os.path.join(mountpoint, ".snapshots", str(snapshot_id), "snapshot")
-        subprocess.run(['mount', '--bind', snapshot_path, directory], check=True)
+    def get_snapshot_path(self, snapshot_id: int) -> Path:
+        return self.get_mountpoint() / '.snapshots' / str(snapshot_id) / 'snapshot'

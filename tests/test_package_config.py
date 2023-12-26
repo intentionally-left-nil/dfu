@@ -82,3 +82,46 @@ def test_write_config():
         actual = PackageConfig.from_file(f.name)
         expected = PackageConfig(name='expected_name', description='expected_description')
         assert actual == expected
+
+
+@pytest.fixture
+def config() -> PackageConfig:
+    return PackageConfig(
+        name='expected_name',
+        description='expected_description',
+        snapshots=[
+            {"root": Snapshot(pre_id=1, post_id=2), "home": Snapshot(pre_id=3, post_id=4)},
+            {"root": Snapshot(pre_id=5, post_id=6), "home": Snapshot(pre_id=7, post_id=8)},
+        ],
+    )
+
+
+class TestSnapshotMapping:
+    def test_raises_if_invalid_id(self):
+        config = PackageConfig(name='expected_name', description='expected_description')
+        with pytest.raises(IndexError):
+            config.snapshot_mapping(use_pre_id=False)
+
+    def test_returns_last_pre_id(self, config: PackageConfig):
+        assert config.snapshot_mapping(use_pre_id=True) == {"root": 5, "home": 7}
+
+    def test_returns_last_pre_id_with_index(self, config):
+        assert config.snapshot_mapping(index=0, use_pre_id=True) == {"root": 1, "home": 3}
+
+    def test_raises_if_post_id_is_none(self):
+        config = PackageConfig(
+            name='expected_name',
+            description='expected_description',
+            snapshots=[
+                {"root": Snapshot(pre_id=1), "home": Snapshot(pre_id=2)},
+                {"root": Snapshot(pre_id=3), "home": Snapshot(pre_id=4)},
+            ],
+        )
+        with pytest.raises(ValueError):
+            config.snapshot_mapping(use_pre_id=False)
+
+    def test_returns_last_post_id(self, config: PackageConfig):
+        assert config.snapshot_mapping(use_pre_id=False) == {"root": 6, "home": 8}
+
+    def test_returns_last_post_id_with_index(self, config: PackageConfig):
+        assert config.snapshot_mapping(index=0, use_pre_id=False) == {"root": 2, "home": 4}
