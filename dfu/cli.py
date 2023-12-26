@@ -1,5 +1,6 @@
 import click
 
+from dfu.commands.create_distribution import create_distribution
 from dfu.commands.create_package import create_package
 from dfu.commands.create_snapshot import create_post_snapshot, create_pre_snapshot
 from dfu.commands.diff import diff_snapshot
@@ -54,6 +55,14 @@ def diff(package_name: str):
     config = load_config()
     package_path = get_package_path(config, package_name)
     diff_snapshot(config, package_path)
+
+
+@main.command()
+@click.argument("package_name")
+def dist(package_name: str):
+    config = load_config()
+    package_path = get_package_path(config, package_name)
+    create_distribution(package_path)
 
 
 if __name__ == "__main__":

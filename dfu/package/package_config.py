@@ -22,6 +22,7 @@ class PackageConfig:
     snapshots: list[dict[str, Snapshot]] = field(default_factory=list)
     programs_added: list[str] = field(default_factory=list)
     programs_removed: list[str] = field(default_factory=list)
+    version: str = "0.0.1"
 
     def write(self, path: os.PathLike | str):
         with open(path, "w") as f:
