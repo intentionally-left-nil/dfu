@@ -22,11 +22,13 @@ def ensure_global_gitignore(config: Config):
     (root_dir / '.gitignore').touch(mode=0o644)
 
 
-def symlink_global_gitignore(config: Config, package_config: PackageConfig):
+def copy_global_gitignore(config: Config, package_config: PackageConfig):
+    ensure_global_gitignore(config)
+    global_gitignore = config.get_package_dir() / '.gitignore'
     package_dir = _ensure_package_dir(config, package_config)
     package_gitignore = package_dir / '.gitignore'
     if not package_gitignore.exists():
-        package_gitignore.symlink_to("../.gitignore")
+        package_gitignore.write_text(global_gitignore.read_text())
 
 
 def _ensure_package_dir(config: Config, package_config: PackageConfig) -> Path:

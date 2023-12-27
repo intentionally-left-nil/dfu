@@ -8,10 +8,10 @@ import pytest
 from dfu.config import Btrfs, Config
 from dfu.package.package_config import PackageConfig
 from dfu.revision.git import (
+    copy_global_gitignore,
     ensure_global_gitignore,
     git_commit,
     git_init,
-    symlink_global_gitignore,
 )
 
 
@@ -63,18 +63,20 @@ def test_ensure_global_gitignore_already_exists(temp_dir: Path, config: Config):
     assert (temp_dir / '.gitignore').read_text() == 'hello'
 
 
-def test_symlink_global_gitignore(temp_dir: Path, config: Config, package_config: PackageConfig):
-    ensure_global_gitignore(config)
-    symlink_global_gitignore(config, package_config)
-    assert (temp_dir / package_config.name / '.gitignore').exists()
-    assert (temp_dir / package_config.name / '.gitignore').is_symlink()
-    assert (temp_dir / package_config.name / '.gitignore').resolve() == (temp_dir / '.gitignore').resolve()
-    assert str((temp_dir / package_config.name / '.gitignore').readlink()) == '../.gitignore'
+def test_copy_global_gitignore_initializes_if_empty(temp_dir: Path, config: Config, package_config: PackageConfig):
+    copy_global_gitignore(config, package_config)
+    assert (temp_dir / package_config.name / '.gitignore').read_text() == ''
 
 
-def test_symlink_global_gitignore_already_exists(temp_dir: Path, config: Config, package_config: PackageConfig):
-    ensure_global_gitignore(config)
-    (temp_dir / package_config.name).mkdir(parents=True, exist_ok=True)
-    (temp_dir / package_config.name / '.gitignore').write_text('hello')
-    symlink_global_gitignore(config, package_config)
+def test_copy_global_gitignore(temp_dir: Path, config: Config, package_config: PackageConfig):
+    (temp_dir / '.gitignore').write_text('hello')
+    copy_global_gitignore(config, package_config)
     assert (temp_dir / package_config.name / '.gitignore').read_text() == 'hello'
+
+
+def test_copy_global_gitignore_already_exists(temp_dir: Path, config: Config, package_config: PackageConfig):
+    (temp_dir / '.gitignore').write_text('hello')
+    (temp_dir / package_config.name).mkdir(parents=True, exist_ok=True)
+    (temp_dir / package_config.name / '.gitignore').write_text('world')
+    copy_global_gitignore(config, package_config)
+    assert (temp_dir / package_config.name / '.gitignore').read_text() == 'world'
