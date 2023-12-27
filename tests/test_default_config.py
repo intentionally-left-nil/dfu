@@ -1,19 +1,29 @@
 from itertools import permutations
 from pathlib import Path
+from typing import Generator
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dfu.config.default_config import Node, SnapperConfigInfo, calculate_roots
+from dfu.config import Btrfs, Config
+from dfu.config.default_config import get_default_config
+from dfu.snapshots.snapper import SnapperConfigInfo
 
 
-def test_calculate_roots_empty():
-    assert calculate_roots([]) == []
+@pytest.fixture(autouse=True)
+def mock_get_configs() -> Generator[MagicMock, None, None]:
+    with patch('dfu.snapshots.snapper.Snapper.get_configs') as mock:
+        yield mock
 
 
-def test_calculate_roots_one_node():
-    assert calculate_roots([SnapperConfigInfo('test', Path('/test'))]) == [
-        Node(SnapperConfigInfo('test', Path('/test')))
-    ]
+def test_calculate_roots_empty(mock_get_configs):
+    mock_get_configs.return_value = []
+    assert get_default_config() == Config(btrfs=Btrfs(snapper_configs=[]))
+
+
+def test_calculate_roots_one_node(mock_get_configs):
+    mock_get_configs.return_value = [SnapperConfigInfo('test', Path('/test'))]
+    assert get_default_config() == Config(btrfs=Btrfs(snapper_configs=['test']))
 
 
 @pytest.mark.parametrize(
@@ -26,28 +36,17 @@ def test_calculate_roots_one_node():
         ]
     ),
 )
-def test_calculate_roots_root_with_two_subchildren(configs: list[SnapperConfigInfo]):
-    assert calculate_roots(configs) == [
-        Node(
-            SnapperConfigInfo('root', Path('/')),
-            children=[
-                Node(SnapperConfigInfo('test2', Path('/test2'))),
-                Node(SnapperConfigInfo('test3', Path('/test3'))),
-            ],
-        )
-    ]
+def test_calculate_roots_root_with_two_subchildren(configs: list[SnapperConfigInfo], mock_get_configs):
+    mock_get_configs.return_value = configs
+    assert get_default_config() == Config(btrfs=Btrfs(snapper_configs=['root', 'test2', 'test3']))
 
 
-def test_two_independent_roots():
-    assert calculate_roots(
-        [
-            SnapperConfigInfo('test', Path('/test')),
-            SnapperConfigInfo('test2', Path('/test2')),
-        ]
-    ) == [
-        Node(SnapperConfigInfo('test2', Path('/test2'))),
-        Node(SnapperConfigInfo('test', Path('/test'))),
+def test_two_independent_roots(mock_get_configs):
+    mock_get_configs.return_value = [
+        SnapperConfigInfo('test', Path('/test')),
+        SnapperConfigInfo('test2', Path('/test2')),
     ]
+    assert get_default_config() == Config(btrfs=Btrfs(snapper_configs=['test2', 'test']))
 
 
 @pytest.mark.parametrize(
@@ -65,21 +64,8 @@ def test_two_independent_roots():
         )
     ),
 )
-def test_complex_case(configs: list[SnapperConfigInfo]):
-    assert calculate_roots(configs) == [
-        Node(
-            SnapperConfigInfo('root', Path('/')),
-            children=[
-                Node(
-                    SnapperConfigInfo('home', Path('/home')),
-                    children=[
-                        Node(SnapperConfigInfo('another_user', Path('/home/another_user'))),
-                        Node(SnapperConfigInfo('me', Path('/home/me'))),
-                    ],
-                ),
-                Node(
-                    SnapperConfigInfo('var', Path('/var')), children=[Node(SnapperConfigInfo('log', Path('/var/log')))]
-                ),
-            ],
-        )
-    ]
+def test_complex_case(configs: list[SnapperConfigInfo], mock_get_configs):
+    mock_get_configs.return_value = configs
+    assert get_default_config() == Config(
+        btrfs=Btrfs(snapper_configs=['root', 'home', 'var', 'another_user', 'me', 'log'])
+    )
