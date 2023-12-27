@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -34,6 +35,7 @@ def create_config(file: Path, snapper_configs: list[str], package_dir: str | Non
         with open(file, "w", encoding='utf-8') as f:
             f.write(toml)
             f.flush()
+            os.chmod(file, 0o644)
     except PermissionError:
         subprocess.run(["sudo", "mkdir", "-p", str(file.parent.absolute())], check=True)
         with NamedTemporaryFile(mode="w+", encoding="utf-8") as f:
@@ -41,3 +43,4 @@ def create_config(file: Path, snapper_configs: list[str], package_dir: str | Non
             f.flush()
             subprocess.run(["sudo", "cp", f.name, str(file.absolute())], check=True)
         subprocess.run(["sudo", "chown", "root:root", file.absolute()], check=True)
+        subprocess.run(["sudo", "chmod", "644", file.absolute()], check=True)
