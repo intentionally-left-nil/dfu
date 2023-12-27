@@ -141,3 +141,15 @@ def test_get_snapshot_path(mock_run):
 def test_get_configs(mock_run):
     mock_run.return_value = Mock(stdout='{"configs": [{"config": "root", "subvolume": "/home"}]}')
     assert Snapper.get_configs() == [SnapperConfigInfo(name="root", mountpoint=Path("/home"))]
+
+
+@patch('subprocess.run')
+def test_get_configs_requires_sudo(mock_run: MagicMock):
+    def mock_subprocess_run(cmd, *args, **kwargs):
+        if 'sudo' in cmd:
+            return Mock(stdout='{"configs": [{"config": "root", "subvolume": "/home"}]}')
+        else:
+            return Mock(stdout='')
+
+    mock_run.side_effect = mock_subprocess_run
+    assert Snapper.get_configs() == [SnapperConfigInfo(name="root", mountpoint=Path("/home"))]
