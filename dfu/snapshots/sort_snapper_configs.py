@@ -35,7 +35,7 @@ class _Node:
 
 
 def _calculate_roots(configs: list[SnapperConfigInfo]) -> list[_Node]:
-    roots = []
+    roots: list[_Node] = []
     for config in configs:
         did_insert = False
         for root in roots:
