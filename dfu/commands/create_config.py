@@ -35,11 +35,9 @@ def create_config(file: Path, snapper_configs: list[str], package_dir: str | Non
             f.write(toml)
             f.flush()
     except PermissionError:
+        subprocess.run(["sudo", "mkdir", "-p", str(file.parent.absolute())], check=True)
         with NamedTemporaryFile(mode="w+", encoding="utf-8") as f:
             f.write(toml)
             f.flush()
-
-            subprocess.run(["sudo", "chown", "root:root", f.name], check=True)
-            subprocess.run(["sudo", "mkdir", "-p", str(file.parent.resolve(strict=True))], check=True)
-            subprocess.run(["sudo", "cp", f.name, str(file.resolve(strict=True))], check=True)
-        pass
+            subprocess.run(["sudo", "cp", f.name, str(file.absolute())], check=True)
+        subprocess.run(["sudo", "chown", "root:root", file.absolute()], check=True)
