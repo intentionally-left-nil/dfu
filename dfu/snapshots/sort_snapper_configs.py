@@ -1,13 +1,11 @@
 from dataclasses import dataclass, field
 
-from dfu.config.config import Btrfs, Config
 from dfu.snapshots.snapper import Snapper, SnapperConfigInfo
 
 
-def get_default_config() -> Config:
-    roots = _calculate_roots(Snapper.get_configs())
-    config_names = _breadth_first_search(roots)
-    return Config(btrfs=Btrfs(snapper_configs=config_names))
+def sort_snapper_configs(configs: list[SnapperConfigInfo]) -> list[str]:
+    roots = _calculate_roots(configs)
+    return _breadth_first_search(roots)
 
 
 @dataclass()

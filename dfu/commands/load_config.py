@@ -7,10 +7,10 @@ from typing import Iterable
 import click
 from platformdirs import PlatformDirs
 
-from dfu.config import Config
-from dfu.config.default_config import get_default_config
+from dfu.config import Btrfs, Config
 from dfu.snapshots.btrfs import get_all_subvolumes
 from dfu.snapshots.snapper import Snapper
+from dfu.snapshots.sort_snapper_configs import sort_snapper_configs
 
 
 def get_config_paths() -> list[Path]:
@@ -52,7 +52,8 @@ def _merge(base_config: Config | None, override_config: Config | None) -> Config
 
 
 def _get_default_config() -> Config:
-    config = get_default_config()
+    snapper_configs = sort_snapper_configs(Snapper.get_configs())
+    config = Config(btrfs=Btrfs(snapper_configs=snapper_configs))
     all_subvolumes = set(get_all_subvolumes())
     snapper_subvolumes = set([str(Snapper(c).get_mountpoint()) for c in config.btrfs.snapper_configs])
     missing_subvolumes = all_subvolumes - snapper_subvolumes
