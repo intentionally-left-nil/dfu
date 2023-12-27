@@ -27,9 +27,6 @@ class _Node:
             return True
         return False
 
-    def __eq__(self, other):
-        return self.config == other.config and self.children == other.children
-
     def __lt__(self, other):
         return f"{self.config.mountpoint}_{self.config.name}" < f"{other.config.mountpoint}_{other.config.name}"
 
