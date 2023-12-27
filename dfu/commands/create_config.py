@@ -3,6 +3,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import click
+from dataclass_wizard import asdict
 from tomlkit import dumps
 
 from dfu.config import Btrfs, Config
@@ -27,7 +28,7 @@ def create_config(file: Path, snapper_configs: list[str], package_dir: str | Non
         click.echo(f"A snapper config was not found for the following subvolumes: {missing_subvolumes}", err=True)
 
     config = Config(btrfs=Btrfs(snapper_configs=snapper_configs), package_dir=package_dir)
-    toml = dumps(config.__dict__)
+    toml = dumps(asdict(config))
     try:
         with open(file, "w", encoding='utf-8') as f:
             f.write(toml)

@@ -16,7 +16,6 @@ from dfu.snapshots.sort_snapper_configs import sort_snapper_configs
 def get_config_paths() -> list[Path]:
     dirs = PlatformDirs("dfu", multipath=True)
     search_paths: Iterable[Path] = chain(
-        [Path("/etc/dfu")],
         reversed([Path(p) for p in dirs.site_config_dir.split(os.pathsep)]),
         reversed([Path(p) for p in dirs.user_config_dir.split(os.pathsep)]),
     )
