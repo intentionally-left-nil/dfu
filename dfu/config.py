@@ -27,5 +27,9 @@ class Config:
         data = tomllib.loads(toml)
         return fromdict(cls, data)
 
+    @classmethod
+    def get_default_package_dir(cls) -> Path:
+        return PlatformDirs("dfu").user_data_path / "packages"
+
     def get_package_dir(self) -> Path:
-        return Path(self.package_dir) if self.package_dir else PlatformDirs("dfu").user_data_path / "packages"
+        return Path(self.package_dir) if self.package_dir else self.get_default_package_dir()
