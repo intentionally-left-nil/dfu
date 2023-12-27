@@ -1,11 +1,16 @@
 import os
+import textwrap
 from itertools import chain
 from pathlib import Path
 from typing import Iterable
 
+import click
 from platformdirs import PlatformDirs
 
 from dfu.config import Config
+from dfu.config.default_config import get_default_config
+from dfu.snapshots.btrfs import get_all_subvolumes
+from dfu.snapshots.snapper import Snapper
 
 
 def load_config() -> Config:
@@ -23,7 +28,7 @@ def load_config() -> Config:
     for path in config_paths:
         config = _merge(config, _try_load_config(path))
     if config is None:
-        raise FileNotFoundError("No config file found")
+        config = _get_default_config()
     return config
 
 
@@ -41,3 +46,26 @@ def _merge(base_config: Config | None, override_config: Config | None) -> Config
             package_dir=override_config.package_dir or base_config.package_dir,
         )
     return override_config or base_config
+
+
+def _get_default_config() -> Config:
+    config = get_default_config()
+    all_subvolumes = set(get_all_subvolumes())
+    snapper_subvolumes = set([str(Snapper(c).get_mountpoint()) for c in config.btrfs.snapper_configs])
+    missing_subvolumes = all_subvolumes - snapper_subvolumes
+    if len(missing_subvolumes) > 0:
+        click.echo(
+            textwrap.dedent(
+                f"""A dfu config.toml file was not located, and the default configuration cannot be used.
+                The default configuration includes the following snapper configs:
+                {config.btrfs.snapper_configs}
+                However, the following btrfs subvolumes are missing a snapper config:
+                {missing_subvolumes}
+                Either create a config.toml file, using dfu config init, or create snapper configs for the missing subvolumes using snapper -c config_name mountpoint
+                """
+            ),
+            err=True,
+        )
+        raise FileNotFoundError("no config.toml file found")
+
+    return config
