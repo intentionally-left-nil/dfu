@@ -35,11 +35,9 @@ def _try_load_config(path: Path) -> Config | None:
 
 
 def _merge(base_config: Config | None, override_config: Config | None) -> Config | None:
-    if base_config is None:
-        return override_config
-    if override_config is None:
-        return None
-    return Config(
-        btrfs=override_config.btrfs or base_config.btrfs,
-        package_dir=override_config.package_dir or base_config.package_dir,
-    )
+    if base_config and override_config:
+        return Config(
+            btrfs=override_config.btrfs or base_config.btrfs,
+            package_dir=override_config.package_dir or base_config.package_dir,
+        )
+    return override_config or base_config
