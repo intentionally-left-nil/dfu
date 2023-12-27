@@ -22,6 +22,7 @@ def test_proot_wraps_with_correct_args(config: Config):
     with patch.object(Snapper, 'get_mountpoint', new=lambda self: Path(f"/{self.snapper_name}")):
         args = proot(["hello", "world"], config=config, snapshot_mapping={"root": 1, "home": 2, "log": 3})
         assert args == [
+            "sudo",
             "proot",
             "-r",
             "/root/.snapshots/1/snapshot",

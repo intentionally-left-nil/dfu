@@ -12,7 +12,7 @@ def proot(args: list[str], config: Config, snapshot_mapping: SnapshotMapping) ->
         raise ValueError('Not all snapshots are listed in the snapper_configs section of the config')
 
     root_config = Snapper(mount_order[0])
-    proot_args = ['proot', '-r', str(root_config.get_snapshot_path(snapshot_mapping[mount_order[0]]))]
+    proot_args = ['sudo', 'proot', '-r', str(root_config.get_snapshot_path(snapshot_mapping[mount_order[0]]))]
     for snapper_config in mount_order[1:]:
         snapper = Snapper(snapper_config)
         source_dir = snapper.get_snapshot_path(snapshot_mapping[snapper_config])

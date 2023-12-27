@@ -39,6 +39,7 @@ package2
     assert result == ['package1', 'package2', 'package3']
     mock_run.assert_called_once_with(
         [
+            'sudo',
             'proot',
             '-r',
             '/root/.snapshots/1/snapshot',
