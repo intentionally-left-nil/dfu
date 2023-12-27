@@ -39,6 +39,8 @@ def test_git_init(temp_dir: Path, config: Config, package_config: PackageConfig)
 def test_git_commit(temp_dir: Path, config: Config, package_config: PackageConfig):
     git_init(config, package_config)
     (temp_dir / package_config.name / 'file.txt').touch()
+    subprocess.run(['git', 'config', 'user.name', 'myself'], cwd=temp_dir / package_config.name, check=True)
+    subprocess.run(['git', 'config', 'user.email', 'me@example.com'], cwd=temp_dir / package_config.name, check=True)
     git_commit(config, package_config, 'Initial commit')
     result = subprocess.run(
         ['git', 'show', '--name-only', '--oneline', 'HEAD'],
