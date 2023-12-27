@@ -1,13 +1,29 @@
 import json
-import os
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 from dfu.snapshots.snapper_diff import SnapperDiff
 
 
+@dataclass
+class SnapperConfigInfo:
+    name: str
+    mountpoint: Path
+
+
 class Snapper:
     snapper_name: str
+
+    @classmethod
+    def get_configs(cls) -> list[SnapperConfigInfo]:
+        result = subprocess.run(
+            ['sudo', 'snapper', '--jsonout', 'list-configs'],
+            capture_output=True,
+            check=True,
+        )
+        data: list[dict] = json.loads(result.stdout)["configs"]
+        return [SnapperConfigInfo(name=config["config"], mountpoint=Path(config["subvolume"])) for config in data]
 
     def __init__(self, snapper_name: str) -> None:
         self.snapper_name = snapper_name

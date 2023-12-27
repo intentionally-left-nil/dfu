@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
 
-from dfu.snapshots.snapper import Snapper
+from dfu.snapshots.snapper import Snapper, SnapperConfigInfo
 from dfu.snapshots.snapper_diff import FileChangeAction, SnapperDiff
 
 
@@ -135,3 +135,9 @@ def test_get_snapshot_path(mock_run):
     mock_run.return_value = Mock(stdout='{"SUBVOLUME": "/test"}')
     snapper = Snapper('test')
     assert snapper.get_snapshot_path(1) == Path('/test/.snapshots/1/snapshot')
+
+
+@patch('subprocess.run')
+def test_get_configs(mock_run):
+    mock_run.return_value = Mock(stdout='{"configs": [{"config": "root", "subvolume": "/home"}]}')
+    assert Snapper.get_configs() == [SnapperConfigInfo(name="root", mountpoint=Path("/home"))]
