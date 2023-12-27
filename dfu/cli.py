@@ -1,14 +1,18 @@
 import os
 import sys
+from pathlib import Path
 
 import click
 
+from dfu.commands.create_config import create_config
 from dfu.commands.create_distribution import create_distribution
 from dfu.commands.create_package import create_package
 from dfu.commands.create_snapshot import create_post_snapshot, create_pre_snapshot
 from dfu.commands.diff import diff_snapshot
-from dfu.commands.load_config import load_config
+from dfu.commands.load_config import get_config_paths, load_config
 from dfu.commands.load_package_config import get_package_path
+from dfu.config import Config
+from dfu.snapshots.snapper import Snapper
 
 
 class NullableString(click.ParamType):
@@ -66,6 +70,36 @@ def dist(package_name: str):
     config = load_config()
     package_path = get_package_path(config, package_name)
     create_distribution(package_path)
+
+
+@click.group
+def config():
+    pass
+
+
+@config.command()
+@click.option("-s", "--snapper-config", multiple=True, default=[], help="Snapper configs to include")
+@click.option("-p", "--package-dir", help="Directory to store packages in")
+@click.option("-f", "--file", help="File to write config to")
+def init(snapper_config: list[str], package_dir: str | None, file: str | None):
+    if not snapper_config:
+        default_configs = ",".join([c.name for c in Snapper.get_configs()])
+        response = click.prompt(
+            "Which snapper configs would you like to create snapshots for?",
+            default=default_configs,
+        )
+        snapper_config = [c.strip() for c in response.split(",") if c.strip()]
+    if package_dir is None:
+        package_dir = click.prompt(
+            "Where would you like to store the dfu packages you create?", default=Config.get_default_package_dir()
+        )
+
+    if file is None:
+        file = str(click.prompt("Where would you like to store the dfu config?", default=get_config_paths()[0]))
+    create_config(file=Path(file), snapper_configs=snapper_config, package_dir=package_dir)
+
+
+main.add_command(config)
 
 
 if __name__ == "__main__":

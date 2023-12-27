@@ -13,7 +13,7 @@ from dfu.snapshots.btrfs import get_all_subvolumes
 from dfu.snapshots.snapper import Snapper
 
 
-def load_config() -> Config:
+def get_config_paths() -> list[Path]:
     dirs = PlatformDirs("dfu", multipath=True)
     search_paths: Iterable[Path] = chain(
         [Path("/etc/dfu")],
@@ -23,9 +23,12 @@ def load_config() -> Config:
     config_paths: list[Path] = []
     for path in search_paths:
         config_paths.extend([Path(path) / "config.toml", Path(path) / "dfu.d" / "config.toml"])
+    return config_paths
 
+
+def load_config() -> Config:
     config: Config | None = None
-    for path in config_paths:
+    for path in get_config_paths():
         config = _merge(config, _try_load_config(path))
     if config is None:
         config = _get_default_config()
