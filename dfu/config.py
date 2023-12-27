@@ -28,4 +28,4 @@ class Config:
         return fromdict(cls, data)
 
     def get_package_dir(self) -> Path:
-        return Path(self.package_dir) if self.package_dir else PlatformDirs("dfu").user_config_path / "packages"
+        return Path(self.package_dir) if self.package_dir else PlatformDirs("dfu").user_data_path / "packages"
