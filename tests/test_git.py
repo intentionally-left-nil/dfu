@@ -67,6 +67,7 @@ def test_symlink_global_gitignore(temp_dir: Path, config: Config, package_config
     assert (temp_dir / package_config.name / '.gitignore').exists()
     assert (temp_dir / package_config.name / '.gitignore').is_symlink()
     assert (temp_dir / package_config.name / '.gitignore').resolve() == (temp_dir / '.gitignore').resolve()
+    assert str((temp_dir / package_config.name / '.gitignore').readlink()) == '../.gitignore'
 
 
 def test_symlink_global_gitignore_already_exists(temp_dir: Path, config: Config, package_config: PackageConfig):

@@ -24,10 +24,9 @@ def ensure_global_gitignore(config: Config):
 
 def symlink_global_gitignore(config: Config, package_config: PackageConfig):
     package_dir = _ensure_package_dir(config, package_config)
-    global_gitignore = config.get_package_dir() / '.gitignore'
     package_gitignore = package_dir / '.gitignore'
     if not package_gitignore.exists():
-        package_gitignore.symlink_to(global_gitignore)
+        package_gitignore.symlink_to("../.gitignore")
 
 
 def _ensure_package_dir(config: Config, package_config: PackageConfig) -> Path:
