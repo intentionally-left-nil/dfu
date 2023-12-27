@@ -30,6 +30,7 @@ def create_config(file: Path, snapper_configs: list[str], package_dir: str | Non
     config = Config(btrfs=Btrfs(snapper_configs=snapper_configs), package_dir=package_dir)
     toml = dumps(asdict(config))
     try:
+        file.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
         with open(file, "w", encoding='utf-8') as f:
             f.write(toml)
             f.flush()
@@ -39,5 +40,6 @@ def create_config(file: Path, snapper_configs: list[str], package_dir: str | Non
             f.flush()
 
             subprocess.run(["sudo", "chown", "root:root", f.name], check=True)
-            subprocess.run(["sudo", "cp", f.name, file], check=True)
+            subprocess.run(["sudo", "mkdir", "-p", str(file.parent.resolve(strict=True))], check=True)
+            subprocess.run(["sudo", "cp", f.name, str(file.resolve(strict=True))], check=True)
         pass
