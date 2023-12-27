@@ -30,7 +30,7 @@ snapper_configs = ["/home", "/"]
     actual = Config.from_toml(toml)
     expected = Config(btrfs=Btrfs(snapper_configs=["/home", "/"]))
     assert actual == expected
-    assert actual.get_package_dir() == PlatformDirs("dfu").user_config_path / "packages"
+    assert actual.get_package_dir() == PlatformDirs("dfu").user_data_path / "packages"
 
 
 def test_from_file():
