@@ -87,7 +87,6 @@ def config():
 @click.option("-f", "--file", help="File to write config to")
 def init(snapper_config: list[str], package_dir: str | None, file: str | None):
     if not snapper_config:
-        click.echo("Querying to see which snapper configs exist (sudo needed)", file=sys.stderr)
         default_configs = ",".join([c.name for c in Snapper.get_configs()])
         response = click.prompt(
             "Which snapper configs would you like to create snapshots for?",
