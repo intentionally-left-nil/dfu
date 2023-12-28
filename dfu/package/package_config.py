@@ -1,7 +1,7 @@
 import json
 import os
 from dataclasses import dataclass, field
-from enum import StrEnum
+from pathlib import Path
 
 from dataclass_wizard import asdict, fromdict
 
@@ -49,3 +49,14 @@ class PackageConfig:
     @classmethod
     def from_json(cls, data: str) -> "PackageConfig":
         return fromdict(cls, json.loads(data))
+
+
+def find_package_config(path: Path) -> Path | None:
+    while True:
+        dfu_config = path / 'dfu_config.json'
+        if dfu_config.is_file():
+            return dfu_config
+        elif path.parent == path or path.is_mount():  # Stop at the root or a filesystem boundary
+            return None
+        else:
+            path = path.parent  # Move up to the parent directory
