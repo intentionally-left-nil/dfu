@@ -49,7 +49,7 @@ def create_changed_placeholders(config: Config, package_config: PackageConfig):
             for child in path.parts[1:-1]:
                 current_path = current_path / child
 
-                if current_path.is_file() and current_path.read_text() == "PLACEHOLDER: CREATED":
+                if current_path.is_file() and current_path.read_text() == "PLACEHOLDER: CREATED\n":
                     current_path.unlink()
                     current_path.mkdir(mode=0o755)
                 elif not current_path.exists():
@@ -57,4 +57,4 @@ def create_changed_placeholders(config: Config, package_config: PackageConfig):
                 elif not current_path.is_dir():
                     raise ValueError(f"Trying to create {path} failed because {current_path} is not a directory")
 
-            path.write_text(f"PLACEHOLDER: {change.action}")
+            path.write_text(f"PLACEHOLDER: {change.action}\n")
