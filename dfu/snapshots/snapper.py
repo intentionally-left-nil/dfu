@@ -17,14 +17,15 @@ class Snapper:
 
     @classmethod
     def get_configs(cls) -> list[SnapperConfigInfo]:
+        data: list[dict]
         try:
             # When running without sudo, the exit code fails, however the config listing still succeeds
             # Try without sudo, see if the "configs" entry exist. Otherwise, fall-back to sudo
             result = subprocess.run(['snapper', '--jsonout', 'list-configs'], capture_output=True)
-            data: list[dict] = json.loads(result.stdout)["configs"]
+            data = json.loads(result.stdout)["configs"]
         except Exception:
             result = subprocess.run(['sudo', 'snapper', '--jsonout', 'list-configs'], capture_output=True, check=True)
-            data: list[dict] = json.loads(result.stdout)["configs"]
+            data = json.loads(result.stdout)["configs"]
         return [SnapperConfigInfo(name=config["config"], mountpoint=Path(config["subvolume"])) for config in data]
 
     def __init__(self, snapper_name: str) -> None:
