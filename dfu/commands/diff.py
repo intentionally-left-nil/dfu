@@ -1,4 +1,5 @@
 from pathlib import Path
+from shutil import rmtree
 
 from dfu.config import Config
 from dfu.installed_packages.pacman import diff_packages, get_installed_packages
@@ -29,6 +30,9 @@ def create_changed_placeholders(config: Config, package_config: PackageConfig):
     post_mapping = package_config.snapshot_mapping(use_pre_id=False)
 
     placeholder_dir = config.get_package_dir() / package_config.name / 'placeholders'
+    if placeholder_dir.exists():
+        rmtree(placeholder_dir)
+
     placeholder_dir.mkdir(mode=0o755, parents=True, exist_ok=True)
     for snapper_name, pre_id in pre_mapping.items():
         post_id = post_mapping[snapper_name]
