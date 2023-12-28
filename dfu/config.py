@@ -1,10 +1,8 @@
 import os
 import tomllib
 from dataclasses import dataclass
-from pathlib import Path
 
 from dataclass_wizard import fromdict
-from platformdirs import PlatformDirs
 
 
 @dataclass
@@ -15,7 +13,6 @@ class Btrfs:
 @dataclass
 class Config:
     btrfs: Btrfs
-    package_dir: str | None = None
 
     @classmethod
     def from_file(cls, path: os.PathLike | str) -> "Config":
@@ -26,10 +23,3 @@ class Config:
     def from_toml(cls, toml: str) -> "Config":
         data = tomllib.loads(toml)
         return fromdict(cls, data)
-
-    @classmethod
-    def get_default_package_dir(cls) -> Path:
-        return PlatformDirs("dfu").user_data_path / "packages"
-
-    def get_package_dir(self) -> Path:
-        return Path(self.package_dir) if self.package_dir else self.get_default_package_dir()

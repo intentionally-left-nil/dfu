@@ -1,37 +1,20 @@
 import subprocess
 from pathlib import Path
 
-from dfu.config import Config
-from dfu.package.package_config import PackageConfig
+from platformdirs import PlatformDirs
 
 
-def git_init(config: Config, package_config: PackageConfig):
-    package_dir = _ensure_package_dir(config, package_config)
+def git_init(package_dir: Path):
     subprocess.run(['git', 'init'], cwd=package_dir, check=True)
 
 
-def git_commit(config: Config, package_config: PackageConfig, message: str):
-    package_dir = _ensure_package_dir(config, package_config)
+def git_commit(package_dir: Path, message: str):
     subprocess.run(['git', 'add', '.'], cwd=package_dir, check=True)
     subprocess.run(['git', 'commit', '-m', message], cwd=package_dir, check=True)
 
 
-def ensure_global_gitignore(config: Config):
-    root_dir = config.get_package_dir()
-    root_dir.mkdir(mode=0o755, parents=True, exist_ok=True)
-    (root_dir / '.gitignore').touch(mode=0o644)
-
-
-def copy_global_gitignore(config: Config, package_config: PackageConfig):
-    ensure_global_gitignore(config)
-    global_gitignore = config.get_package_dir() / '.gitignore'
-    package_dir = _ensure_package_dir(config, package_config)
+def copy_template_gitignore(package_dir: Path):
     package_gitignore = package_dir / '.gitignore'
-    if not package_gitignore.exists():
-        package_gitignore.write_text(global_gitignore.read_text())
-
-
-def _ensure_package_dir(config: Config, package_config: PackageConfig) -> Path:
-    package_dir = config.get_package_dir() / package_config.name
-    package_dir.mkdir(mode=0o755, parents=True, exist_ok=True)
-    return package_dir
+    template_gitignore = PlatformDirs("dfu").user_data_path / ".gitignore"
+    if not package_gitignore.exists() and template_gitignore.exists() and template_gitignore.is_file():
+        package_gitignore.write_text(template_gitignore.read_text())

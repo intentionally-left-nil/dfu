@@ -13,7 +13,7 @@ from dfu.snapshots.snapper import Snapper
 from dfu.snapshots.sort_snapper_configs import sort_snapper_configs
 
 
-def create_config(file: Path, snapper_configs: list[str], package_dir: str | None):
+def create_config(file: Path, snapper_configs: list[str]):
     all_subvolumes = set(get_all_subvolumes())
     all_snapper_configs = Snapper.get_configs()
     unknown_configs = set(snapper_configs) - set([c.name for c in all_snapper_configs])
@@ -28,7 +28,7 @@ def create_config(file: Path, snapper_configs: list[str], package_dir: str | Non
     if missing_subvolumes:
         click.echo(f"A snapper config was not found for the following subvolumes: {missing_subvolumes}", err=True)
 
-    config = Config(btrfs=Btrfs(snapper_configs=snapper_configs), package_dir=package_dir)
+    config = Config(btrfs=Btrfs(snapper_configs=snapper_configs))
     toml = dumps(asdict(config))
     try:
         file.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
