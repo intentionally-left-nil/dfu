@@ -46,7 +46,7 @@ def create_changed_placeholders(config: Config, package_config: PackageConfig):
             # Therefore, we may have previously created a parent directory as a file. So, we need to manually walk the path
             # Delete any placeholder files that are actually directories, and re-create them as directories
             current_path = Path(path.parts[0])
-            for child in path.parts[1:]:
+            for child in path.parts[1:-1]:
                 current_path = current_path / child
 
                 if current_path.is_file() and current_path.read_text() == "PLACEHOLDER: CREATED":
