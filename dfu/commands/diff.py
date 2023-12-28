@@ -35,5 +35,20 @@ def create_changed_placeholders(config: Config, package_config: PackageConfig):
         snapper = Snapper(snapper_name)
         for change in snapper.get_delta(pre_id, post_id):
             path = placeholder_dir / change.path.lstrip('/')
-            path.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+            if not path.resolve().is_relative_to(placeholder_dir.resolve()):
+                raise ValueError(f"Trying to create {path} failed because it is not relative to {placeholder_dir}")
+
+            # We can't simply make all the parent directories, because the snapper diff doesn't distinguish between files and directories.
+            # Therefore, we may have previously created a parent directory as a file. So, we need to manually walk the path
+            # Delete any placeholder files that are actually directories, and re-create them as directories
+            current_path = Path(path.parts[0])
+            for child in path.parts[1:]:
+                current_path = current_path / child
+
+                if current_path.is_file() and current_path.read_text() == "PLACEHOLDER: CREATED":
+                    current_path.unlink()
+                    current_path.mkdir(mode=0o755)
+                elif not current_path.is_dir():
+                    raise ValueError(f"Trying to create {path} failed because {current_path} is not a directory")
+
             path.write_text(f"PLACEHOLDER: {change.action}")
