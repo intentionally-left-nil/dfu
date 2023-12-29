@@ -43,13 +43,9 @@ def create_changed_placeholders(package_config: PackageConfig, package_dir: Path
         for delta in deltas:
             delta.path = f"placeholders/{delta.path.lstrip('/')}"
 
-        ignored_paths = git_check_ignore(package_dir, [delta.path for delta in deltas])
-        # For performance reasons, reverse ignored_paths, so we can pop from the end
-        ignored_paths.reverse()
-
+        ignored_paths = set(git_check_ignore(package_dir, [delta.path for delta in deltas]))
         for delta in deltas:
-            if len(ignored_paths) > 0 and delta.path == ignored_paths[-1]:
-                ignored_paths.pop()
+            if delta.path in ignored_paths:
                 continue
             path = package_dir / delta.path
             try:
