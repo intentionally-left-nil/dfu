@@ -13,8 +13,37 @@ def git_commit(package_dir: Path, message: str):
     subprocess.run(['git', 'commit', '-m', message], cwd=package_dir, check=True)
 
 
+def ensure_template_gitignore() -> Path:
+    template_gitignore = PlatformDirs("dfu").user_data_path / ".gitignore"
+    if not template_gitignore.exists():
+        template_gitignore.write_text(DEFAULT_GITIGNORE)
+    return template_gitignore
+
+
 def copy_template_gitignore(package_dir: Path):
     package_gitignore = package_dir / '.gitignore'
-    template_gitignore = PlatformDirs("dfu").user_data_path / ".gitignore"
-    if not package_gitignore.exists() and template_gitignore.exists() and template_gitignore.is_file():
+    template_gitignore = ensure_template_gitignore()
+    if not package_gitignore.exists() and template_gitignore.is_file():
         package_gitignore.write_text(template_gitignore.read_text())
+
+
+DEFAULT_GITIGNORE = """\
+# Paths where programs are installed into
+/placeholders/usr/bin
+/placeholders/usr/lib
+/placeholders/usr/share
+/placeholders/usr/include
+
+# Paths where data changes, but is not user data
+/placeholders/var
+/placeholders/tmp
+
+# File extensions we never care about
+/placeholders/**/*.so
+/placeholders/**/*.pyc
+/placeholders/**/*.pyo
+/placeholders/**/.bin
+
+# Cache files and folders
+/placeholders/**/.cache
+"""

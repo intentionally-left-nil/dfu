@@ -4,7 +4,12 @@ from unittest.mock import PropertyMock, patch
 
 from platformdirs import PlatformDirs
 
-from dfu.revision.git import copy_template_gitignore, git_commit, git_init
+from dfu.revision.git import (
+    DEFAULT_GITIGNORE,
+    copy_template_gitignore,
+    git_commit,
+    git_init,
+)
 
 
 def test_git_init(tmp_path: Path):
@@ -38,13 +43,13 @@ def test_copy_template_gitignore(tmp_path: Path):
     assert (tmp_path / '.gitignore').read_text() == 'hello'
 
 
-def test_copy_template_gitignore_skips_if_no_template(tmp_path: Path):
+def test_copy_template_gitignore_generates_default_template(tmp_path: Path):
     template_dir = tmp_path / "template"
     template_dir.mkdir()
     with patch.object(PlatformDirs, "user_data_path", new_callable=PropertyMock) as mock_user_data_path:
         mock_user_data_path.return_value = template_dir
         copy_template_gitignore(tmp_path)
-    assert (tmp_path / '.gitignore').exists() == False
+    assert (tmp_path / '.gitignore').read_text() == DEFAULT_GITIGNORE
 
 
 def test_copy_template_gitignore_skips_if_gitignore_exists(tmp_path: Path):
