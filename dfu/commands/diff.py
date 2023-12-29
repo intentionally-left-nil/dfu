@@ -4,6 +4,7 @@ from shutil import rmtree
 from dfu.config import Config
 from dfu.installed_packages.pacman import diff_packages, get_installed_packages
 from dfu.package.package_config import PackageConfig
+from dfu.revision.git import git_check_ignore
 from dfu.snapshots.snapper import Snapper
 
 
@@ -37,9 +38,20 @@ def create_changed_placeholders(package_config: PackageConfig, package_dir: Path
     for snapper_name, pre_id in pre_mapping.items():
         post_id = post_mapping[snapper_name]
         snapper = Snapper(snapper_name)
-        for change in snapper.get_delta(pre_id, post_id):
-            path = placeholder_dir / change.path.lstrip('/')
+        deltas = snapper.get_delta(pre_id, post_id)
 
+        for delta in deltas:
+            delta.path = str(placeholder_dir / delta.path.lstrip('/'))
+
+        ignored_paths = git_check_ignore(package_dir, [delta.path for delta in deltas])
+        # For performance reasons, reverse ignored_paths, so we can pop from the end
+        ignored_paths.reverse()
+
+        for delta in deltas:
+            if len(ignored_paths) > 0 and delta.path == ignored_paths[-1]:
+                ignored_paths.pop()
+                continue
+            path = Path(delta.path)
             try:
                 path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
             except FileExistsError:
@@ -58,4 +70,4 @@ def create_changed_placeholders(package_config: PackageConfig, package_dir: Path
                     elif not current_path.is_dir():
                         raise ValueError(f"Trying to create {path} failed because {current_path} is not a directory")
 
-            path.write_text(f"PLACEHOLDER: {change.action}\n")
+            path.write_text(f"PLACEHOLDER: {delta.action}\n")
