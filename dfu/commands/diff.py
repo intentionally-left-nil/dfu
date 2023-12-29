@@ -39,8 +39,6 @@ def create_changed_placeholders(package_config: PackageConfig, package_dir: Path
         snapper = Snapper(snapper_name)
         for change in snapper.get_delta(pre_id, post_id):
             path = placeholder_dir / change.path.lstrip('/')
-            if not path.resolve().is_relative_to(placeholder_dir.resolve()):
-                raise ValueError(f"Trying to create {path} failed because it is not relative to {placeholder_dir}")
 
             try:
                 path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
