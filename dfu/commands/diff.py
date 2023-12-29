@@ -41,7 +41,7 @@ def create_changed_placeholders(package_config: PackageConfig, package_dir: Path
         deltas = snapper.get_delta(pre_id, post_id)
 
         for delta in deltas:
-            delta.path = str(placeholder_dir / delta.path.lstrip('/'))
+            delta.path = f"placeholders/{delta.path.lstrip('/')}"
 
         ignored_paths = git_check_ignore(package_dir, [delta.path for delta in deltas])
         # For performance reasons, reverse ignored_paths, so we can pop from the end
@@ -51,7 +51,7 @@ def create_changed_placeholders(package_config: PackageConfig, package_dir: Path
             if len(ignored_paths) > 0 and delta.path == ignored_paths[-1]:
                 ignored_paths.pop()
                 continue
-            path = Path(delta.path)
+            path = package_dir / delta.path
             try:
                 path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
             except FileExistsError:
