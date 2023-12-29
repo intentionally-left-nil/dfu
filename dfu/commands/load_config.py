@@ -45,7 +45,6 @@ def _merge(base_config: Config | None, override_config: Config | None) -> Config
     if base_config and override_config:
         return Config(
             btrfs=override_config.btrfs or base_config.btrfs,
-            package_dir=override_config.package_dir or base_config.package_dir,
         )
     return override_config or base_config
 

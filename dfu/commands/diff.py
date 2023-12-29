@@ -7,11 +7,11 @@ from dfu.package.package_config import PackageConfig
 from dfu.snapshots.snapper import Snapper
 
 
-def diff_snapshot(config: Config, package_config_path: Path):
-    package_config = PackageConfig.from_file(package_config_path)
+def diff_snapshot(config: Config, package_dir: Path):
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     update_installed_packages(config, package_config)
-    create_changed_placeholders(config, package_config)
-    package_config.write(package_config_path)
+    create_changed_placeholders(package_config, package_dir)
+    package_config.write(package_dir / "dfu_config.json")
 
 
 def update_installed_packages(config: Config, package_config: PackageConfig):
@@ -25,11 +25,11 @@ def update_installed_packages(config: Config, package_config: PackageConfig):
     package_config.programs_removed = diff.removed
 
 
-def create_changed_placeholders(config: Config, package_config: PackageConfig):
+def create_changed_placeholders(package_config: PackageConfig, package_dir: Path):
     pre_mapping = package_config.snapshot_mapping(use_pre_id=True)
     post_mapping = package_config.snapshot_mapping(use_pre_id=False)
 
-    placeholder_dir = config.get_package_dir() / package_config.name / 'placeholders'
+    placeholder_dir = package_dir / 'placeholders'
     if placeholder_dir.exists():
         rmtree(placeholder_dir)
 
@@ -49,7 +49,7 @@ def create_changed_placeholders(config: Config, package_config: PackageConfig):
             for child in path.parts[1:-1]:
                 current_path = current_path / child
 
-                if current_path.is_file() and current_path.read_text() == "PLACEHOLDER: CREATED\n":
+                if current_path.is_file() and current_path.read_text().startswith("PLACEHOLDER"):
                     current_path.unlink()
                     current_path.mkdir(mode=0o755)
                 elif not current_path.exists():

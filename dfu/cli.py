@@ -12,10 +12,10 @@ from dfu.commands import (
     create_pre_snapshot,
     diff_snapshot,
     get_config_paths,
-    get_package_path,
     load_config,
 )
 from dfu.config import Config
+from dfu.package.package_config import find_package_config
 from dfu.snapshots.snapper import Snapper
 
 
@@ -28,6 +28,13 @@ class NullableString(click.ParamType):
         return value
 
 
+def find_package_dir(path: Path = Path.cwd()) -> Path:
+    config_path = find_package_config(path)
+    if not config_path:
+        raise ValueError("No dfu_config.json found in the current directory or any parent directory")
+    return config_path.parent
+
+
 @click.group()
 def main():
     pass
@@ -36,44 +43,37 @@ def main():
 @main.command()
 @click.option("-n", "--name", help="Name of the package")
 @click.option("-d", "--description", help="Description of the package")
-def new(name: str | None, description: str | None):
-    final_name: str = click.prompt("Name", default=name)
+def init(name: str | None, description: str | None):
+    final_name: str = click.prompt("Name", default=name or Path.cwd().name)
     final_description: str | None = click.prompt("Description", default=description or "", type=NullableString())
-    config = load_config()
-    path = create_package(config, name=final_name, description=final_description)
+    path = create_package(name=final_name, description=final_description)
     print(path)
 
 
 @main.command()
-@click.argument("package_name")
-def begin(package_name: str):
+def begin():
     config = load_config()
-    package_path = get_package_path(config, package_name)
-    create_pre_snapshot(config, package_path)
+    package_dir = find_package_dir()
+    create_pre_snapshot(config, package_dir)
 
 
 @main.command()
-@click.argument("package_name")
-def end(package_name: str):
-    config = load_config()
-    package_path = get_package_path(config, package_name)
-    create_post_snapshot(package_path)
+def end():
+    package_dir = find_package_dir()
+    create_post_snapshot(package_dir)
 
 
 @main.command()
-@click.argument("package_name")
-def diff(package_name: str):
+def diff():
     config = load_config()
-    package_path = get_package_path(config, package_name)
-    diff_snapshot(config, package_path)
+    package_dir = find_package_dir()
+    diff_snapshot(config, package_dir)
 
 
 @main.command()
-@click.argument("package_name")
-def dist(package_name: str):
-    config = load_config()
-    package_path = get_package_path(config, package_name)
-    create_distribution(package_path)
+def dist():
+    package_dir = find_package_dir()
+    create_distribution(package_dir)
 
 
 @click.group
@@ -81,11 +81,10 @@ def config():
     pass
 
 
-@config.command()
+@config.command(name="init")
 @click.option("-s", "--snapper-config", multiple=True, default=[], help="Snapper configs to include")
-@click.option("-p", "--package-dir", help="Directory to store packages in")
 @click.option("-f", "--file", help="File to write config to")
-def init(snapper_config: list[str], package_dir: str | None, file: str | None):
+def config_init(snapper_config: list[str], file: str | None):
     if not snapper_config:
         default_configs = ",".join([c.name for c in Snapper.get_configs()])
         response = click.prompt(
@@ -93,14 +92,9 @@ def init(snapper_config: list[str], package_dir: str | None, file: str | None):
             default=default_configs,
         )
         snapper_config = [c.strip() for c in response.split(",") if c.strip()]
-    if package_dir is None:
-        package_dir = click.prompt(
-            "Where would you like to store the dfu packages you create?", default=Config.get_default_package_dir()
-        )
-
     if file is None:
         file = str(click.prompt("Where would you like to store the dfu config?", default=get_config_paths()[0]))
-    create_config(file=Path(file), snapper_configs=snapper_config, package_dir=package_dir)
+    create_config(file=Path(file), snapper_configs=snapper_config)
 
 
 main.add_command(config)
