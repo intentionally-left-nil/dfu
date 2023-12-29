@@ -13,6 +13,16 @@ def git_commit(package_dir: Path, message: str):
     subprocess.run(['git', 'commit', '-m', message], cwd=package_dir, check=True)
 
 
+def git_check_ignore(package_dir: Path, paths: list[str]) -> list[str]:
+    stdin = '\n'.join(paths)
+    cmd = ['git', 'check-ignore', '--stdin']
+    result = subprocess.run(cmd, cwd=package_dir, input=stdin, text=True, capture_output=True)
+    if result.returncode == 128:
+        # Per the docs, only a status code of 128 indicates actual failure: https://git-scm.com/docs/git-check-ignore#_exit_status
+        raise subprocess.CalledProcessError(result.returncode, cmd, output=result.stdout, stderr=result.stderr)
+    return result.stdout.splitlines()
+
+
 def ensure_template_gitignore() -> Path:
     template_gitignore = PlatformDirs("dfu").user_data_path / ".gitignore"
     if not template_gitignore.exists():
