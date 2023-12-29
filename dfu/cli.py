@@ -44,7 +44,7 @@ def main():
 @click.option("-n", "--name", help="Name of the package")
 @click.option("-d", "--description", help="Description of the package")
 def init(name: str | None, description: str | None):
-    final_name: str = click.prompt("Name", default=name)
+    final_name: str = click.prompt("Name", default=name or Path.cwd().name)
     final_description: str | None = click.prompt("Description", default=description or "", type=NullableString())
     path = create_package(name=final_name, description=final_description)
     print(path)
