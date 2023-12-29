@@ -2,11 +2,13 @@ import subprocess
 from pathlib import Path
 from unittest.mock import PropertyMock, patch
 
+import pytest
 from platformdirs import PlatformDirs
 
 from dfu.revision.git import (
     DEFAULT_GITIGNORE,
     copy_template_gitignore,
+    git_check_ignore,
     git_commit,
     git_init,
 )
@@ -61,3 +63,44 @@ def test_copy_template_gitignore_skips_if_gitignore_exists(tmp_path: Path):
         mock_user_data_path.return_value = template_dir
         copy_template_gitignore(tmp_path)
     assert (tmp_path / '.gitignore').read_text() == 'local_copy'
+
+
+def test_git_ignore(tmp_path: Path):
+    git_init(tmp_path)
+    (tmp_path / '.gitignore').write_text(DEFAULT_GITIGNORE)
+    ignored = git_check_ignore(
+        tmp_path,
+        [
+            "placeholders/allowed.txt",
+            "placeholders/also_allowed.txt",
+            "placeholders/usr/share/not_allowed.so",
+            "placeholders/usr/include/also_not_allowed",
+        ],
+    )
+    assert ignored == [
+        "placeholders/usr/share/not_allowed.so",
+        "placeholders/usr/include/also_not_allowed",
+    ]
+
+
+def test_git_ignore_no_files_ignored(tmp_path: Path):
+    git_init(tmp_path)
+    (tmp_path / '.gitignore').write_text(DEFAULT_GITIGNORE)
+    ignored = git_check_ignore(
+        tmp_path,
+        [
+            "placeholders/allowed.txt",
+            "placeholders/also_allowed.txt",
+        ],
+    )
+    assert ignored == []
+
+
+def test_git_ignore_handles_error(tmp_path: Path):
+    git_init(tmp_path)
+    (tmp_path / '.gitignore').write_text(DEFAULT_GITIGNORE)
+    with pytest.raises(subprocess.CalledProcessError):
+        git_check_ignore(
+            tmp_path,
+            ['\0'],
+        )
