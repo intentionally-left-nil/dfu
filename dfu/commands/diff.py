@@ -49,7 +49,7 @@ def create_changed_placeholders(package_config: PackageConfig, package_dir: Path
             for child in path.parts[1:-1]:
                 current_path = current_path / child
 
-                if current_path.is_file() and current_path.read_text() == "PLACEHOLDER: CREATED\n":
+                if current_path.is_file() and current_path.read_text().startswith("PLACEHOLDER"):
                     current_path.unlink()
                     current_path.mkdir(mode=0o755)
                 elif not current_path.exists():
