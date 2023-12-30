@@ -1,4 +1,6 @@
+import random
 import re
+import string
 import subprocess
 from pathlib import Path
 from shutil import rmtree
@@ -7,7 +9,7 @@ from dfu.config import Config
 from dfu.installed_packages.pacman import diff_packages, get_installed_packages
 from dfu.package.dfu_diff import DfuDiff
 from dfu.package.package_config import PackageConfig
-from dfu.revision.git import git_check_ignore, git_ls_files
+from dfu.revision.git import git_add, git_check_ignore, git_checkout, git_ls_files
 from dfu.snapshots.snapper import Snapper
 
 
@@ -36,9 +38,7 @@ def continue_diff(config: Config, package_dir: Path):
         return
 
     if not diff.base_branch:
-        copy_files(package_dir, use_pre_id=True)
-        diff.base_branch = "fixme"
-        diff.write(package_dir / '.dfu-diff')
+        create_base_branch(package_dir, diff)
         return
 
     if not diff.updated_installed_programs:
@@ -138,6 +138,15 @@ def copy_files(package_dir: Path, *, use_pre_id: bool):
                 )
 
 
+def create_base_branch(package_dir: Path, diff: DfuDiff):
+    branch_name = f"base-{_rand_slug()}"
+    git_checkout(package_dir, branch_name, exist_ok=False)
+    copy_files(package_dir, use_pre_id=True)
+    git_add(package_dir, ['files'])
+    diff.base_branch = branch_name
+    diff.write(package_dir / '.dfu-diff')
+
+
 def _remove_placeholders(package_dir: Path):
     placeholder_dir = package_dir / 'placeholders'
     if placeholder_dir.exists():
@@ -146,3 +155,7 @@ def _remove_placeholders(package_dir: Path):
 
 def _strip_placeholders(p: Path | str) -> str:
     return re.sub(r'^placeholders/', '', str(p)).lstrip('/')
+
+
+def _rand_slug(length=10):
+    return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))
