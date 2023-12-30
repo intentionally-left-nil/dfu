@@ -140,5 +140,5 @@ def _remove_placeholders(package_dir: Path):
         rmtree(placeholder_dir)
 
 
-def _strip_placeholders(p: Path | str) -> Path:
-    return Path(re.sub(r'^placeholders/', '', str(p)))
+def _strip_placeholders(p: Path | str) -> str:
+    return re.sub(r'^placeholders/', '', str(p))
