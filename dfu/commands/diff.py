@@ -119,7 +119,11 @@ def copy_files(package_dir: Path, *, use_pre_id: bool):
     for snapper_name, snapshot_id in package_config.snapshot_mapping(use_pre_id=use_pre_id).items():
         snapper = Snapper(snapper_name)
         ls_dir = package_dir / 'placeholders' / _strip_placeholders(snapper.get_mountpoint())
-        files_to_copy = [_strip_placeholders(f) for f in git_ls_files(ls_dir)]
+        try:
+            files_to_copy = [_strip_placeholders(f) for f in git_ls_files(ls_dir)]
+        except FileNotFoundError:
+            # The ls_dir doesn't exist, so there are no placeholders to copy
+            continue
         snapshot_dir = snapper.get_snapshot_path(snapshot_id)
         for file in files_to_copy:
             src = snapshot_dir / file
@@ -141,4 +145,4 @@ def _remove_placeholders(package_dir: Path):
 
 
 def _strip_placeholders(p: Path | str) -> str:
-    return re.sub(r'^placeholders/', '', str(p))
+    return re.sub(r'^placeholders/', '', str(p)).lstrip('/')
