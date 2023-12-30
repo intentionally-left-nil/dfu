@@ -8,22 +8,42 @@ from platformdirs import PlatformDirs
 from dfu.revision.git import (
     DEFAULT_GITIGNORE,
     copy_template_gitignore,
+    git_add,
     git_check_ignore,
+    git_checkout,
     git_commit,
     git_init,
+    git_ls_files,
 )
 
 
-def test_git_init(tmp_path: Path):
+@pytest.fixture(autouse=True)
+def setup_git(tmp_path: Path):
     git_init(tmp_path)
+    subprocess.run(['git', 'config', 'user.name', 'myself'], cwd=tmp_path, check=True)
+    subprocess.run(['git', 'config', 'user.email', 'me@example.com'], cwd=tmp_path, check=True)
+
+
+def test_git_init(tmp_path: Path):
     assert (tmp_path / '.git').exists()
 
 
-def test_git_commit(tmp_path: Path):
-    git_init(tmp_path)
+def test_git_add(tmp_path: Path):
     (tmp_path / 'file.txt').touch()
-    subprocess.run(['git', 'config', 'user.name', 'myself'], cwd=tmp_path, check=True)
-    subprocess.run(['git', 'config', 'user.email', 'me@example.com'], cwd=tmp_path, check=True)
+    git_add(tmp_path, ['file.txt'])
+    result = subprocess.run(
+        ['git', 'diff', '--cached', '--name-only'],
+        cwd=tmp_path,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+    )
+    assert result.stdout.splitlines() == ["file.txt"]
+
+
+def test_git_commit(tmp_path: Path):
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
     git_commit(tmp_path, 'Initial commit')
     result = subprocess.run(
         ['git', 'show', '--name-only', '--oneline', 'HEAD'],
@@ -66,7 +86,6 @@ def test_copy_template_gitignore_skips_if_gitignore_exists(tmp_path: Path):
 
 
 def test_git_ignore(tmp_path: Path):
-    git_init(tmp_path)
     (tmp_path / '.gitignore').write_text(DEFAULT_GITIGNORE)
     ignored = git_check_ignore(
         tmp_path,
@@ -84,7 +103,6 @@ def test_git_ignore(tmp_path: Path):
 
 
 def test_git_ignore_no_files_ignored(tmp_path: Path):
-    git_init(tmp_path)
     (tmp_path / '.gitignore').write_text(DEFAULT_GITIGNORE)
     ignored = git_check_ignore(
         tmp_path,
@@ -97,10 +115,79 @@ def test_git_ignore_no_files_ignored(tmp_path: Path):
 
 
 def test_git_ignore_handles_error(tmp_path: Path):
-    git_init(tmp_path)
     (tmp_path / '.gitignore').write_text(DEFAULT_GITIGNORE)
     with pytest.raises(subprocess.CalledProcessError):
         git_check_ignore(
             tmp_path,
             ['\0'],
         )
+
+
+def test_git_ls_files_when_no_changes(tmp_path: Path):
+    assert git_ls_files(tmp_path) == []
+
+
+def test_git_ls_files(tmp_path: Path):
+    (tmp_path / '.gitignore').write_text("/ignore")
+    git_add(tmp_path, ['.gitignore'])
+    git_commit(tmp_path, 'Initial commit')
+
+    (tmp_path / 'file.txt').touch()
+    (tmp_path / 'staged.txt').touch()
+    (tmp_path / 'ignore').mkdir()
+    (tmp_path / 'ignore' / 'file.txt').touch()
+    assert set(git_ls_files(tmp_path)) == set(['file.txt', 'staged.txt', '.gitignore'])
+
+
+def test_git_ls_files_in_subdirectory(tmp_path: Path):
+    (tmp_path / 'file.txt').touch()
+    placeholders = tmp_path / 'placeholders'
+    placeholders.mkdir()
+    (placeholders / 'test.txt').touch()
+    assert git_ls_files(placeholders) == ['placeholders/test.txt']
+
+
+def test_git_checkout_new_branch(tmp_path: Path):
+    git_init(tmp_path)
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Initial commit')
+    git_checkout(tmp_path, 'new_branch')
+    assert (
+        subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=tmp_path, check=True, text=True, capture_output=True
+        ).stdout
+        == "new_branch\n"
+    )
+
+
+def test_git_checkout_branch_already_exists(tmp_path: Path):
+    git_init(tmp_path)
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Initial commit')
+    git_checkout(tmp_path, 'new_branch')
+    with pytest.raises(subprocess.CalledProcessError):
+        git_checkout(tmp_path, 'new_branch', exist_ok=False)
+
+
+def test_git_checkout_existing_branch(tmp_path: Path):
+    git_init(tmp_path)
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Initial commit')
+    git_checkout(tmp_path, 'new_branch')
+    git_checkout(tmp_path, 'new_branch_2')
+    assert (
+        subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=tmp_path, check=True, text=True, capture_output=True
+        ).stdout
+        == "new_branch_2\n"
+    )
+    git_checkout(tmp_path, 'new_branch', exist_ok=True)
+    assert (
+        subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=tmp_path, check=True, text=True, capture_output=True
+        ).stdout
+        == "new_branch\n"
+    )

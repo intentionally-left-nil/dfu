@@ -1,3 +1,7 @@
+import random
+import re
+import string
+import subprocess
 from pathlib import Path
 from shutil import rmtree
 
@@ -5,7 +9,7 @@ from dfu.config import Config
 from dfu.installed_packages.pacman import diff_packages, get_installed_packages
 from dfu.package.dfu_diff import DfuDiff
 from dfu.package.package_config import PackageConfig
-from dfu.revision.git import git_check_ignore
+from dfu.revision.git import git_add, git_check_ignore, git_checkout, git_ls_files
 from dfu.snapshots.snapper import Snapper
 
 
@@ -31,6 +35,11 @@ def continue_diff(config: Config, package_dir: Path):
         create_changed_placeholders(package_config, package_dir)
         diff.created_placeholders = True
         diff.write(package_dir / '.dfu-diff')
+        return
+
+    if not diff.base_branch:
+        create_base_branch(package_dir, diff)
+        return
 
     if not diff.updated_installed_programs:
         update_installed_packages(config, package_config)
@@ -105,7 +114,48 @@ def create_changed_placeholders(package_config: PackageConfig, package_dir: Path
             path.write_text(f"PLACEHOLDER: {delta.action}\n")
 
 
+def copy_files(package_dir: Path, *, use_pre_id: bool):
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
+    for snapper_name, snapshot_id in package_config.snapshot_mapping(use_pre_id=use_pre_id).items():
+        snapper = Snapper(snapper_name)
+        ls_dir = package_dir / 'placeholders' / _strip_placeholders(snapper.get_mountpoint())
+        try:
+            files_to_copy = [_strip_placeholders(f) for f in git_ls_files(ls_dir)]
+        except FileNotFoundError:
+            # The ls_dir doesn't exist, so there are no placeholders to copy
+            continue
+        snapshot_dir = snapper.get_snapshot_path(snapshot_id)
+        for file in files_to_copy:
+            src = snapshot_dir / file
+            dest = package_dir / 'files' / file
+            dest.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+
+            if subprocess.run(['sudo', 'stat', str(src)], capture_output=True).returncode == 0:
+                subprocess.run(
+                    ['sudo', 'cp', '--no-dereference', '--preserve=all', str(src), str(dest)],
+                    capture_output=True,
+                    check=True,
+                )
+
+
+def create_base_branch(package_dir: Path, diff: DfuDiff):
+    branch_name = f"base-{_rand_slug()}"
+    git_checkout(package_dir, branch_name, exist_ok=False)
+    copy_files(package_dir, use_pre_id=True)
+    git_add(package_dir, ['files'])
+    diff.base_branch = branch_name
+    diff.write(package_dir / '.dfu-diff')
+
+
 def _remove_placeholders(package_dir: Path):
     placeholder_dir = package_dir / 'placeholders'
     if placeholder_dir.exists():
         rmtree(placeholder_dir)
+
+
+def _strip_placeholders(p: Path | str) -> str:
+    return re.sub(r'^placeholders/', '', str(p)).lstrip('/')
+
+
+def _rand_slug(length=10):
+    return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))
