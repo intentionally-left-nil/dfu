@@ -17,6 +17,16 @@ def git_commit(package_dir: Path, message: str):
     subprocess.run(['git', 'commit', '-m', message], cwd=package_dir, check=True)
 
 
+def git_checkout(package_dir: Path, branch: str, exist_ok: bool = False):
+    try:
+        subprocess.run(['git', 'checkout', '-b', branch], cwd=package_dir, check=True, capture_output=True)
+    except subprocess.CalledProcessError as e:
+        if exist_ok:
+            subprocess.run(['git', 'checkout', branch], cwd=package_dir, check=True, capture_output=True)
+        else:
+            raise e
+
+
 def git_check_ignore(package_dir: Path, paths: list[str]) -> list[str]:
     stdin = '\n'.join(paths)
     cmd = ['git', 'check-ignore', '--stdin']

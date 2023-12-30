@@ -10,6 +10,7 @@ from dfu.revision.git import (
     copy_template_gitignore,
     git_add,
     git_check_ignore,
+    git_checkout,
     git_commit,
     git_init,
     git_ls_files,
@@ -144,3 +145,49 @@ def test_git_ls_files_in_subdirectory(tmp_path: Path):
     placeholders.mkdir()
     (placeholders / 'test.txt').touch()
     assert git_ls_files(placeholders) == ['placeholders/test.txt']
+
+
+def test_git_checkout_new_branch(tmp_path: Path):
+    git_init(tmp_path)
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Initial commit')
+    git_checkout(tmp_path, 'new_branch')
+    assert (
+        subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=tmp_path, check=True, text=True, capture_output=True
+        ).stdout
+        == "new_branch\n"
+    )
+
+
+def test_git_checkout_branch_already_exists(tmp_path: Path):
+    git_init(tmp_path)
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Initial commit')
+    git_checkout(tmp_path, 'new_branch')
+    with pytest.raises(subprocess.CalledProcessError):
+        git_checkout(tmp_path, 'new_branch', exist_ok=False)
+
+
+def test_git_checkout_existing_branch(tmp_path: Path):
+    git_init(tmp_path)
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Initial commit')
+    git_checkout(tmp_path, 'new_branch')
+    git_checkout(tmp_path, 'new_branch_2')
+    assert (
+        subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=tmp_path, check=True, text=True, capture_output=True
+        ).stdout
+        == "new_branch_2\n"
+    )
+    git_checkout(tmp_path, 'new_branch', exist_ok=True)
+    assert (
+        subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=tmp_path, check=True, text=True, capture_output=True
+        ).stdout
+        == "new_branch\n"
+    )
