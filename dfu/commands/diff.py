@@ -118,8 +118,8 @@ def copy_files(package_dir: Path, *, use_pre_id: bool):
     package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     for snapper_name, snapshot_id in package_config.snapshot_mapping(use_pre_id=use_pre_id).items():
         snapper = Snapper(snapper_name)
-        ls_dir = package_dir / 'placeholders' / str(snapper.get_mountpoint()).lstrip('/placeholders')
-        files_to_copy = [Path(re.sub(r'^placeholders/', '', f)) for f in git_ls_files(ls_dir)]
+        ls_dir = package_dir / 'placeholders' / _strip_placeholders(snapper.get_mountpoint())
+        files_to_copy = [_strip_placeholders(f) for f in git_ls_files(ls_dir)]
         snapshot_dir = snapper.get_snapshot_path(snapshot_id)
         for file in files_to_copy:
             src = snapshot_dir / file
@@ -138,3 +138,7 @@ def _remove_placeholders(package_dir: Path):
     placeholder_dir = package_dir / 'placeholders'
     if placeholder_dir.exists():
         rmtree(placeholder_dir)
+
+
+def _strip_placeholders(p: Path | str) -> Path:
+    return Path(re.sub(r'^placeholders/', '', str(p)))
