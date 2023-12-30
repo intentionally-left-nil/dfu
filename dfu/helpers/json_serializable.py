@@ -18,6 +18,6 @@ class JsonSerializableMixin:
     def from_json(cls: Type[T], data: str) -> T:
         return fromdict(cls, json.loads(data))
 
-    def write(self, path: Path):
-        with open(path, "w") as f:
+    def write(self, path: Path, mode: str = "w"):
+        with open(path, mode) as f:
             json.dump(asdict(self), f, indent=4)

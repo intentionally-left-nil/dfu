@@ -36,3 +36,16 @@ def test_write(tmp_path: Path):
     dog = Dog(name="Ash", age=3)
     dog.write(tmp_path / "dog.json")
     assert json.loads((tmp_path / "dog.json").read_text()) == {"name": "Ash", "age": 3, "breed": None}
+
+
+def test_write_exclusive(tmp_path: Path):
+    dog = Dog(name="Ash", age=3)
+    dog.write(tmp_path / "dog.json", mode="x")
+    assert json.loads((tmp_path / "dog.json").read_text()) == {"name": "Ash", "age": 3, "breed": None}
+
+
+def test_write_exclusive_fails_if_file_exists(tmp_path: Path):
+    dog = Dog(name="Ash", age=3)
+    (tmp_path / "dog.json").write_text("{}")
+    with pytest.raises(FileExistsError):
+        dog.write(tmp_path / "dog.json", mode="x")
