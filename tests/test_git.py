@@ -16,13 +16,18 @@ from dfu.revision.git import (
 )
 
 
-def test_git_init(tmp_path: Path):
+@pytest.fixture(autouse=True)
+def setup_git(tmp_path: Path):
     git_init(tmp_path)
+    subprocess.run(['git', 'config', 'user.name', 'myself'], cwd=tmp_path, check=True)
+    subprocess.run(['git', 'config', 'user.email', 'me@example.com'], cwd=tmp_path, check=True)
+
+
+def test_git_init(tmp_path: Path):
     assert (tmp_path / '.git').exists()
 
 
 def test_git_add(tmp_path: Path):
-    git_init(tmp_path)
     (tmp_path / 'file.txt').touch()
     git_add(tmp_path, ['file.txt'])
     result = subprocess.run(
@@ -36,10 +41,7 @@ def test_git_add(tmp_path: Path):
 
 
 def test_git_commit(tmp_path: Path):
-    git_init(tmp_path)
     (tmp_path / 'file.txt').touch()
-    subprocess.run(['git', 'config', 'user.name', 'myself'], cwd=tmp_path, check=True)
-    subprocess.run(['git', 'config', 'user.email', 'me@example.com'], cwd=tmp_path, check=True)
     git_add(tmp_path, ['file.txt'])
     git_commit(tmp_path, 'Initial commit')
     result = subprocess.run(
@@ -83,7 +85,6 @@ def test_copy_template_gitignore_skips_if_gitignore_exists(tmp_path: Path):
 
 
 def test_git_ignore(tmp_path: Path):
-    git_init(tmp_path)
     (tmp_path / '.gitignore').write_text(DEFAULT_GITIGNORE)
     ignored = git_check_ignore(
         tmp_path,
@@ -101,7 +102,6 @@ def test_git_ignore(tmp_path: Path):
 
 
 def test_git_ignore_no_files_ignored(tmp_path: Path):
-    git_init(tmp_path)
     (tmp_path / '.gitignore').write_text(DEFAULT_GITIGNORE)
     ignored = git_check_ignore(
         tmp_path,
@@ -114,7 +114,6 @@ def test_git_ignore_no_files_ignored(tmp_path: Path):
 
 
 def test_git_ignore_handles_error(tmp_path: Path):
-    git_init(tmp_path)
     (tmp_path / '.gitignore').write_text(DEFAULT_GITIGNORE)
     with pytest.raises(subprocess.CalledProcessError):
         git_check_ignore(
@@ -124,12 +123,10 @@ def test_git_ignore_handles_error(tmp_path: Path):
 
 
 def test_git_ls_files_when_no_changes(tmp_path: Path):
-    git_init(tmp_path)
     assert git_ls_files(tmp_path) == []
 
 
 def test_git_ls_files(tmp_path: Path):
-    git_init(tmp_path)
     (tmp_path / '.gitignore').write_text("/ignore")
     git_add(tmp_path, ['.gitignore'])
     git_commit(tmp_path, 'Initial commit')
@@ -142,7 +139,6 @@ def test_git_ls_files(tmp_path: Path):
 
 
 def test_git_ls_files_in_subdirectory(tmp_path: Path):
-    git_init(tmp_path)
     (tmp_path / 'file.txt').touch()
     placeholders = tmp_path / 'placeholders'
     placeholders.mkdir()
