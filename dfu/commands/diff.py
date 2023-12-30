@@ -125,7 +125,13 @@ def copy_files(package_dir: Path, *, use_pre_id: bool):
             src = snapshot_dir / file
             dest = package_dir / 'files' / file
             dest.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
-            subprocess.run(['sudo', 'cp', '--no-dereference', '--preserve=all', str(src), str(dest)], check=True)
+
+            if subprocess.run(['sudo', 'stat', str(src)], capture_output=True).returncode == 0:
+                subprocess.run(
+                    ['sudo', 'cp', '--no-dereference', '--preserve=all', str(src), str(dest)],
+                    capture_output=True,
+                    check=True,
+                )
 
 
 def _remove_placeholders(package_dir: Path):
