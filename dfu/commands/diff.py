@@ -1,3 +1,4 @@
+import re
 import subprocess
 from pathlib import Path
 from shutil import rmtree
@@ -117,8 +118,8 @@ def copy_files(package_dir: Path, *, use_pre_id: bool):
     package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     for snapper_name, snapshot_id in package_config.snapshot_mapping(use_pre_id=use_pre_id).items():
         snapper = Snapper(snapper_name)
-        ls_dir = package_dir / 'placeholders' / str(snapper.get_mountpoint()).lstrip('/')
-        files_to_copy = [Path(f.lstrip('placeholders/')) for f in git_ls_files(ls_dir)]
+        ls_dir = package_dir / 'placeholders' / str(snapper.get_mountpoint()).lstrip('/placeholders')
+        files_to_copy = [Path(re.sub(r'^placeholders/', '', f)) for f in git_ls_files(ls_dir)]
         snapshot_dir = snapper.get_snapshot_path(snapshot_id)
         for file in files_to_copy:
             src = snapshot_dir / file
