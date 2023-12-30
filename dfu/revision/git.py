@@ -8,8 +8,12 @@ def git_init(package_dir: Path):
     subprocess.run(['git', 'init'], cwd=package_dir, check=True)
 
 
+def git_add(package_dir: Path, paths: list[str | Path]):
+    cmd = ['git', 'add'] + paths
+    subprocess.run(cmd, cwd=package_dir, check=True)
+
+
 def git_commit(package_dir: Path, message: str):
-    subprocess.run(['git', 'add', '.'], cwd=package_dir, check=True)
     subprocess.run(['git', 'commit', '-m', message], cwd=package_dir, check=True)
 
 
@@ -21,6 +25,20 @@ def git_check_ignore(package_dir: Path, paths: list[str]) -> list[str]:
         # Per the docs, only a status code of 128 indicates actual failure: https://git-scm.com/docs/git-check-ignore#_exit_status
         raise subprocess.CalledProcessError(result.returncode, cmd, output=result.stdout, stderr=result.stderr)
     return result.stdout.splitlines()
+
+
+def git_ls_files(cwd: Path) -> list[str]:
+    tracked_files = subprocess.run(
+        ['git', 'ls-files', '--full-name'], cwd=cwd, text=True, capture_output=True, check=True
+    )
+    untracked_files = subprocess.run(
+        ['git', 'ls-files', '--others', '--exclude-standard', '--full-name'],
+        cwd=cwd,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return tracked_files.stdout.splitlines() + untracked_files.stdout.splitlines()
 
 
 def ensure_template_gitignore() -> Path:
