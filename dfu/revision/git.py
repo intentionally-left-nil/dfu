@@ -38,6 +38,8 @@ def copy_template_gitignore(package_dir: Path):
 
 
 DEFAULT_GITIGNORE = """\
+# Files created by dfu, which should not be committed
+/.dfu-diff
 # Paths where programs are installed into
 /placeholders/usr/bin
 /placeholders/usr/lib

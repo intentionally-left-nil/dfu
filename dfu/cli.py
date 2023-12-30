@@ -5,12 +5,14 @@ from pathlib import Path
 import click
 
 from dfu.commands import (
+    abort_diff,
+    begin_diff,
+    continue_diff,
     create_config,
     create_distribution,
     create_package,
     create_post_snapshot,
     create_pre_snapshot,
-    diff_snapshot,
     get_config_paths,
     load_config,
 )
@@ -64,10 +66,19 @@ def end():
 
 
 @main.command()
-def diff():
+@click.option('--abort', is_flag=True, help='Abort the operation', default=None)
+@click.option('--continue', 'continue_', is_flag=True, help='Continue the rebase operation', default=None)
+def diff(abort: bool | None, continue_: bool | None):
+    if abort and continue_:
+        raise ValueError("Cannot specify both --abort and --continue")
     config = load_config()
     package_dir = find_package_dir()
-    diff_snapshot(config, package_dir)
+    if abort:
+        abort_diff(package_dir)
+    elif continue_:
+        continue_diff(config, package_dir)
+    else:
+        begin_diff(package_dir)
 
 
 @main.command()
