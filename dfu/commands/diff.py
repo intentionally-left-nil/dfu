@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 from shutil import rmtree
 
@@ -5,7 +6,7 @@ from dfu.config import Config
 from dfu.installed_packages.pacman import diff_packages, get_installed_packages
 from dfu.package.dfu_diff import DfuDiff
 from dfu.package.package_config import PackageConfig
-from dfu.revision.git import git_check_ignore
+from dfu.revision.git import git_check_ignore, git_ls_files
 from dfu.snapshots.snapper import Snapper
 
 
@@ -31,6 +32,13 @@ def continue_diff(config: Config, package_dir: Path):
         create_changed_placeholders(package_config, package_dir)
         diff.created_placeholders = True
         diff.write(package_dir / '.dfu-diff')
+        return
+
+    if not diff.base_branch:
+        copy_files(package_dir, use_pre_id=True)
+        diff.base_branch = "fixme"
+        diff.write(package_dir / '.dfu-diff')
+        return
 
     if not diff.updated_installed_programs:
         update_installed_packages(config, package_config)
@@ -103,6 +111,20 @@ def create_changed_placeholders(package_config: PackageConfig, package_dir: Path
                         raise ValueError(f"Trying to create {path} failed because {current_path} is not a directory")
 
             path.write_text(f"PLACEHOLDER: {delta.action}\n")
+
+
+def copy_files(package_dir: Path, *, use_pre_id: bool):
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
+    for snapper_name, snapshot_id in package_config.snapshot_mapping(use_pre_id=use_pre_id).items():
+        snapper = Snapper(snapper_name)
+        ls_dir = package_dir / 'placeholders' / str(snapper.get_mountpoint()).lstrip('/')
+        files_to_copy = [Path(f.lstrip('placeholders/')) for f in git_ls_files(ls_dir)]
+        snapshot_dir = snapper.get_snapshot_path(snapshot_id)
+        for file in files_to_copy:
+            src = snapshot_dir / file
+            dest = package_dir / 'files' / file
+            dest.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+            subprocess.run(['sudo', 'cp', '--no-dereference', '--preserve=all', str(src), str(dest)], check=True)
 
 
 def _remove_placeholders(package_dir: Path):
