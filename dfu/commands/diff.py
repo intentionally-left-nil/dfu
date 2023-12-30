@@ -3,16 +3,43 @@ from shutil import rmtree
 
 from dfu.config import Config
 from dfu.installed_packages.pacman import diff_packages, get_installed_packages
+from dfu.package.dfu_diff import DfuDiff
 from dfu.package.package_config import PackageConfig
 from dfu.revision.git import git_check_ignore
 from dfu.snapshots.snapper import Snapper
 
 
-def diff_snapshot(config: Config, package_dir: Path):
+def begin_diff(package_dir: Path):
+    dfu_diff_path = package_dir / '.dfu-diff'
+    diff = DfuDiff()
+    diff.write(dfu_diff_path, mode="x")
     package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
-    update_installed_packages(config, package_config)
     create_changed_placeholders(package_config, package_dir)
-    package_config.write(package_dir / "dfu_config.json")
+    diff.created_placeholders = True
+    diff.write(dfu_diff_path)
+
+
+def abort_diff(package_dir: Path):
+    (package_dir / '.dfu-diff').unlink(missing_ok=True)
+    _remove_placeholders(package_dir)
+
+
+def continue_diff(config: Config, package_dir: Path):
+    diff = DfuDiff.from_file(package_dir / '.dfu-diff')
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
+    if not diff.created_placeholders:
+        create_changed_placeholders(package_config, package_dir)
+        diff.created_placeholders = True
+        diff.write(package_dir / '.dfu-diff')
+
+    if not diff.updated_installed_programs:
+        update_installed_packages(config, package_config)
+        package_config.write(package_dir / "dfu_config.json")
+        diff.updated_installed_programs = True
+        diff.write(package_dir / '.dfu-diff')
+
+    if diff.updated_installed_programs and diff.created_placeholders:
+        abort_diff(package_dir)
 
 
 def update_installed_packages(config: Config, package_config: PackageConfig):
@@ -31,9 +58,8 @@ def create_changed_placeholders(package_config: PackageConfig, package_dir: Path
     pre_mapping = package_config.snapshot_mapping(use_pre_id=True)
     post_mapping = package_config.snapshot_mapping(use_pre_id=False)
 
+    _remove_placeholders(package_dir)
     placeholder_dir = package_dir / 'placeholders'
-    if placeholder_dir.exists():
-        rmtree(placeholder_dir)
 
     placeholder_dir.mkdir(mode=0o755, parents=True, exist_ok=True)
     for snapper_name, pre_id in pre_mapping.items():
@@ -77,3 +103,9 @@ def create_changed_placeholders(package_config: PackageConfig, package_dir: Path
                         raise ValueError(f"Trying to create {path} failed because {current_path} is not a directory")
 
             path.write_text(f"PLACEHOLDER: {delta.action}\n")
+
+
+def _remove_placeholders(package_dir: Path):
+    placeholder_dir = package_dir / 'placeholders'
+    if placeholder_dir.exists():
+        rmtree(placeholder_dir)
