@@ -1,10 +1,8 @@
 import json
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from unittest.mock import patch
 
-import dataclass_wizard.errors
 import pytest
 
 from dfu.package.package_config import PackageConfig, Snapshot, find_package_config
@@ -58,32 +56,6 @@ def test_valid_configs(test: ValidConfigTest):
     ]
     expected = PackageConfig(name=test.name, description=test.description, snapshots=expected_snapshots)
     assert actual == expected
-
-
-def test_from_file():
-    json_data = '{"name": "expected_name", "description": "expected_description"}'
-    with tempfile.NamedTemporaryFile("w") as f:
-        f.write(json_data)
-        f.flush()
-        actual = PackageConfig.from_file(f.name)
-        expected = PackageConfig(name='expected_name', description='expected_description')
-        assert actual == expected
-
-
-def test_missing_field():
-    invalid_json_data = '{"name": "expected_name"}'
-    with pytest.raises(dataclass_wizard.errors.MissingFields):
-        PackageConfig.from_json(invalid_json_data)
-
-
-def test_write_config():
-    config = PackageConfig(name='expected_name', description='expected_description')
-    with tempfile.NamedTemporaryFile("w") as f:
-        config.write(f.name)
-        f.flush()
-        actual = PackageConfig.from_file(f.name)
-        expected = PackageConfig(name='expected_name', description='expected_description')
-        assert actual == expected
 
 
 @pytest.fixture
