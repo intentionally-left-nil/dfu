@@ -3,8 +3,6 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from dataclass_wizard import asdict, fromdict
-
 from dfu.helpers.json_serializable import JsonSerializableMixin
 
 
