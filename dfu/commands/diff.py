@@ -9,7 +9,13 @@ from dfu.config import Config
 from dfu.installed_packages.pacman import diff_packages, get_installed_packages
 from dfu.package.dfu_diff import DfuDiff
 from dfu.package.package_config import PackageConfig
-from dfu.revision.git import git_add, git_check_ignore, git_checkout, git_ls_files
+from dfu.revision.git import (
+    git_add,
+    git_check_ignore,
+    git_checkout,
+    git_default_branch,
+    git_ls_files,
+)
 from dfu.snapshots.snapper import Snapper
 
 
@@ -45,14 +51,16 @@ def continue_diff(config: Config, package_dir: Path):
         create_target_branch(package_dir, diff)
         return
 
+    git_checkout(package_dir, git_default_branch(package_dir), exist_ok=True)
+
     if not diff.updated_installed_programs:
         update_installed_packages(config, package_config)
         package_config.write(package_dir / "dfu_config.json")
         diff.updated_installed_programs = True
         diff.write(package_dir / '.dfu-diff')
+        return
 
-    if diff.updated_installed_programs and diff.created_placeholders:
-        abort_diff(package_dir)
+    abort_diff(package_dir)
 
 
 def update_installed_packages(config: Config, package_config: PackageConfig):

@@ -12,6 +12,7 @@ from dfu.revision.git import (
     git_check_ignore,
     git_checkout,
     git_commit,
+    git_default_branch,
     git_init,
     git_ls_files,
 )
@@ -191,3 +192,10 @@ def test_git_checkout_existing_branch(tmp_path: Path):
         ).stdout
         == "new_branch\n"
     )
+
+
+def test_git_default_branch(tmp_path: Path):
+    git_init(tmp_path)
+    assert git_default_branch(tmp_path) == 'main'
+    subprocess.run(['git', 'config', 'init.defaultBranch', 'main'], cwd=tmp_path, check=True)
+    assert git_default_branch(tmp_path) == 'main'

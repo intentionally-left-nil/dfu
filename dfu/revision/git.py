@@ -51,6 +51,13 @@ def git_ls_files(cwd: Path) -> list[str]:
     return tracked_files.stdout.splitlines() + untracked_files.stdout.splitlines()
 
 
+def git_default_branch(package_dir: Path):
+    result = subprocess.run(
+        ['git', 'config', '--get', 'init.defaultBranch'], cwd=package_dir, text=True, capture_output=True, check=True
+    )
+    return result.stdout.strip()
+
+
 def ensure_template_gitignore() -> Path:
     template_gitignore = PlatformDirs("dfu").user_data_path / ".gitignore"
     if not template_gitignore.exists():
