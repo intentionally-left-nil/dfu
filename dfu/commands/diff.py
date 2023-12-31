@@ -67,9 +67,10 @@ def continue_diff(config: Config, package_dir: Path):
         diff.write(package_dir / '.dfu-diff')
         click.echo(
             dedent(
-                """Placeholder files have been created. Run `git ls-files --others placeholders` to see them.
-                   If there are extra files, delete them. Do not git commit anything in placeholders.
-                   Once completed, run `dfu diff --continue`."""
+                """\
+                Placeholder files have been created. Run `git ls-files --others placeholders` to see them.
+                If there are extra files, delete them. Do not git commit anything in placeholders.
+                Once completed, run `dfu diff --continue`."""
             ),
             err=True,
         )
@@ -79,7 +80,8 @@ def continue_diff(config: Config, package_dir: Path):
         create_base_branch(package_dir, diff)
         click.echo(
             dedent(
-                """The files/ directory is now populated with the contents at the time of `dfu begin`
+                """\
+                The files/ directory is now populated with the contents at the time of `dfu begin`
                 Make sure all the files here are what you wish to track. Then, commit ONLY the files/ directory to this base branch.
                 After you've git committed any changes to the base branch, run `dfu diff --continue`."""
             ),
@@ -91,7 +93,8 @@ def continue_diff(config: Config, package_dir: Path):
         create_target_branch(package_dir, diff)
         click.echo(
             dedent(
-                """The files/ directory is now populated with the contents at the time of `dfu end`
+                """\
+                The files/ directory is now populated with the contents at the time of `dfu end`
                 This represents the git diff for the files that were changed between the two snapshots.
                 Double-check that the final git diff is correct. If it is, commit ONLY the files/ directory to this target branch.
                 After you've git committed any changes to the target branch, run `dfu diff --continue`."""
