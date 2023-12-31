@@ -196,14 +196,14 @@ def test_git_checkout_existing_branch(tmp_path: Path):
 
 def test_git_default_branch_no_commits(tmp_path: Path):
     current_branch = subprocess.run(
-        ['git', 'branch', '--show-current'], cwd=tmp_path, check=True, text=True
+        ['git', 'branch', '--show-current'], cwd=tmp_path, check=True, text=True, capture_output=True
     ).stdout.strip()
     assert git_default_branch(tmp_path) == current_branch
 
 
 def test_git_default_branch_with_one_commit(tmp_path: Path):
     current_branch = subprocess.run(
-        ['git', 'branch', '--show-current'], cwd=tmp_path, check=True, text=True
+        ['git', 'branch', '--show-current'], cwd=tmp_path, check=True, text=True, capture_output=True
     ).stdout.strip()
     (tmp_path / 'file.txt').touch()
     git_add(tmp_path, ['file.txt'])
@@ -216,7 +216,7 @@ def test_git_default_branch_missing(tmp_path: Path):
     git_add(tmp_path, ['file.txt'])
     git_commit(tmp_path, 'Initial commit')
     current_branch = subprocess.run(
-        ['git', 'branch', '--show-current'], cwd=tmp_path, check=True, text=True
+        ['git', 'branch', '--show-current'], cwd=tmp_path, check=True, text=True, capture_output=True
     ).stdout.strip()
     git_checkout(tmp_path, 'other_branch')
     subprocess.run(['git', 'branch', '-D', current_branch], cwd=tmp_path, check=True)
