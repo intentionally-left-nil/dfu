@@ -4,6 +4,9 @@ import string
 import subprocess
 from pathlib import Path
 from shutil import rmtree
+from textwrap import dedent
+
+import click
 
 from dfu.config import Config
 from dfu.installed_packages.pacman import diff_packages, get_installed_packages
@@ -28,11 +31,15 @@ from dfu.snapshots.snapper import Snapper
 def begin_diff(config: Config, package_dir: Path):
     dfu_diff_path = package_dir / '.dfu-diff'
     diff = DfuDiff()
-    diff.write(dfu_diff_path, mode="x")
+    try:
+        diff.write(dfu_diff_path, mode="x")
+    except FileExistsError:
+        raise ValueError("A diff is already in progress. Run `dfu diff --continue` to continue the diff.")
     continue_diff(config, package_dir)
 
 
 def abort_diff(package_dir: Path):
+    click.echo("Cleaning up...", err=True)
     _rmtree(package_dir, 'placeholders')
     _rmtree(package_dir, 'files')
     try:
@@ -54,31 +61,63 @@ def abort_diff(package_dir: Path):
 def continue_diff(config: Config, package_dir: Path):
     diff = DfuDiff.from_file(package_dir / '.dfu-diff')
     if not diff.created_placeholders:
+        click.echo("Creating placeholder files...", err=True)
         create_changed_placeholders(package_dir)
         diff.created_placeholders = True
         diff.write(package_dir / '.dfu-diff')
+        click.echo(
+            dedent(
+                """Placeholder files have been created. Run `git ls-files --others placeholders` to see them.
+                   If there are extra files, delete them. Do not git commit anything in placeholders.
+                   Once completed, run `dfu diff --continue`."""
+            ),
+            err=True,
+        )
         return
 
     if not diff.base_branch:
         create_base_branch(package_dir, diff)
+        click.echo(
+            dedent(
+                """The files/ directory is now populated with the contents at the time of `dfu begin`
+                Make sure all the files here are what you wish to track. Then, commit ONLY the files/ directory to this base branch.
+                After you've git committed any changes to the base branch, run `dfu diff --continue`."""
+            ),
+            err=True,
+        )
         return
 
     if not diff.target_branch:
         create_target_branch(package_dir, diff)
+        click.echo(
+            dedent(
+                """The files/ directory is now populated with the contents at the time of `dfu end`
+                This represents the git diff for the files that were changed between the two snapshots.
+                Double-check that the final git diff is correct. If it is, commit ONLY the files/ directory to this target branch.
+                After you've git committed any changes to the target branch, run `dfu diff --continue`."""
+            ),
+            err=True,
+        )
         return
 
-    git_checkout(package_dir, git_default_branch(package_dir), exist_ok=True)
+    default_branch = git_default_branch(package_dir)
+    click.echo(f"Checking out the {default_branch} branch", err=True)
+    git_checkout(package_dir, default_branch, exist_ok=True)
 
     if not diff.created_patch_file:
         create_patch_file(package_dir, diff)
         diff.created_patch_file = True
         diff.write(package_dir / '.dfu-diff')
+        click.echo("Created the changes.patch file", err=True)
 
     if not diff.updated_installed_programs:
+        click.echo("Detecting which programs were installed and removed...", err=True)
         update_installed_packages(config, package_dir)
         diff.updated_installed_programs = True
         diff.write(package_dir / '.dfu-diff')
+        click.echo("Updated the installed programs", err=True)
 
+    click.echo("Deleting the temporary base and target branches...", err=True)
     update_primary_branches(package_dir, diff)
     abort_diff(package_dir)
 
@@ -176,6 +215,7 @@ def copy_files(package_dir: Path, *, use_pre_id: bool):
 
 def create_base_branch(package_dir: Path, diff: DfuDiff):
     branch_name = f"base-{_rand_slug()}"
+    click.echo(f"Creating base branch {branch_name}...", err=True)
     git_checkout(package_dir, branch_name, exist_ok=False)
     copy_files(package_dir, use_pre_id=True)
     git_add(package_dir, ['files'])
@@ -189,6 +229,7 @@ def create_target_branch(package_dir: Path, diff: DfuDiff):
     git_checkout(package_dir, diff.base_branch, exist_ok=True)
 
     branch_name = f"target-{_rand_slug()}"
+    click.echo(f"Creating target branch {branch_name}...", err=True)
     git_checkout(package_dir, branch_name, exist_ok=False)
     copy_files(package_dir, use_pre_id=False)
     git_add(package_dir, ['files'])
