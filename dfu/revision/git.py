@@ -27,6 +27,10 @@ def git_checkout(package_dir: Path, branch: str, exist_ok: bool = False):
             raise e
 
 
+def git_reset_branch(package_dir: Path, target_branch: str):
+    subprocess.run(['git', 'reset', '--hard', target_branch], cwd=package_dir, check=True)
+
+
 def git_check_ignore(package_dir: Path, paths: list[str]) -> list[str]:
     stdin = '\n'.join(paths)
     cmd = ['git', 'check-ignore', '--stdin']

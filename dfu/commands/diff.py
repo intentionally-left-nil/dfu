@@ -15,6 +15,7 @@ from dfu.revision.git import (
     git_checkout,
     git_default_branch,
     git_ls_files,
+    git_reset_branch,
 )
 from dfu.snapshots.snapper import Snapper
 
@@ -60,6 +61,7 @@ def continue_diff(config: Config, package_dir: Path):
         diff.write(package_dir / '.dfu-diff')
         return
 
+    update_primary_branches(package_dir, diff)
     abort_diff(package_dir)
 
 
@@ -170,6 +172,18 @@ def create_target_branch(package_dir: Path, diff: DfuDiff):
     git_add(package_dir, ['files'])
     diff.target_branch = branch_name
     diff.write(package_dir / '.dfu-diff')
+
+
+def update_primary_branches(package_dir: Path, diff: DfuDiff):
+    if diff.base_branch is None or diff.target_branch is None:
+        raise ValueError('Cannot update primary branches without a base and target branch')
+
+    git_checkout(package_dir, diff.base_branch, exist_ok=True)
+    git_checkout(package_dir, "base", exist_ok=True)
+    git_reset_branch(package_dir, diff.base_branch)
+
+    git_checkout(package_dir, "target", exist_ok=True)
+    git_reset_branch(package_dir, diff.target_branch)
 
 
 def _remove_placeholders(package_dir: Path):
