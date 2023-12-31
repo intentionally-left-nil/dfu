@@ -103,6 +103,14 @@ def git_diff(package_dir: Path, base: str, target: str) -> str:
     ).stdout
 
 
+def git_stash(package_dir: Path):
+    subprocess.run(['git', 'stash', 'save'], cwd=package_dir, check=True, capture_output=True)
+
+
+def git_stash_pop(package_dir: Path):
+    subprocess.run(['git', 'stash', 'pop'], cwd=package_dir, check=True, capture_output=True)
+
+
 def git_delete_branch(package_dir: Path, branch: str):
     subprocess.run(['git', 'branch', '-D', branch], cwd=package_dir, check=True)
 

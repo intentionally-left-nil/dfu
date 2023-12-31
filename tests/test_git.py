@@ -18,6 +18,8 @@ from dfu.revision.git import (
     git_init,
     git_ls_files,
     git_reset_branch,
+    git_stash,
+    git_stash_pop,
 )
 
 
@@ -281,3 +283,21 @@ def test_delete_branch(tmp_path: Path):
         ).stdout
         == ''
     )
+
+
+def test_git_stash(tmp_path: Path):
+    (tmp_path / '.gitignore').touch()
+    git_add(tmp_path, ['.gitignore'])
+    git_commit(tmp_path, 'Initial commit')
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, [tmp_path])
+    git_stash(tmp_path)
+    assert (
+        subprocess.run(
+            ['git', 'status', '--porcelain'], cwd=tmp_path, check=True, text=True, capture_output=True
+        ).stdout
+        == ''
+    )
+    assert not (tmp_path / 'file.txt').exists()
+    git_stash_pop(tmp_path)
+    assert (tmp_path / 'file.txt').exists()
