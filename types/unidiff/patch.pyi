@@ -1,7 +1,29 @@
-from _typeshed import Incomplete
 from io import StringIO
 from typing import Iterable, Optional, Union
-from unidiff.constants import DEFAULT_ENCODING as DEFAULT_ENCODING, DEV_NULL as DEV_NULL, LINE_TYPE_ADDED as LINE_TYPE_ADDED, LINE_TYPE_CONTEXT as LINE_TYPE_CONTEXT, LINE_TYPE_EMPTY as LINE_TYPE_EMPTY, LINE_TYPE_NO_NEWLINE as LINE_TYPE_NO_NEWLINE, LINE_TYPE_REMOVED as LINE_TYPE_REMOVED, LINE_VALUE_NO_NEWLINE as LINE_VALUE_NO_NEWLINE, RE_BINARY_DIFF as RE_BINARY_DIFF, RE_DIFF_GIT_DELETED_FILE as RE_DIFF_GIT_DELETED_FILE, RE_DIFF_GIT_HEADER as RE_DIFF_GIT_HEADER, RE_DIFF_GIT_HEADER_NO_PREFIX as RE_DIFF_GIT_HEADER_NO_PREFIX, RE_DIFF_GIT_HEADER_URI_LIKE as RE_DIFF_GIT_HEADER_URI_LIKE, RE_DIFF_GIT_NEW_FILE as RE_DIFF_GIT_NEW_FILE, RE_HUNK_BODY_LINE as RE_HUNK_BODY_LINE, RE_HUNK_EMPTY_BODY_LINE as RE_HUNK_EMPTY_BODY_LINE, RE_HUNK_HEADER as RE_HUNK_HEADER, RE_NO_NEWLINE_MARKER as RE_NO_NEWLINE_MARKER, RE_SOURCE_FILENAME as RE_SOURCE_FILENAME, RE_TARGET_FILENAME as RE_TARGET_FILENAME
+
+from _typeshed import Incomplete
+from unidiff.constants import DEFAULT_ENCODING as DEFAULT_ENCODING
+from unidiff.constants import DEV_NULL as DEV_NULL
+from unidiff.constants import LINE_TYPE_ADDED as LINE_TYPE_ADDED
+from unidiff.constants import LINE_TYPE_CONTEXT as LINE_TYPE_CONTEXT
+from unidiff.constants import LINE_TYPE_EMPTY as LINE_TYPE_EMPTY
+from unidiff.constants import LINE_TYPE_NO_NEWLINE as LINE_TYPE_NO_NEWLINE
+from unidiff.constants import LINE_TYPE_REMOVED as LINE_TYPE_REMOVED
+from unidiff.constants import LINE_VALUE_NO_NEWLINE as LINE_VALUE_NO_NEWLINE
+from unidiff.constants import RE_BINARY_DIFF as RE_BINARY_DIFF
+from unidiff.constants import RE_DIFF_GIT_DELETED_FILE as RE_DIFF_GIT_DELETED_FILE
+from unidiff.constants import RE_DIFF_GIT_HEADER as RE_DIFF_GIT_HEADER
+from unidiff.constants import (
+    RE_DIFF_GIT_HEADER_NO_PREFIX as RE_DIFF_GIT_HEADER_NO_PREFIX,
+)
+from unidiff.constants import RE_DIFF_GIT_HEADER_URI_LIKE as RE_DIFF_GIT_HEADER_URI_LIKE
+from unidiff.constants import RE_DIFF_GIT_NEW_FILE as RE_DIFF_GIT_NEW_FILE
+from unidiff.constants import RE_HUNK_BODY_LINE as RE_HUNK_BODY_LINE
+from unidiff.constants import RE_HUNK_EMPTY_BODY_LINE as RE_HUNK_EMPTY_BODY_LINE
+from unidiff.constants import RE_HUNK_HEADER as RE_HUNK_HEADER
+from unidiff.constants import RE_NO_NEWLINE_MARKER as RE_NO_NEWLINE_MARKER
+from unidiff.constants import RE_SOURCE_FILENAME as RE_SOURCE_FILENAME
+from unidiff.constants import RE_TARGET_FILENAME as RE_TARGET_FILENAME
 from unidiff.errors import UnidiffParseError as UnidiffParseError
 
 PY2: Incomplete
@@ -17,7 +39,14 @@ class Line:
     diff_line_no: Incomplete
     line_type: Incomplete
     value: Incomplete
-    def __init__(self, value: str, line_type: str, source_line_no: Optional[int] = None, target_line_no: Optional[int] = None, diff_line_no: Optional[int] = None) -> None: ...
+    def __init__(
+        self,
+        value: str,
+        line_type: str,
+        source_line_no: Optional[int] = None,
+        target_line_no: Optional[int] = None,
+        diff_line_no: Optional[int] = None,
+    ) -> None: ...
     def __eq__(self, other: Line) -> bool: ...
     @property
     def is_added(self) -> bool: ...
@@ -34,7 +63,9 @@ class Hunk(list):
     target_start: Incomplete
     target_length: Incomplete
     section_header: Incomplete
-    def __init__(self, src_start: int = 0, src_len: int = 0, tgt_start: int = 0, tgt_len: int = 0, section_header: str = '') -> None: ...
+    def __init__(
+        self, src_start: int = 0, src_len: int = 0, tgt_start: int = 0, tgt_len: int = 0, section_header: str = ''
+    ) -> None: ...
     def append(self, line: Line) -> None: ...
     @property
     def added(self) -> Optional[int]: ...
@@ -55,7 +86,15 @@ class PatchedFile(list):
     target_file: Incomplete
     target_timestamp: Incomplete
     is_binary_file: Incomplete
-    def __init__(self, patch_info: str = None, source: str = '', target: Optional[str] = '', source_timestamp: Optional[str] = None, target_timestamp: bool = None, is_binary_file: bool = False) -> None: ...
+    def __init__(
+        self,
+        patch_info: str = None,
+        source: str = '',
+        target: Optional[str] = '',
+        source_timestamp: Optional[str] = None,
+        target_timestamp: bool = None,
+        is_binary_file: bool = False,
+    ) -> None: ...
     @property
     def path(self) -> str: ...
     @property
@@ -72,9 +111,13 @@ class PatchedFile(list):
     def is_modified_file(self) -> bool: ...
 
 class PatchSet(list):
-    def __init__(self, f: Union[StringIO, str], encoding: Optional[str] = None, metadata_only: bool = False) -> None: ...
+    def __init__(
+        self, f: Union[StringIO, str], encoding: Optional[str] = None, metadata_only: bool = False
+    ) -> None: ...
     @classmethod
-    def from_filename(cls, filename, encoding=..., errors: Incomplete | None = None, newline: Incomplete | None = None): ...
+    def from_filename(
+        cls, filename, encoding=..., errors: Incomplete | None = None, newline: Incomplete | None = None
+    ): ...
     @classmethod
     def from_string(cls, data: str, encoding: str = None, errors: Optional[str] = 'strict') -> PatchSet: ...
     @property
