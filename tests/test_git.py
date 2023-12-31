@@ -12,6 +12,7 @@ from dfu.revision.git import (
     git_check_ignore,
     git_checkout,
     git_commit,
+    git_current_branch,
     git_default_branch,
     git_delete_branch,
     git_diff,
@@ -301,3 +302,11 @@ def test_git_stash(tmp_path: Path):
     assert not (tmp_path / 'file.txt').exists()
     git_stash_pop(tmp_path)
     assert (tmp_path / 'file.txt').exists()
+
+
+def test_git_current_branch(tmp_path: Path):
+    (tmp_path / '.gitignore').touch()
+    git_add(tmp_path, ['.gitignore'])
+    git_commit(tmp_path, 'Initial commit')
+    git_checkout(tmp_path, 'new_branch')
+    assert git_current_branch(tmp_path) == 'new_branch'

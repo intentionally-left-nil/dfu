@@ -82,15 +82,17 @@ def git_default_branch(package_dir: Path) -> str:
 
     if len(local_branches) == 0:
         # This can happen if there isn't an initial commit yet (sigh)
-        local_branches = set(
-            subprocess.run(
-                ['git', 'branch', '--show-current'], cwd=package_dir, text=True, capture_output=True
-            ).stdout.splitlines()
-        )
+        local_branches = set(git_current_branch(package_dir))
     for branch in default_branches:
         if branch in local_branches:
             return branch
     raise ValueError(f"Could not find the default branch")
+
+
+def git_current_branch(package_dir: Path) -> str:
+    return subprocess.run(
+        ['git', 'branch', '--show-current'], cwd=package_dir, text=True, capture_output=True
+    ).stdout.strip()
 
 
 def git_diff(package_dir: Path, base: str, target: str) -> str:
