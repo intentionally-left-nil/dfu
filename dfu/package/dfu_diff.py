@@ -7,5 +7,6 @@ from dfu.helpers.json_serializable import JsonSerializableMixin
 class DfuDiff(JsonSerializableMixin):
     created_placeholders: bool = False
     updated_installed_programs: bool = False
+    created_patch_file: bool = False
     base_branch: str | None = None
     target_branch: str | None = None
