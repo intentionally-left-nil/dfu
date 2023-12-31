@@ -13,11 +13,14 @@ from dfu.revision.git import (
     git_add,
     git_check_ignore,
     git_checkout,
+    git_current_branch,
     git_default_branch,
     git_delete_branch,
     git_diff,
     git_ls_files,
     git_reset_branch,
+    git_stash,
+    git_stash_pop,
 )
 from dfu.snapshots.snapper import Snapper
 
@@ -201,6 +204,9 @@ def create_patch_file(package_dir: Path, diff: DfuDiff):
 
 
 def update_primary_branches(package_dir: Path, diff: DfuDiff):
+    git_add(package_dir, [package_dir])
+    current_branch = git_current_branch(package_dir)
+    git_stash(package_dir)
     if diff.base_branch is None or diff.target_branch is None:
         raise ValueError('Cannot update primary branches without a base and target branch')
 
@@ -210,6 +216,9 @@ def update_primary_branches(package_dir: Path, diff: DfuDiff):
 
     git_checkout(package_dir, "target", exist_ok=True)
     git_reset_branch(package_dir, diff.target_branch)
+
+    git_checkout(package_dir, current_branch, exist_ok=True)
+    git_stash_pop(package_dir)
 
 
 def _rmtree(package_dir: Path, subdir: str):
