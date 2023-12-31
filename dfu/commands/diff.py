@@ -22,14 +22,11 @@ from dfu.revision.git import (
 from dfu.snapshots.snapper import Snapper
 
 
-def begin_diff(package_dir: Path):
+def begin_diff(config: Config, package_dir: Path):
     dfu_diff_path = package_dir / '.dfu-diff'
     diff = DfuDiff()
     diff.write(dfu_diff_path, mode="x")
-    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
-    create_changed_placeholders(package_config, package_dir)
-    diff.created_placeholders = True
-    diff.write(dfu_diff_path)
+    continue_diff(config, package_dir)
 
 
 def abort_diff(package_dir: Path):
