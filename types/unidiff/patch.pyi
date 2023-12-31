@@ -47,7 +47,7 @@ class Line:
         target_line_no: Optional[int] = None,
         diff_line_no: Optional[int] = None,
     ) -> None: ...
-    def __eq__(self, other: Line) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
     @property
     def is_added(self) -> bool: ...
     @property
@@ -88,11 +88,11 @@ class PatchedFile(list):
     is_binary_file: Incomplete
     def __init__(
         self,
-        patch_info: str = None,
+        patch_info: Optional[str] = None,
         source: str = '',
         target: Optional[str] = '',
         source_timestamp: Optional[str] = None,
-        target_timestamp: bool = None,
+        target_timestamp: Optional[bool] = None,
         is_binary_file: bool = False,
     ) -> None: ...
     @property
@@ -119,7 +119,7 @@ class PatchSet(list):
         cls, filename, encoding=..., errors: Incomplete | None = None, newline: Incomplete | None = None
     ): ...
     @classmethod
-    def from_string(cls, data: str, encoding: str = None, errors: Optional[str] = 'strict') -> PatchSet: ...
+    def from_string(cls, data: str, encoding: Optional[str] = None, errors: Optional[str] = 'strict') -> PatchSet: ...
     @property
     def added_files(self) -> list[PatchedFile]: ...
     @property
