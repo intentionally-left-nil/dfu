@@ -80,19 +80,19 @@ class Hunk(list):
     def target(self) -> Iterable[str]: ...
 
 class PatchedFile(list):
-    patch_info: Incomplete
-    source_file: Incomplete
-    source_timestamp: Incomplete
-    target_file: Incomplete
-    target_timestamp: Incomplete
-    is_binary_file: Incomplete
+    patch_info: Optional[str]
+    source_file: str
+    source_timestamp: Optional[str]
+    target_file: Optional[str]
+    target_timestamp: Optional[str]
+    is_binary_file: bool
     def __init__(
         self,
         patch_info: Optional[str] = None,
         source: str = '',
         target: Optional[str] = '',
         source_timestamp: Optional[str] = None,
-        target_timestamp: Optional[bool] = None,
+        target_timestamp: Optional[str] = None,
         is_binary_file: bool = False,
     ) -> None: ...
     @property
