@@ -210,7 +210,10 @@ def test_git_default_branch_missing(tmp_path: Path):
     (tmp_path / 'file.txt').touch()
     git_add(tmp_path, ['file.txt'])
     git_commit(tmp_path, 'Initial commit')
+    current_branch = subprocess.run(
+        ['git', 'branch', '--show-current'], cwd=tmp_path, check=True, text=True
+    ).stdout.strip()
     git_checkout(tmp_path, 'other_branch')
-    subprocess.run(['git', 'branch', '-D', 'main'], cwd=tmp_path, check=True)
+    subprocess.run(['git', 'branch', '-D', current_branch], cwd=tmp_path, check=True)
     with pytest.raises(ValueError, match="Could not find the default branch"):
         git_default_branch(tmp_path)
