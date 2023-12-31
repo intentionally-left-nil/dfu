@@ -53,9 +53,8 @@ def abort_diff(package_dir: Path):
 
 def continue_diff(config: Config, package_dir: Path):
     diff = DfuDiff.from_file(package_dir / '.dfu-diff')
-    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     if not diff.created_placeholders:
-        create_changed_placeholders(package_config, package_dir)
+        create_changed_placeholders(package_dir)
         diff.created_placeholders = True
         diff.write(package_dir / '.dfu-diff')
         return
@@ -76,8 +75,7 @@ def continue_diff(config: Config, package_dir: Path):
         diff.write(package_dir / '.dfu-diff')
 
     if not diff.updated_installed_programs:
-        update_installed_packages(config, package_config)
-        package_config.write(package_dir / "dfu_config.json")
+        update_installed_packages(config, package_dir)
         diff.updated_installed_programs = True
         diff.write(package_dir / '.dfu-diff')
 
@@ -85,7 +83,8 @@ def continue_diff(config: Config, package_dir: Path):
     abort_diff(package_dir)
 
 
-def update_installed_packages(config: Config, package_config: PackageConfig):
+def update_installed_packages(config: Config, package_dir: Path):
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     if len(package_config.snapshots) == 0:
         raise ValueError('Did not create a successful pre/post snapshot pair')
     old_packages = get_installed_packages(config, package_config.snapshot_mapping(use_pre_id=True))
@@ -94,9 +93,11 @@ def update_installed_packages(config: Config, package_config: PackageConfig):
     diff = diff_packages(old_packages, new_packages)
     package_config.programs_added = diff.added
     package_config.programs_removed = diff.removed
+    package_config.write(package_dir / "dfu_config.json")
 
 
-def create_changed_placeholders(package_config: PackageConfig, package_dir: Path):
+def create_changed_placeholders(package_dir: Path):
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     # This method has been performance optimized in several places. Take care when modifying the file for both correctness and speed
     pre_mapping = package_config.snapshot_mapping(use_pre_id=True)
     post_mapping = package_config.snapshot_mapping(use_pre_id=False)
