@@ -52,7 +52,6 @@ def continue_diff(config: Config, package_dir: Path):
         create_target_branch(package_dir, diff)
         return
 
-    update_primary_branches(package_dir, diff)
     git_checkout(package_dir, git_default_branch(package_dir), exist_ok=True)
 
     if not diff.updated_installed_programs:
@@ -62,6 +61,7 @@ def continue_diff(config: Config, package_dir: Path):
         diff.write(package_dir / '.dfu-diff')
         return
 
+    update_primary_branches(package_dir, diff)
     abort_diff(package_dir)
 
 
