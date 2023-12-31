@@ -78,7 +78,7 @@ def diff(abort: bool | None, continue_: bool | None):
     elif continue_:
         continue_diff(config, package_dir)
     else:
-        begin_diff(package_dir)
+        begin_diff(config, package_dir)
 
 
 @main.command()

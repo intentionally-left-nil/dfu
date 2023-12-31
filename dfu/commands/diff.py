@@ -13,33 +13,48 @@ from dfu.revision.git import (
     git_add,
     git_check_ignore,
     git_checkout,
+    git_current_branch,
     git_default_branch,
+    git_delete_branch,
+    git_diff,
     git_ls_files,
     git_reset_branch,
+    git_stash,
+    git_stash_pop,
 )
 from dfu.snapshots.snapper import Snapper
 
 
-def begin_diff(package_dir: Path):
+def begin_diff(config: Config, package_dir: Path):
     dfu_diff_path = package_dir / '.dfu-diff'
     diff = DfuDiff()
     diff.write(dfu_diff_path, mode="x")
-    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
-    create_changed_placeholders(package_config, package_dir)
-    diff.created_placeholders = True
-    diff.write(dfu_diff_path)
+    continue_diff(config, package_dir)
 
 
 def abort_diff(package_dir: Path):
+    _rmtree(package_dir, 'placeholders')
+    _rmtree(package_dir, 'files')
+    try:
+        diff = DfuDiff.from_file(package_dir / '.dfu-diff')
+    except FileNotFoundError:
+        # The diff file doesn't exist, so there's nothing to abort
+        return
+
+    git_checkout(package_dir, git_default_branch(package_dir), exist_ok=True)
+    if diff.base_branch:
+        git_delete_branch(package_dir, diff.base_branch)
+
+    if diff.target_branch:
+        git_delete_branch(package_dir, diff.target_branch)
+
     (package_dir / '.dfu-diff').unlink(missing_ok=True)
-    _remove_placeholders(package_dir)
 
 
 def continue_diff(config: Config, package_dir: Path):
     diff = DfuDiff.from_file(package_dir / '.dfu-diff')
-    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     if not diff.created_placeholders:
-        create_changed_placeholders(package_config, package_dir)
+        create_changed_placeholders(package_dir)
         diff.created_placeholders = True
         diff.write(package_dir / '.dfu-diff')
         return
@@ -54,18 +69,22 @@ def continue_diff(config: Config, package_dir: Path):
 
     git_checkout(package_dir, git_default_branch(package_dir), exist_ok=True)
 
+    if not diff.created_patch_file:
+        create_patch_file(package_dir, diff)
+        diff.created_patch_file = True
+        diff.write(package_dir / '.dfu-diff')
+
     if not diff.updated_installed_programs:
-        update_installed_packages(config, package_config)
-        package_config.write(package_dir / "dfu_config.json")
+        update_installed_packages(config, package_dir)
         diff.updated_installed_programs = True
         diff.write(package_dir / '.dfu-diff')
-        return
 
     update_primary_branches(package_dir, diff)
     abort_diff(package_dir)
 
 
-def update_installed_packages(config: Config, package_config: PackageConfig):
+def update_installed_packages(config: Config, package_dir: Path):
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     if len(package_config.snapshots) == 0:
         raise ValueError('Did not create a successful pre/post snapshot pair')
     old_packages = get_installed_packages(config, package_config.snapshot_mapping(use_pre_id=True))
@@ -74,14 +93,16 @@ def update_installed_packages(config: Config, package_config: PackageConfig):
     diff = diff_packages(old_packages, new_packages)
     package_config.programs_added = diff.added
     package_config.programs_removed = diff.removed
+    package_config.write(package_dir / "dfu_config.json")
 
 
-def create_changed_placeholders(package_config: PackageConfig, package_dir: Path):
+def create_changed_placeholders(package_dir: Path):
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     # This method has been performance optimized in several places. Take care when modifying the file for both correctness and speed
     pre_mapping = package_config.snapshot_mapping(use_pre_id=True)
     post_mapping = package_config.snapshot_mapping(use_pre_id=False)
 
-    _remove_placeholders(package_dir)
+    _rmtree(package_dir, 'placeholders')
     placeholder_dir = package_dir / 'placeholders'
 
     placeholder_dir.mkdir(mode=0o755, parents=True, exist_ok=True)
@@ -130,6 +151,7 @@ def create_changed_placeholders(package_config: PackageConfig, package_dir: Path
 
 def copy_files(package_dir: Path, *, use_pre_id: bool):
     package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
+    _rmtree(package_dir, 'files')
     for snapper_name, snapshot_id in package_config.snapshot_mapping(use_pre_id=use_pre_id).items():
         snapper = Snapper(snapper_name)
         ls_dir = package_dir / 'placeholders' / _strip_placeholders(snapper.get_mountpoint())
@@ -174,7 +196,17 @@ def create_target_branch(package_dir: Path, diff: DfuDiff):
     diff.write(package_dir / '.dfu-diff')
 
 
+def create_patch_file(package_dir: Path, diff: DfuDiff):
+    if diff.base_branch is None or diff.target_branch is None:
+        raise ValueError('Cannot create a patch file without a base and target branch')
+    patch = git_diff(package_dir, diff.base_branch, diff.target_branch)
+    (package_dir / 'changes.patch').write_text(patch)
+
+
 def update_primary_branches(package_dir: Path, diff: DfuDiff):
+    git_add(package_dir, [package_dir])
+    current_branch = git_current_branch(package_dir)
+    git_stash(package_dir)
     if diff.base_branch is None or diff.target_branch is None:
         raise ValueError('Cannot update primary branches without a base and target branch')
 
@@ -185,9 +217,12 @@ def update_primary_branches(package_dir: Path, diff: DfuDiff):
     git_checkout(package_dir, "target", exist_ok=True)
     git_reset_branch(package_dir, diff.target_branch)
 
+    git_checkout(package_dir, current_branch, exist_ok=True)
+    git_stash_pop(package_dir)
 
-def _remove_placeholders(package_dir: Path):
-    placeholder_dir = package_dir / 'placeholders'
+
+def _rmtree(package_dir: Path, subdir: str):
+    placeholder_dir = package_dir / subdir
     if placeholder_dir.exists():
         rmtree(placeholder_dir)
 
