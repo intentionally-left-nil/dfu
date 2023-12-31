@@ -39,7 +39,7 @@ path = "dfu/__about__.py"
 [tool.hatch.build]
 exclude = [
   "/tests",
-  "/types"
+  "/typings"
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -94,7 +94,7 @@ profile = "black"
 skip_glob = ["env/*"]
 
 [tool.mypy]
-mypy_path = "types/"
+mypy_path = "typings/"
 
 
 [tool.coverage.run]
