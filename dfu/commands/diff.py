@@ -41,6 +41,10 @@ def continue_diff(config: Config, package_dir: Path):
         create_base_branch(package_dir, diff)
         return
 
+    if not diff.target_branch:
+        create_target_branch(package_dir, diff)
+        return
+
     if not diff.updated_installed_programs:
         update_installed_packages(config, package_config)
         package_config.write(package_dir / "dfu_config.json")
@@ -144,6 +148,19 @@ def create_base_branch(package_dir: Path, diff: DfuDiff):
     copy_files(package_dir, use_pre_id=True)
     git_add(package_dir, ['files'])
     diff.base_branch = branch_name
+    diff.write(package_dir / '.dfu-diff')
+
+
+def create_target_branch(package_dir: Path, diff: DfuDiff):
+    if diff.base_branch is None:
+        raise ValueError('Cannot create target branch without a base branch')
+    git_checkout(package_dir, diff.base_branch, exist_ok=True)
+
+    branch_name = f"target-{_rand_slug()}"
+    git_checkout(package_dir, branch_name, exist_ok=False)
+    copy_files(package_dir, use_pre_id=False)
+    git_add(package_dir, ['files'])
+    diff.target_branch = branch_name
     diff.write(package_dir / '.dfu-diff')
 
 
