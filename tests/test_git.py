@@ -13,6 +13,7 @@ from dfu.revision.git import (
     git_checkout,
     git_commit,
     git_default_branch,
+    git_delete_branch,
     git_diff,
     git_init,
     git_ls_files,
@@ -221,7 +222,7 @@ def test_git_default_branch_missing(tmp_path: Path):
         ['git', 'branch', '--show-current'], cwd=tmp_path, check=True, text=True, capture_output=True
     ).stdout.strip()
     git_checkout(tmp_path, 'other_branch')
-    subprocess.run(['git', 'branch', '-D', current_branch], cwd=tmp_path, check=True)
+    git_delete_branch(tmp_path, current_branch)
     with pytest.raises(ValueError, match="Could not find the default branch"):
         git_default_branch(tmp_path)
 
@@ -261,4 +262,22 @@ index e69de29..b6fc4c6 100644
 +hello
 \\ No newline at end of file
 '''
+    )
+
+
+def test_delete_branch(tmp_path: Path):
+    git_checkout(tmp_path, 'base')
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Initial commit')
+    git_checkout(tmp_path, 'target')
+    (tmp_path / 'file.txt').write_text('hello')
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'hello')
+    git_delete_branch(tmp_path, 'base')
+    assert (
+        subprocess.run(
+            ['git', 'branch', '--list', 'base'], cwd=tmp_path, check=True, text=True, capture_output=True
+        ).stdout
+        == ''
     )

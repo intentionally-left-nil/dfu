@@ -103,6 +103,10 @@ def git_diff(package_dir: Path, base: str, target: str) -> str:
     ).stdout
 
 
+def git_delete_branch(package_dir: Path, branch: str):
+    subprocess.run(['git', 'branch', '-D', branch], cwd=package_dir, check=True)
+
+
 def ensure_template_gitignore() -> Path:
     template_gitignore = PlatformDirs("dfu").user_data_path / ".gitignore"
     if not template_gitignore.exists():
