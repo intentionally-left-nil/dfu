@@ -51,11 +51,42 @@ def git_ls_files(cwd: Path) -> list[str]:
     return tracked_files.stdout.splitlines() + untracked_files.stdout.splitlines()
 
 
-def git_default_branch(package_dir: Path):
-    result = subprocess.run(
-        ['git', 'config', '--get', 'init.defaultBranch'], cwd=package_dir, text=True, capture_output=True, check=True
+def git_default_branch(package_dir: Path) -> str:
+    default_branches = ['main', 'master']
+    try:
+        result = subprocess.run(
+            ['git', 'config', '--get', 'init.defaultBranch'],
+            cwd=package_dir,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        default_branches = [result.stdout.strip()]
+    except subprocess.CalledProcessError:
+        # No default branch config option is set, try main and master
+        default_branches = ['main', 'master']
+
+    local_branches = set(
+        subprocess.run(
+            ['git', 'for-each-ref', '--format=%(refname:short)', 'refs/heads/'],
+            cwd=package_dir,
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout.splitlines()
     )
-    return result.stdout.strip()
+
+    if len(local_branches) == 0:
+        # This can happen if there isn't an initial commit yet (sigh)
+        local_branches = set(
+            subprocess.run(
+                ['git', 'branch', '--show-current'], cwd=package_dir, text=True, capture_output=True
+            ).stdout.splitlines()
+        )
+    for branch in default_branches:
+        if branch in local_branches:
+            return branch
+    raise ValueError(f"Could not find the default branch")
 
 
 def ensure_template_gitignore() -> Path:

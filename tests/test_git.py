@@ -194,8 +194,23 @@ def test_git_checkout_existing_branch(tmp_path: Path):
     )
 
 
-def test_git_default_branch(tmp_path: Path):
-    git_init(tmp_path)
-    assert git_default_branch(tmp_path) == 'main'
+def test_git_default_branch_no_commits(tmp_path: Path):
     subprocess.run(['git', 'config', 'init.defaultBranch', 'main'], cwd=tmp_path, check=True)
     assert git_default_branch(tmp_path) == 'main'
+
+
+def test_git_default_branch_with_one_commit(tmp_path: Path):
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Initial commit')
+    assert git_default_branch(tmp_path) == 'main'
+
+
+def test_git_default_branch_missing(tmp_path: Path):
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Initial commit')
+    git_checkout(tmp_path, 'other_branch')
+    subprocess.run(['git', 'branch', '-D', 'main'], cwd=tmp_path, check=True)
+    with pytest.raises(ValueError, match="Could not find the default branch"):
+        git_default_branch(tmp_path)
