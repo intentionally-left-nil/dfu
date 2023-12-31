@@ -15,6 +15,7 @@ from dfu.revision.git import (
     git_default_branch,
     git_init,
     git_ls_files,
+    git_reset_branch,
 )
 
 
@@ -222,3 +223,18 @@ def test_git_default_branch_missing(tmp_path: Path):
     subprocess.run(['git', 'branch', '-D', current_branch], cwd=tmp_path, check=True)
     with pytest.raises(ValueError, match="Could not find the default branch"):
         git_default_branch(tmp_path)
+
+
+def test_git_reset_branch(tmp_path: Path):
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Initial commit')
+    current_branch = subprocess.run(
+        ['git', 'branch', '--show-current'], cwd=tmp_path, check=True, text=True, capture_output=True
+    ).stdout.strip()
+    git_checkout(tmp_path, 'other_branch')
+    (tmp_path / 'file2.txt').touch()
+    git_add(tmp_path, ['file2.txt'])
+    git_commit(tmp_path, 'other_branch')
+    git_reset_branch(tmp_path, current_branch)
+    assert (tmp_path / 'file.txt').exists() and not (tmp_path / 'file2.txt').exists()
