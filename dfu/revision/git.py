@@ -93,6 +93,16 @@ def git_default_branch(package_dir: Path) -> str:
     raise ValueError(f"Could not find the default branch")
 
 
+def git_diff(package_dir: Path, base: str, target: str) -> str:
+    return subprocess.run(
+        ['git', 'diff', '--patch', f'{base}..{target}'],
+        cwd=package_dir,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout
+
+
 def ensure_template_gitignore() -> Path:
     template_gitignore = PlatformDirs("dfu").user_data_path / ".gitignore"
     if not template_gitignore.exists():

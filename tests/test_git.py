@@ -13,6 +13,7 @@ from dfu.revision.git import (
     git_checkout,
     git_commit,
     git_default_branch,
+    git_diff,
     git_init,
     git_ls_files,
     git_reset_branch,
@@ -238,3 +239,26 @@ def test_git_reset_branch(tmp_path: Path):
     git_commit(tmp_path, 'other_branch')
     git_reset_branch(tmp_path, current_branch)
     assert (tmp_path / 'file.txt').exists() and not (tmp_path / 'file2.txt').exists()
+
+
+def test_git_diff(tmp_path: Path):
+    git_checkout(tmp_path, 'base')
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Initial commit')
+    git_checkout(tmp_path, 'target')
+    (tmp_path / 'file.txt').write_text('hello')
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'hello')
+    assert (
+        git_diff(tmp_path, 'base', 'target')
+        == '''\
+diff --git a/file.txt b/file.txt
+index e69de29..b6fc4c6 100644
+--- a/file.txt
++++ b/file.txt
+@@ -0,0 +1 @@
++hello
+\\ No newline at end of file
+'''
+    )
