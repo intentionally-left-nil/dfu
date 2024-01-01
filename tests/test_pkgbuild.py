@@ -27,8 +27,6 @@ license=('MIT')
 depends=(test1 test2)
 source=()
 
-
-
 sha256sums=()
 """
     assert actual == expected
@@ -38,8 +36,6 @@ def test_to_pkgbuild(patch: str):
     package_config = PackageConfig(
         name="test", description="my cool description", programs_added=["test1", "test2"], version="0.0.2"
     )
-
-    print(patch)
 
     actual = to_pkgbuild(package_config, patch=patch)
     expected = """\
@@ -56,6 +52,10 @@ prepare() {
     cp "/etc/myfile" "${srcdir}/files/etc/myfile"
 }
 
+build() {
+    cd "${srcdir}"
+    patch -p1 < changes.patch
+}
 
 sha256sums=(6dae9b0edff4832474dd916f3ab0f115663f3cad095f35b16124862f37c0fd37)
 """
