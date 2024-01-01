@@ -1,5 +1,5 @@
 from io import StringIO
-from typing import Iterable, Optional, Union, TypeVar
+from typing import Iterable, Optional, TypeVar, Union
 
 from unidiff.constants import DEFAULT_ENCODING as DEFAULT_ENCODING
 from unidiff.constants import DEV_NULL as DEV_NULL
