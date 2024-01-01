@@ -1,17 +1,17 @@
-from _typeshed import Incomplete
+import re
 
-RE_SOURCE_FILENAME: Incomplete
-RE_TARGET_FILENAME: Incomplete
-RE_DIFF_GIT_HEADER: Incomplete
-RE_DIFF_GIT_HEADER_URI_LIKE: Incomplete
-RE_DIFF_GIT_HEADER_NO_PREFIX: Incomplete
-RE_DIFF_GIT_DELETED_FILE: Incomplete
-RE_DIFF_GIT_NEW_FILE: Incomplete
-RE_HUNK_HEADER: Incomplete
-RE_HUNK_BODY_LINE: Incomplete
-RE_HUNK_EMPTY_BODY_LINE: Incomplete
-RE_NO_NEWLINE_MARKER: Incomplete
-RE_BINARY_DIFF: Incomplete
+RE_SOURCE_FILENAME: re.Pattern
+RE_TARGET_FILENAME: re.Pattern
+RE_DIFF_GIT_HEADER: re.Pattern
+RE_DIFF_GIT_HEADER_URI_LIKE: re.Pattern
+RE_DIFF_GIT_HEADER_NO_PREFIX: re.Pattern
+RE_DIFF_GIT_DELETED_FILE: re.Pattern
+RE_DIFF_GIT_NEW_FILE: re.Pattern
+RE_HUNK_HEADER: re.Pattern
+RE_HUNK_BODY_LINE: re.Pattern
+RE_HUNK_EMPTY_BODY_LINE: re.Pattern
+RE_NO_NEWLINE_MARKER: re.Pattern
+RE_BINARY_DIFF: re.Pattern
 DEFAULT_ENCODING: str
 DEV_NULL: str
 LINE_TYPE_ADDED: str
