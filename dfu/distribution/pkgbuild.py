@@ -81,6 +81,6 @@ build() {
 def _generate_package() -> str:
     return '''\
 package() {
-    cp -r "${srcdir}/files" "${pkgdir}/"
+    find "${srcdir}/files" -maxdepth 1 -mindepth 1 -exec cp -r {} "${pkgdir}/" \\;
 }
 '''
