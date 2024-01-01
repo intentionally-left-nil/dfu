@@ -1,4 +1,3 @@
-from unidiff import __version__ as __version__
 from unidiff.patch import DEFAULT_ENCODING as DEFAULT_ENCODING
 from unidiff.patch import LINE_TYPE_ADDED as LINE_TYPE_ADDED
 from unidiff.patch import LINE_TYPE_CONTEXT as LINE_TYPE_CONTEXT
