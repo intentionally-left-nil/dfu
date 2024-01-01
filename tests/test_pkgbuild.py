@@ -57,6 +57,10 @@ build() {
     patch -p1 < changes.patch
 }
 
+package() {
+    cp -r "${srcdir}/files" "${pkgdir}/"
+}
+
 sha256sums=(6dae9b0edff4832474dd916f3ab0f115663f3cad095f35b16124862f37c0fd37)
 """
     assert actual == expected

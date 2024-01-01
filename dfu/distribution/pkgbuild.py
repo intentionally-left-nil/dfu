@@ -21,6 +21,8 @@ source=({sources})
 
 {build}
 
+{package}
+
 sha256sums=({checksums})
 """
 
@@ -30,6 +32,7 @@ def to_pkgbuild(package_config: PackageConfig, patch: str | None) -> str:
     checksums = [hashlib.sha256(patch.encode('utf-8')).hexdigest()] if patch else []
     prepare = _generate_prepare(patch) if patch else ""
     build = _generate_build() if patch else ""
+    package = _generate_package() if patch else ""
 
     pkgbuild = PKGBUILD_TEMPLATE.format(
         name=package_config.name,
@@ -39,6 +42,7 @@ def to_pkgbuild(package_config: PackageConfig, patch: str | None) -> str:
         sources=" ".join(sources),
         prepare=prepare,
         build=build,
+        package=package,
         checksums=" ".join(checksums),
     )
     return re.sub(r'\n{3,}', '\n\n', pkgbuild)
@@ -70,5 +74,13 @@ def _generate_build() -> str:
 build() {
     cd "${srcdir}"
     patch -p1 < changes.patch
+}
+'''
+
+
+def _generate_package() -> str:
+    return '''\
+package() {
+    cp -r "${srcdir}/files" "${pkgdir}/"
 }
 '''
