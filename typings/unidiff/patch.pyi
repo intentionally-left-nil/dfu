@@ -1,7 +1,6 @@
 from io import StringIO
-from typing import Iterable, Optional, Union
+from typing import Iterable, Optional, Union, TypeVar
 
-from _typeshed import Incomplete
 from unidiff.constants import DEFAULT_ENCODING as DEFAULT_ENCODING
 from unidiff.constants import DEV_NULL as DEV_NULL
 from unidiff.constants import LINE_TYPE_ADDED as LINE_TYPE_ADDED
@@ -26,19 +25,23 @@ from unidiff.constants import RE_SOURCE_FILENAME as RE_SOURCE_FILENAME
 from unidiff.constants import RE_TARGET_FILENAME as RE_TARGET_FILENAME
 from unidiff.errors import UnidiffParseError as UnidiffParseError
 
-PY2: Incomplete
+PY2 = bool
 open_file = open
 make_str = str
-implements_to_string: Incomplete
+
+T = TypeVar('T')
+
+def implements_to_string(obj: T) -> T: ...
+
 unicode = str
 basestring = str
 
 class Line:
-    source_line_no: Incomplete
-    target_line_no: Incomplete
-    diff_line_no: Incomplete
-    line_type: Incomplete
-    value: Incomplete
+    source_line_no: Optional[int]
+    target_line_no: Optional[int]
+    diff_line_no: Optional[int]
+    line_type: str
+    value: str
     def __init__(
         self,
         value: str,
@@ -58,11 +61,11 @@ class Line:
 class PatchInfo(list): ...
 
 class Hunk(list):
-    source_start: Incomplete
-    source_length: Incomplete
-    target_start: Incomplete
-    target_length: Incomplete
-    section_header: Incomplete
+    source_start: int
+    source_length: int
+    target_start: int
+    target_length: int
+    section_header: str
     def __init__(
         self, src_start: int = 0, src_len: int = 0, tgt_start: int = 0, tgt_len: int = 0, section_header: str = ''
     ) -> None: ...
@@ -115,9 +118,7 @@ class PatchSet(list):
         self, f: Union[StringIO, str], encoding: Optional[str] = None, metadata_only: bool = False
     ) -> None: ...
     @classmethod
-    def from_filename(
-        cls, filename, encoding=..., errors: Incomplete | None = None, newline: Incomplete | None = None
-    ): ...
+    def from_filename(cls, filename, encoding=..., errors: Optional[str] = None, newline: Optional[str] = None): ...
     @classmethod
     def from_string(cls, data: str, encoding: Optional[str] = None, errors: Optional[str] = 'strict') -> PatchSet: ...
     @property
