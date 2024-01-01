@@ -1,7 +1,15 @@
+from difflib import unified_diff
+
 import pytest
 
 from dfu.distribution.pkgbuild import to_pkgbuild
 from dfu.package.package_config import PackageConfig
+
+
+@pytest.fixture()
+def patch() -> str:
+    diff = unified_diff(["\n"], ["hello\n"], fromfile='a/files/etc/myfile', tofile='b/files/etc/myfile')
+    return "".join(diff)
 
 
 def test_to_pkgbuild_no_patch_file():
@@ -19,23 +27,20 @@ license=('MIT')
 depends=(test1 test2)
 source=()
 
+
+
 sha256sums=()
 """
     assert actual == expected
 
 
-def test_to_pkgbuild():
+def test_to_pkgbuild(patch: str):
     package_config = PackageConfig(
         name="test", description="my cool description", programs_added=["test1", "test2"], version="0.0.2"
     )
-    patch = """\
-diff --git a/files/etc/myfile b/files/etc/myfile
-index 51745d0..b6b08c0 100644
---- a/files/etc/myfile
-+++ b/files/etc/myfile
-@@ -1 +1 @@
-+hello
-"""
+
+    print(patch)
+
     actual = to_pkgbuild(package_config, patch=patch)
     expected = """\
 pkgname='test'
@@ -47,6 +52,11 @@ license=('MIT')
 depends=(test1 test2)
 source=(changes.patch)
 
-sha256sums=(1a5c5561fd4de8b44f96054b773eb1ddd08a6fbf41a5953f9021b2369469a942)
+prepare() {
+    cp "/etc/myfile" "${srcdir}/files/etc/myfile"
+}
+
+
+sha256sums=(6dae9b0edff4832474dd916f3ab0f115663f3cad095f35b16124862f37c0fd37)
 """
     assert actual == expected
