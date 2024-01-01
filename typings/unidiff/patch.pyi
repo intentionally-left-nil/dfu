@@ -25,17 +25,6 @@ from unidiff.constants import RE_SOURCE_FILENAME as RE_SOURCE_FILENAME
 from unidiff.constants import RE_TARGET_FILENAME as RE_TARGET_FILENAME
 from unidiff.errors import UnidiffParseError as UnidiffParseError
 
-PY2 = bool
-open_file = open
-make_str = str
-
-T = TypeVar('T')
-
-def implements_to_string(obj: T) -> T: ...
-
-unicode = str
-basestring = str
-
 class Line:
     source_line_no: Optional[int]
     target_line_no: Optional[int]
