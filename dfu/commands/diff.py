@@ -22,6 +22,8 @@ from dfu.snapshots.snapper import Snapper
 
 
 def begin_diff(config: Config, package_dir: Path, *, from_index: int, to_index: int):
+    from_index = _normalize_snapshot_index(package_dir, from_index)
+    to_index = _normalize_snapshot_index(package_dir, to_index)
     dfu_diff_path = package_dir / '.dfu-diff'
     diff = DfuDiff(from_index=from_index, to_index=to_index)
     try:
@@ -239,3 +241,12 @@ def _strip_placeholders(p: Path | str) -> str:
 
 def _branch_name(snapshot_index: int) -> str:
     return f"snapshot_{snapshot_index}"
+
+
+def _normalize_snapshot_index(package_dir: Path, index: int) -> int:
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
+    if index < 0:
+        index += len(package_config.snapshots)
+    if index < 0 or index >= len(package_config.snapshots):
+        raise ValueError(f"index {index} is out of bounds")
+    return index
