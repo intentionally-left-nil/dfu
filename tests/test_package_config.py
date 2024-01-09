@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from dfu.package.package_config import PackageConfig, Snapshot, find_package_config
+from dfu.package.package_config import PackageConfig, find_package_config
 
 
 @dataclass
@@ -13,39 +13,22 @@ class ValidConfigTest:
     test_id: str
     name: str = "expected_name"
     description: str | None = "expected_description"
-    snapshots_deprecated: list[dict[str, dict]] = field(default_factory=list)
+    snapshots: list[dict[str, int]] = field(default_factory=list)
 
 
 valid_config_tests = [
     ValidConfigTest(test_id="empty"),
-    ValidConfigTest(test_id="one snapshot with a pre_id", snapshots_deprecated=[{"root": {"pre_id": 1}}]),
+    ValidConfigTest(test_id="one snapshot", snapshots=[{"root": 1}]),
+    ValidConfigTest(test_id="two snapshots", snapshots=[{"root": 1}, {"root": 2}]),
     ValidConfigTest(
-        test_id="one snapshot with a pre and post id", snapshots_deprecated=[{"root": {"pre_id": 1, "post_id": 2}}]
+        test_id="one snapshot with root & home, and the second snapshot with only root",
+        snapshots=[{"root": 1, "home": 2}, {"root": 3}],
     ),
     ValidConfigTest(
-        test_id="one snapshot with two volumes, both having a pre id",
-        snapshots_deprecated=[{"root": {"pre_id": 1}, "home": {"pre_id": 2}}],
+        test_id="two snapshots with root & home", snapshots=[{"root": 1, "home": 2}, {"root": 3, "home": 4}]
     ),
-    ValidConfigTest(
-        test_id="one snapshot with a full root, but only a pre id for home",
-        snapshots_deprecated=[{"root": {"pre_id": 1, "post_id": 2}, "home": {"pre_id": 3}}],
-    ),
-    ValidConfigTest(
-        test_id="one snapshot with two volumes, both having a pre and post id",
-        snapshots_deprecated=[{"root": {"pre_id": 1, "post_id": 2}, "home": {"pre_id": 3, "post_id": 4}}],
-    ),
-    ValidConfigTest(
-        test_id="two snapshots_deprecated with a pre_id",
-        snapshots_deprecated=[{"root": {"pre_id": 1}}, {"root": {"pre_id": 2}}],
-    ),
-    ValidConfigTest(
-        test_id="two snapshots_deprecated where the first one is full",
-        snapshots_deprecated=[{"root": {"pre_id": 1, "post_id": 2}}, {"root": {"pre_id": 3}}],
-    ),
-    ValidConfigTest(
-        test_id="two snapshots_deprecated where the directories are different",
-        snapshots_deprecated=[{"root": {"pre_id": 1, "post_id": 2}}, {"home": {"pre_id": 3, "post_id": 4}}],
-    ),
+    ValidConfigTest(test_id="two snapshots where the directories are different", snapshots=[{"root": 1}, {"home": 2}]),
+    ValidConfigTest(test_id="Three snapshots", snapshots=[{"root": 1}, {"root": 2}, {"root": 3}]),
 ]
 
 
@@ -53,55 +36,8 @@ valid_config_tests = [
 def test_valid_configs(test: ValidConfigTest):
     json_data = json.dumps(test.__dict__)
     actual = PackageConfig.from_json(json_data)
-    expected_snapshots = [
-        {k: Snapshot(pre_id=v['pre_id'], post_id=v.get('post_id', None)) for k, v in item.items()}
-        for item in test.snapshots_deprecated
-    ]
-    expected = PackageConfig(name=test.name, description=test.description, snapshots_deprecated=expected_snapshots)
+    expected = PackageConfig(name=test.name, description=test.description, snapshots=test.snapshots)
     assert actual == expected
-
-
-@pytest.fixture
-def config() -> PackageConfig:
-    return PackageConfig(
-        name='expected_name',
-        description='expected_description',
-        snapshots_deprecated=[
-            {"root": Snapshot(pre_id=1, post_id=2), "home": Snapshot(pre_id=3, post_id=4)},
-            {"root": Snapshot(pre_id=5, post_id=6), "home": Snapshot(pre_id=7, post_id=8)},
-        ],
-    )
-
-
-class TestSnapshotMapping:
-    def test_raises_if_invalid_id(self):
-        config = PackageConfig(name='expected_name', description='expected_description')
-        with pytest.raises(IndexError):
-            config.snapshot_mapping(use_pre_id=False)
-
-    def test_returns_last_pre_id(self, config: PackageConfig):
-        assert config.snapshot_mapping(use_pre_id=True) == {"root": 5, "home": 7}
-
-    def test_returns_last_pre_id_with_index(self, config):
-        assert config.snapshot_mapping(index=0, use_pre_id=True) == {"root": 1, "home": 3}
-
-    def test_raises_if_post_id_is_none(self):
-        config = PackageConfig(
-            name='expected_name',
-            description='expected_description',
-            snapshots_deprecated=[
-                {"root": Snapshot(pre_id=1), "home": Snapshot(pre_id=2)},
-                {"root": Snapshot(pre_id=3), "home": Snapshot(pre_id=4)},
-            ],
-        )
-        with pytest.raises(ValueError):
-            config.snapshot_mapping(use_pre_id=False)
-
-    def test_returns_last_post_id(self, config: PackageConfig):
-        assert config.snapshot_mapping(use_pre_id=False) == {"root": 6, "home": 8}
-
-    def test_returns_last_post_id_with_index(self, config: PackageConfig):
-        assert config.snapshot_mapping(index=0, use_pre_id=False) == {"root": 2, "home": 4}
 
 
 def test_file_in_current_directory(tmp_path):

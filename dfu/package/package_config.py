@@ -20,6 +20,7 @@ class PackageConfig(JsonSerializableMixin):
     name: str
     description: str | None
     snapshots_deprecated: list[dict[str, Snapshot]] = field(default_factory=list)
+    snapshots: list[dict[str, int]] = field(default_factory=list)
     programs_added: list[str] = field(default_factory=list)
     programs_removed: list[str] = field(default_factory=list)
     version: str = "0.0.1"
