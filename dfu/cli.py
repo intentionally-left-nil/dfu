@@ -15,7 +15,6 @@ from dfu.commands import (
     get_config_paths,
     load_config,
 )
-from dfu.config import Config
 from dfu.package.package_config import find_package_config
 from dfu.snapshots.snapper import Snapper
 
