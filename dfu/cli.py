@@ -16,7 +16,7 @@ from dfu.commands import (
     get_config_paths,
     load_config,
 )
-from dfu.package.package_config import find_package_config
+from dfu.package.package_config import PackageConfig, find_package_config
 from dfu.snapshots.snapper import Snapper
 
 
@@ -54,7 +54,9 @@ def init(name: str | None, description: str | None):
 @main.command()
 def snap():
     store = Store()
-    store.state = store.state.update(config=load_config(), package_dir=find_package_dir())
+    package_dir = find_package_dir()
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
+    store.state = store.state.update(config=load_config(), package_dir=package_dir, package_config=package_config)
     create_snapshot(store)
 
 
@@ -67,7 +69,9 @@ def diff(abort: bool | None, continue_: bool | None, from_: int, to: int):
     if abort and continue_:
         raise ValueError("Cannot specify both --abort and --continue")
     store = Store()
-    store.state = store.state.update(config=load_config(), package_dir=find_package_dir())
+    package_dir = find_package_dir()
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
+    store.state = store.state.update(config=load_config(), package_dir=package_dir, package_config=package_config)
     if abort:
         abort_diff(store)
     elif continue_:
@@ -78,8 +82,11 @@ def diff(abort: bool | None, continue_: bool | None, from_: int, to: int):
 
 @main.command()
 def dist():
+    store = Store()
     package_dir = find_package_dir()
-    create_distribution(package_dir)
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
+    store.state = store.state.update(config=load_config(), package_dir=package_dir, package_config=package_config)
+    create_distribution(store)
 
 
 @click.group

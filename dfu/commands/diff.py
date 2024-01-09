@@ -24,8 +24,8 @@ from dfu.snapshots.snapper import Snapper
 
 def begin_diff(store: Store, *, from_index: int, to_index: int):
     assert store.state.package_config and store.state.package_dir
-    from_index = _normalize_snapshot_index(store.state.package_dir, from_index)
-    to_index = _normalize_snapshot_index(store.state.package_dir, to_index)
+    from_index = _normalize_snapshot_index(store.state.package_config, from_index)
+    to_index = _normalize_snapshot_index(store.state.package_config, to_index)
     dfu_diff_path = store.state.package_dir / '.dfu-diff'
     diff = DfuDiff(from_index=from_index, to_index=to_index)
     try:
@@ -49,7 +49,7 @@ def continue_diff(store: Store):
     diff = DfuDiff.from_file(store.state.package_dir / '.dfu-diff')
     if not diff.created_placeholders:
         click.echo("Creating placeholder files...", err=True)
-        create_changed_placeholders(store.state.package_dir, from_index=diff.from_index, to_index=diff.to_index)
+        create_changed_placeholders(store, from_index=diff.from_index, to_index=diff.to_index)
         diff.created_placeholders = True
         diff.write(store.state.package_dir / '.dfu-diff')
         click.echo(
@@ -64,7 +64,7 @@ def continue_diff(store: Store):
         return
 
     if not diff.created_base_branch:
-        create_base_branch(store.state.package_dir, diff)
+        create_base_branch(store, diff)
         click.echo(
             dedent(
                 """\
@@ -77,7 +77,7 @@ def continue_diff(store: Store):
         return
 
     if not diff.created_target_branch:
-        create_target_branch(store.state.package_dir, diff)
+        create_target_branch(store, diff)
         click.echo(
             dedent(
                 """\
@@ -112,12 +112,11 @@ def continue_diff(store: Store):
 
 
 def update_installed_packages(store: Store, *, from_index: int, to_index: int):
-    assert store.state.package_dir and store.state.config
-    package_config = PackageConfig.from_file(store.state.package_dir / "dfu_config.json")
-    if len(package_config.snapshots) < 2:
+    assert store.state.package_dir and store.state.config and store.state.package_config
+    if len(store.state.package_config.snapshots) < 2:
         raise ValueError('Did not create a successful pre/post snapshot pair')
-    old_packages = get_installed_packages(store.state.config, package_config.snapshots[from_index])
-    new_packages = get_installed_packages(store.state.config, package_config.snapshots[to_index])
+    old_packages = get_installed_packages(store.state.config, store.state.package_config.snapshots[from_index])
+    new_packages = get_installed_packages(store.state.config, store.state.package_config.snapshots[to_index])
 
     diff = diff_packages(old_packages, new_packages)
     package_config.programs_added = diff.added
@@ -125,14 +124,14 @@ def update_installed_packages(store: Store, *, from_index: int, to_index: int):
     package_config.write(store.state.package_dir / "dfu_config.json")
 
 
-def create_changed_placeholders(package_dir: Path, *, from_index: int, to_index: int):
-    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
+def create_changed_placeholders(store: Store, *, from_index: int, to_index: int):
+    assert store.state.package_dir and store.state.package_config
     # This method has been performance optimized in several places. Take care when modifying the file for both correctness and speed
-    pre_snapshot = package_config.snapshots[from_index]
-    post_snapshot = package_config.snapshots[to_index]
+    pre_snapshot = store.state.package_config.snapshots[from_index]
+    post_snapshot = store.state.package_config.snapshots[to_index]
 
-    _rmtree(package_dir, 'placeholders')
-    placeholder_dir = package_dir / 'placeholders'
+    _rmtree(store.state.package_dir, 'placeholders')
+    placeholder_dir = store.state.package_dir / 'placeholders'
 
     placeholder_dir.mkdir(mode=0o755, parents=True, exist_ok=True)
     for snapper_name, pre_id in pre_snapshot.items():
@@ -148,12 +147,12 @@ def create_changed_placeholders(package_dir: Path, *, from_index: int, to_index:
             delta.path = f"placeholders/{delta.path.lstrip('/')}"
 
         # Create a set of all the ignored files. Earlier attempts tried using a list and checking the last element, but the ordering wasn't exact
-        ignored_paths = set(git_check_ignore(package_dir, [delta.path for delta in deltas]))
+        ignored_paths = set(git_check_ignore(store.state.package_dir, [delta.path for delta in deltas]))
         for delta in deltas:
             if delta.path in ignored_paths:
                 # Performance speedup: Don't write files that are ignored by git
                 continue
-            path = package_dir / delta.path
+            path = store.state.package_dir / delta.path
             try:
                 # Performance speedup: Try calling mkdir once, to create all of the parent directories
                 path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
@@ -178,12 +177,12 @@ def create_changed_placeholders(package_dir: Path, *, from_index: int, to_index:
             path.write_text(f"PLACEHOLDER: {delta.action}\n")
 
 
-def copy_files(package_dir: Path, *, snapshot_index):
-    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
-    _rmtree(package_dir, 'files')
-    for snapper_name, snapshot_id in package_config.snapshots[snapshot_index].items():
+def copy_files(store: Store, *, snapshot_index):
+    assert store.state.package_config and store.state.package_dir
+    _rmtree(store.state.package_dir, 'files')
+    for snapper_name, snapshot_id in store.state.package_config.snapshots[snapshot_index].items():
         snapper = Snapper(snapper_name)
-        ls_dir = package_dir / 'placeholders' / _strip_placeholders(snapper.get_mountpoint())
+        ls_dir = store.state.package_dir / 'placeholders' / _strip_placeholders(snapper.get_mountpoint())
         try:
             files_to_copy = [_strip_placeholders(f) for f in git_ls_files(ls_dir)]
         except FileNotFoundError:
@@ -192,7 +191,7 @@ def copy_files(package_dir: Path, *, snapshot_index):
         snapshot_dir = snapper.get_snapshot_path(snapshot_id)
         for file in files_to_copy:
             src = snapshot_dir / file
-            dest = package_dir / 'files' / file
+            dest = store.state.package_dir / 'files' / file
             dest.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
 
             if subprocess.run(['sudo', 'stat', str(src)], capture_output=True).returncode == 0:
@@ -203,28 +202,30 @@ def copy_files(package_dir: Path, *, snapshot_index):
                 )
 
 
-def create_base_branch(package_dir: Path, diff: DfuDiff):
+def create_base_branch(store: Store, diff: DfuDiff):
+    assert store.state.package_dir
     branch_name = _branch_name(diff.from_index)
     click.echo(f"Creating base branch {branch_name}...", err=True)
-    git_checkout(package_dir, branch_name, exist_ok=False)
-    copy_files(package_dir, snapshot_index=diff.from_index)
-    git_add(package_dir, ['files'])
+    git_checkout(store.state.package_dir, branch_name, exist_ok=False)
+    copy_files(store, snapshot_index=diff.from_index)
+    git_add(store.state.package_dir, ['files'])
     diff.created_base_branch = True
-    diff.write(package_dir / '.dfu-diff')
+    diff.write(store.state.package_dir / '.dfu-diff')
 
 
-def create_target_branch(package_dir: Path, diff: DfuDiff):
+def create_target_branch(store: Store, diff: DfuDiff):
+    assert store.state.package_dir
     if not diff.created_base_branch:
         raise ValueError('Cannot create target branch without a base branch')
-    git_checkout(package_dir, _branch_name(diff.from_index), exist_ok=True)
+    git_checkout(store.state.package_dir, _branch_name(diff.from_index), exist_ok=True)
 
     branch_name = _branch_name(diff.to_index)
     click.echo(f"Creating target branch {branch_name}...", err=True)
-    git_checkout(package_dir, branch_name, exist_ok=False)
-    copy_files(package_dir, snapshot_index=diff.to_index)
-    git_add(package_dir, ['files'])
+    git_checkout(store.state.package_dir, branch_name, exist_ok=False)
+    copy_files(store, snapshot_index=diff.to_index)
+    git_add(store.state.package_dir, ['files'])
     diff.created_target_branch = True
-    diff.write(package_dir / '.dfu-diff')
+    diff.write(store.state.package_dir / '.dfu-diff')
 
 
 def create_patch_file(package_dir: Path, diff: DfuDiff):
@@ -248,8 +249,7 @@ def _branch_name(snapshot_index: int) -> str:
     return f"snapshot_{snapshot_index}"
 
 
-def _normalize_snapshot_index(package_dir: Path, index: int) -> int:
-    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
+def _normalize_snapshot_index(package_config: PackageConfig, index: int) -> int:
     if index < 0:
         index += len(package_config.snapshots)
     if index < 0 or index >= len(package_config.snapshots):
