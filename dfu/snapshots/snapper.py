@@ -58,28 +58,6 @@ class Snapper:
         )
         return int(result.stdout.strip())
 
-    def create_post_snapshot(self, pre_snapshot_id: int, description: str) -> int:
-        result = subprocess.run(
-            [
-                'sudo',
-                'snapper',
-                '-c',
-                self.snapper_name,
-                'create',
-                '--type',
-                'post',
-                '--pre-number',
-                str(pre_snapshot_id),
-                '--print-number',
-                '--description',
-                description,
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return int(result.stdout.strip())
-
     def get_delta(self, pre_snapshot_id: int, post_snapshot_id: int) -> list[SnapperDiff]:
         result = subprocess.run(
             ['sudo', 'snapper', '-c', self.snapper_name, 'status', f'{pre_snapshot_id}..{post_snapshot_id}'],

@@ -69,29 +69,6 @@ def test_create_pre_snapshot_invalid_output(mock_run):
 
 
 @patch('subprocess.run')
-def test_create_post_snapshot_success(mock_run):
-    mock_run.return_value = Mock(stdout='2\n')
-    snapper = Snapper('test')
-    assert snapper.create_post_snapshot(1, 'description') == 2
-
-
-@patch('subprocess.run')
-def test_create_post_snapshot_subprocess_error(mock_run):
-    mock_run.side_effect = subprocess.CalledProcessError(1, 'cmd')
-    snapper = Snapper('test')
-    with pytest.raises(subprocess.CalledProcessError):
-        snapper.create_post_snapshot(1, 'description')
-
-
-@patch('subprocess.run')
-def test_create_post_snapshot_invalid_output(mock_run):
-    mock_run.return_value = Mock(stdout='not a number\n')
-    snapper = Snapper('test')
-    with pytest.raises(ValueError):
-        snapper.create_post_snapshot(1, 'description')
-
-
-@patch('subprocess.run')
 def test_get_delta_success(mock_run, snapper_instance):
     mock_run.return_value = MagicMock(stdout='+..... test\n')
     expected_result = [SnapperDiff(path='test', action=FileChangeAction.created, permissions_changed=False)]
