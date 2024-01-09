@@ -66,14 +66,14 @@ def snap():
 def diff(abort: bool | None, continue_: bool | None, from_: int, to: int):
     if abort and continue_:
         raise ValueError("Cannot specify both --abort and --continue")
-    config = load_config()
-    package_dir = find_package_dir()
+    store = Store()
+    store.state = store.state.update(config=load_config(), package_dir=find_package_dir())
     if abort:
-        abort_diff(package_dir)
+        abort_diff(store)
     elif continue_:
-        continue_diff(config, package_dir)
+        continue_diff(store)
     else:
-        begin_diff(config, package_dir, from_index=from_, to_index=to)
+        begin_diff(store, from_index=from_, to_index=to)
 
 
 @main.command()

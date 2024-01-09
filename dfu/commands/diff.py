@@ -6,6 +6,7 @@ from textwrap import dedent
 
 import click
 
+from dfu.api.store import Store
 from dfu.config import Config
 from dfu.installed_packages.pacman import diff_packages, get_installed_packages
 from dfu.package.dfu_diff import DfuDiff
@@ -21,33 +22,36 @@ from dfu.revision.git import (
 from dfu.snapshots.snapper import Snapper
 
 
-def begin_diff(config: Config, package_dir: Path, *, from_index: int, to_index: int):
-    from_index = _normalize_snapshot_index(package_dir, from_index)
-    to_index = _normalize_snapshot_index(package_dir, to_index)
-    dfu_diff_path = package_dir / '.dfu-diff'
+def begin_diff(store: Store, *, from_index: int, to_index: int):
+    assert store.state.package_config and store.state.package_dir
+    from_index = _normalize_snapshot_index(store.state.package_dir, from_index)
+    to_index = _normalize_snapshot_index(store.state.package_dir, to_index)
+    dfu_diff_path = store.state.package_dir / '.dfu-diff'
     diff = DfuDiff(from_index=from_index, to_index=to_index)
     try:
         diff.write(dfu_diff_path, mode="x")
     except FileExistsError:
         raise ValueError("A diff is already in progress. Run `dfu diff --continue` to continue the diff.")
-    continue_diff(config, package_dir)
+    continue_diff(store)
 
 
-def abort_diff(package_dir: Path):
+def abort_diff(store: Store):
+    assert store.state.package_dir is not None
     click.echo("Cleaning up...", err=True)
-    _rmtree(package_dir, 'placeholders')
-    _rmtree(package_dir, 'files')
-    (package_dir / '.dfu-diff').unlink(missing_ok=True)
-    git_checkout(package_dir, git_default_branch(package_dir), exist_ok=True)
+    _rmtree(store.state.package_dir, 'placeholders')
+    _rmtree(store.state.package_dir, 'files')
+    (store.state.package_dir / '.dfu-diff').unlink(missing_ok=True)
+    git_checkout(store.state.package_dir, git_default_branch(store.state.package_dir), exist_ok=True)
 
 
-def continue_diff(config: Config, package_dir: Path):
-    diff = DfuDiff.from_file(package_dir / '.dfu-diff')
+def continue_diff(store: Store):
+    assert store.state.package_dir
+    diff = DfuDiff.from_file(store.state.package_dir / '.dfu-diff')
     if not diff.created_placeholders:
         click.echo("Creating placeholder files...", err=True)
-        create_changed_placeholders(package_dir, from_index=diff.from_index, to_index=diff.to_index)
+        create_changed_placeholders(store.state.package_dir, from_index=diff.from_index, to_index=diff.to_index)
         diff.created_placeholders = True
-        diff.write(package_dir / '.dfu-diff')
+        diff.write(store.state.package_dir / '.dfu-diff')
         click.echo(
             dedent(
                 """\
@@ -60,7 +64,7 @@ def continue_diff(config: Config, package_dir: Path):
         return
 
     if not diff.created_base_branch:
-        create_base_branch(package_dir, diff)
+        create_base_branch(store.state.package_dir, diff)
         click.echo(
             dedent(
                 """\
@@ -73,7 +77,7 @@ def continue_diff(config: Config, package_dir: Path):
         return
 
     if not diff.created_target_branch:
-        create_target_branch(package_dir, diff)
+        create_target_branch(store.state.package_dir, diff)
         click.echo(
             dedent(
                 """\
@@ -86,38 +90,39 @@ def continue_diff(config: Config, package_dir: Path):
         )
         return
 
-    default_branch = git_default_branch(package_dir)
+    default_branch = git_default_branch(store.state.package_dir)
     click.echo(f"Checking out the {default_branch} branch", err=True)
-    git_checkout(package_dir, default_branch, exist_ok=True)
+    git_checkout(store.state.package_dir, default_branch, exist_ok=True)
 
     if not diff.created_patch_file:
-        create_patch_file(package_dir, diff)
+        create_patch_file(store.state.package_dir, diff)
         diff.created_patch_file = True
-        diff.write(package_dir / '.dfu-diff')
+        diff.write(store.state.package_dir / '.dfu-diff')
         click.echo("Created the changes.patch file", err=True)
 
     if not diff.updated_installed_programs:
         click.echo("Detecting which programs were installed and removed...", err=True)
-        update_installed_packages(config, package_dir, from_index=diff.from_index, to_index=diff.to_index)
+        update_installed_packages(store, from_index=diff.from_index, to_index=diff.to_index)
         diff.updated_installed_programs = True
-        diff.write(package_dir / '.dfu-diff')
+        diff.write(store.state.package_dir / '.dfu-diff')
         click.echo("Updated the installed programs", err=True)
 
     click.echo("Deleting the temporary base and target branches...", err=True)
-    abort_diff(package_dir)
+    abort_diff(store)
 
 
-def update_installed_packages(config: Config, package_dir: Path, *, from_index: int, to_index: int):
-    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
+def update_installed_packages(store: Store, *, from_index: int, to_index: int):
+    assert store.state.package_dir and store.state.config
+    package_config = PackageConfig.from_file(store.state.package_dir / "dfu_config.json")
     if len(package_config.snapshots) < 2:
         raise ValueError('Did not create a successful pre/post snapshot pair')
-    old_packages = get_installed_packages(config, package_config.snapshots[from_index])
-    new_packages = get_installed_packages(config, package_config.snapshots[to_index])
+    old_packages = get_installed_packages(store.state.config, package_config.snapshots[from_index])
+    new_packages = get_installed_packages(store.state.config, package_config.snapshots[to_index])
 
     diff = diff_packages(old_packages, new_packages)
     package_config.programs_added = diff.added
     package_config.programs_removed = diff.removed
-    package_config.write(package_dir / "dfu_config.json")
+    package_config.write(store.state.package_dir / "dfu_config.json")
 
 
 def create_changed_placeholders(package_dir: Path, *, from_index: int, to_index: int):
