@@ -8,10 +8,10 @@ from dfu.snapshots.proot import proot
 Diff = namedtuple('Diff', ['added', 'removed'])
 
 
-def get_installed_packages(config: Config, snapshot_mapping: SnapshotMapping | None = None):
+def get_installed_packages(config: Config, snapshot_mapping_deprecated: SnapshotMapping | None = None):
     args = ['pacman', '-Qqe']
-    if snapshot_mapping:
-        args = proot(args, config=config, snapshot_mapping=snapshot_mapping)
+    if snapshot_mapping_deprecated:
+        args = proot(args, config=config, snapshot_mapping_deprecated=snapshot_mapping_deprecated)
 
     result = subprocess.run(args, capture_output=True, text=True, check=True)
     packages = result.stdout.split('\n')

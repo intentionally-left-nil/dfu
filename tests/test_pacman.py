@@ -35,7 +35,7 @@ package3
 package2
 '''
     with patch.object(Snapper, 'get_mountpoint', new=lambda self: Path(f"/{self.snapper_name}")):
-        result = get_installed_packages(config, snapshot_mapping={'root': 1, 'home': 2, 'log': 3})
+        result = get_installed_packages(config, snapshot_mapping_deprecated={'root': 1, 'home': 2, 'log': 3})
     assert result == ['package1', 'package2', 'package3']
     mock_run.assert_called_once_with(
         [

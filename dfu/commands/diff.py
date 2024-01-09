@@ -129,8 +129,8 @@ def update_installed_packages(config: Config, package_dir: Path):
     package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     if len(package_config.snapshots_deprecated) == 0:
         raise ValueError('Did not create a successful pre/post snapshot pair')
-    old_packages = get_installed_packages(config, package_config.snapshot_mapping(use_pre_id=True))
-    new_packages = get_installed_packages(config, package_config.snapshot_mapping(use_pre_id=False))
+    old_packages = get_installed_packages(config, package_config.snapshot_mapping_deprecated(use_pre_id=True))
+    new_packages = get_installed_packages(config, package_config.snapshot_mapping_deprecated(use_pre_id=False))
 
     diff = diff_packages(old_packages, new_packages)
     package_config.programs_added = diff.added
@@ -141,8 +141,8 @@ def update_installed_packages(config: Config, package_dir: Path):
 def create_changed_placeholders(package_dir: Path):
     package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     # This method has been performance optimized in several places. Take care when modifying the file for both correctness and speed
-    pre_mapping = package_config.snapshot_mapping(use_pre_id=True)
-    post_mapping = package_config.snapshot_mapping(use_pre_id=False)
+    pre_mapping = package_config.snapshot_mapping_deprecated(use_pre_id=True)
+    post_mapping = package_config.snapshot_mapping_deprecated(use_pre_id=False)
 
     _rmtree(package_dir, 'placeholders')
     placeholder_dir = package_dir / 'placeholders'
@@ -194,7 +194,7 @@ def create_changed_placeholders(package_dir: Path):
 def copy_files(package_dir: Path, *, use_pre_id: bool):
     package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     _rmtree(package_dir, 'files')
-    for snapper_name, snapshot_id in package_config.snapshot_mapping(use_pre_id=use_pre_id).items():
+    for snapper_name, snapshot_id in package_config.snapshot_mapping_deprecated(use_pre_id=use_pre_id).items():
         snapper = Snapper(snapper_name)
         ls_dir = package_dir / 'placeholders' / _strip_placeholders(snapper.get_mountpoint())
         try:

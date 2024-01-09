@@ -25,7 +25,7 @@ class PackageConfig(JsonSerializableMixin):
     programs_removed: list[str] = field(default_factory=list)
     version: str = "0.0.1"
 
-    def snapshot_mapping(self, *, use_pre_id: bool, index: int = -1) -> SnapshotMapping:
+    def snapshot_mapping_deprecated(self, *, use_pre_id: bool, index: int = -1) -> SnapshotMapping:
         snapshot = self.snapshots_deprecated[index]
         mapping: dict[str, int]
         if use_pre_id:
