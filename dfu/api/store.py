@@ -9,8 +9,8 @@ class Store:
     _state: State
     _callbacks: set[Callback]
 
-    def __init__(self):
-        self._state = State()
+    def __init__(self, state: State):
+        self._state = state
         self._callbacks = set()
 
     def subscribe(self, callback: Callback):

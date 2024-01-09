@@ -4,18 +4,17 @@ from pathlib import Path
 import pytest
 
 from dfu.api.state import State
+from dfu.config import Config
 from dfu.package.package_config import PackageConfig
 
 
-def test_state_is_immutable(package_config: PackageConfig):
-    state = State(package_config=package_config)
+def test_state_is_immutable(config: Config, package_config: PackageConfig):
+    state = State(config=config, package_dir=Path("test"), package_config=package_config)
     with pytest.raises(FrozenInstanceError):
-        state.package_dir = Path("test")
+        state.package_dir = Path("test2")
 
 
-def test_update_state(package_config: PackageConfig):
-    state = State()
-    state = state.update(package_config=package_config, package_dir=Path("test"))
-    assert state == State(package_config=package_config, package_dir=Path("test"))
-    state = state.update(package_dir=None)
-    assert state == State(package_config=package_config)
+def test_update_state(config: Config, package_config: PackageConfig):
+    state = State(config=config, package_dir=Path("test"), package_config=package_config)
+    state = state.update(package_config=package_config, package_dir=Path("test2"))
+    assert state == State(config=config, package_dir=Path("test2"), package_config=package_config)

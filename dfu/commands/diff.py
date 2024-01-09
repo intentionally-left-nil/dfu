@@ -23,7 +23,6 @@ from dfu.snapshots.snapper import Snapper
 
 
 def begin_diff(store: Store, *, from_index: int, to_index: int):
-    assert store.state.package_config and store.state.package_dir
     from_index = _normalize_snapshot_index(store.state.package_config, from_index)
     to_index = _normalize_snapshot_index(store.state.package_config, to_index)
     dfu_diff_path = store.state.package_dir / '.dfu-diff'
@@ -36,7 +35,6 @@ def begin_diff(store: Store, *, from_index: int, to_index: int):
 
 
 def abort_diff(store: Store):
-    assert store.state.package_dir is not None
     click.echo("Cleaning up...", err=True)
     _rmtree(store.state.package_dir, 'placeholders')
     _rmtree(store.state.package_dir, 'files')
@@ -45,7 +43,6 @@ def abort_diff(store: Store):
 
 
 def continue_diff(store: Store):
-    assert store.state.package_dir
     diff = DfuDiff.from_file(store.state.package_dir / '.dfu-diff')
     if not diff.created_placeholders:
         click.echo("Creating placeholder files...", err=True)
@@ -112,7 +109,6 @@ def continue_diff(store: Store):
 
 
 def update_installed_packages(store: Store, *, from_index: int, to_index: int):
-    assert store.state.package_dir and store.state.config and store.state.package_config
     if len(store.state.package_config.snapshots) < 2:
         raise ValueError('Did not create a successful pre/post snapshot pair')
     old_packages = get_installed_packages(store.state.config, store.state.package_config.snapshots[from_index])
@@ -122,12 +118,10 @@ def update_installed_packages(store: Store, *, from_index: int, to_index: int):
     store.state = store.state.update(
         package_config=store.state.package_config.update(programs_added=diff.added, programs_removed=diff.removed)
     )
-    assert store.state.package_config and store.state.package_dir
     store.state.package_config.write(store.state.package_dir / "dfu_config.json")
 
 
 def create_changed_placeholders(store: Store, *, from_index: int, to_index: int):
-    assert store.state.package_dir and store.state.package_config
     # This method has been performance optimized in several places. Take care when modifying the file for both correctness and speed
     pre_snapshot = store.state.package_config.snapshots[from_index]
     post_snapshot = store.state.package_config.snapshots[to_index]
@@ -180,7 +174,6 @@ def create_changed_placeholders(store: Store, *, from_index: int, to_index: int)
 
 
 def copy_files(store: Store, *, snapshot_index):
-    assert store.state.package_config and store.state.package_dir
     _rmtree(store.state.package_dir, 'files')
     for snapper_name, snapshot_id in store.state.package_config.snapshots[snapshot_index].items():
         snapper = Snapper(snapper_name)
@@ -205,7 +198,6 @@ def copy_files(store: Store, *, snapshot_index):
 
 
 def create_base_branch(store: Store, diff: DfuDiff):
-    assert store.state.package_dir
     branch_name = _branch_name(diff.from_index)
     click.echo(f"Creating base branch {branch_name}...", err=True)
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
@@ -216,7 +208,6 @@ def create_base_branch(store: Store, diff: DfuDiff):
 
 
 def create_target_branch(store: Store, diff: DfuDiff):
-    assert store.state.package_dir
     if not diff.created_base_branch:
         raise ValueError('Cannot create target branch without a base branch')
     git_checkout(store.state.package_dir, _branch_name(diff.from_index), exist_ok=True)

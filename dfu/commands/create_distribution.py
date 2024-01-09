@@ -6,7 +6,6 @@ from dfu.package.package_config import PackageConfig
 
 
 def create_distribution(store: Store):
-    assert store.state.package_dir and store.state.package_config
     patch_file = store.state.package_dir / 'changes.patch'
     patch = patch_file.read_text() if patch_file.exists() else None
     pkgbuild = to_pkgbuild(store.state.package_config, patch)

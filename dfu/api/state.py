@@ -7,9 +7,9 @@ from dfu.package.package_config import PackageConfig
 
 @dataclass(frozen=True)
 class State:
-    config: Config | None = None
-    package_dir: Path | None = None
-    package_config: PackageConfig | None = None
+    config: Config
+    package_dir: Path
+    package_config: PackageConfig
 
     def update(self, **kwargs) -> 'State':
         return replace(self, **kwargs)

@@ -7,7 +7,6 @@ from dfu.snapshots.snapper import Snapper
 
 
 def create_snapshot(store: Store):
-    assert store.state.config and store.state.package_config and store.state.package_dir
     snapshot: dict[str, int] = {}
     for snapper_config in store.state.config.btrfs.snapper_configs:
         snapper = Snapper(snapper_config)
