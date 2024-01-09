@@ -4,6 +4,7 @@ from pathlib import Path
 
 import click
 
+from dfu.api.store import Store
 from dfu.commands import (
     abort_diff,
     begin_diff,
@@ -52,9 +53,9 @@ def init(name: str | None, description: str | None):
 
 @main.command()
 def snap():
-    config = load_config()
-    package_dir = find_package_dir()
-    create_snapshot(config, package_dir)
+    store = Store()
+    store.state = store.state.update(config=load_config(), package_dir=find_package_dir())
+    create_snapshot(store)
 
 
 @main.command()
