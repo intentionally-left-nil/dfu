@@ -191,10 +191,10 @@ def create_changed_placeholders(package_dir: Path):
             path.write_text(f"PLACEHOLDER: {delta.action}\n")
 
 
-def copy_files(package_dir: Path, *, use_pre_id: bool):
+def copy_files(package_dir: Path, *, snapshot_index):
     package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     _rmtree(package_dir, 'files')
-    for snapper_name, snapshot_id in package_config.snapshots[0].items():
+    for snapper_name, snapshot_id in package_config.snapshots[snapshot_index].items():
         snapper = Snapper(snapper_name)
         ls_dir = package_dir / 'placeholders' / _strip_placeholders(snapper.get_mountpoint())
         try:
@@ -220,7 +220,7 @@ def create_base_branch(package_dir: Path, diff: DfuDiff):
     branch_name = f"base-{_rand_slug()}"
     click.echo(f"Creating base branch {branch_name}...", err=True)
     git_checkout(package_dir, branch_name, exist_ok=False)
-    copy_files(package_dir, use_pre_id=True)
+    copy_files(package_dir, snapshot_index=0)
     git_add(package_dir, ['files'])
     diff.base_branch = branch_name
     diff.write(package_dir / '.dfu-diff')
@@ -234,7 +234,7 @@ def create_target_branch(package_dir: Path, diff: DfuDiff):
     branch_name = f"target-{_rand_slug()}"
     click.echo(f"Creating target branch {branch_name}...", err=True)
     git_checkout(package_dir, branch_name, exist_ok=False)
-    copy_files(package_dir, use_pre_id=False)
+    copy_files(package_dir, snapshot_index=-1)
     git_add(package_dir, ['files'])
     diff.target_branch = branch_name
     diff.write(package_dir / '.dfu-diff')
