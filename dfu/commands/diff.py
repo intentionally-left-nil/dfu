@@ -119,9 +119,11 @@ def update_installed_packages(store: Store, *, from_index: int, to_index: int):
     new_packages = get_installed_packages(store.state.config, store.state.package_config.snapshots[to_index])
 
     diff = diff_packages(old_packages, new_packages)
-    package_config.programs_added = diff.added
-    package_config.programs_removed = diff.removed
-    package_config.write(store.state.package_dir / "dfu_config.json")
+    store.state = store.state.update(
+        package_config=store.state.package_config.update(programs_added=diff.added, programs_removed=diff.removed)
+    )
+    assert store.state.package_config and store.state.package_dir
+    store.state.package_config.write(store.state.package_dir / "dfu_config.json")
 
 
 def create_changed_placeholders(store: Store, *, from_index: int, to_index: int):
