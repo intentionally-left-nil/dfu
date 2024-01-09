@@ -13,35 +13,38 @@ class ValidConfigTest:
     test_id: str
     name: str = "expected_name"
     description: str | None = "expected_description"
-    snapshots: list[dict[str, dict]] = field(default_factory=list)
+    snapshots_deprecated: list[dict[str, dict]] = field(default_factory=list)
 
 
 valid_config_tests = [
     ValidConfigTest(test_id="empty"),
-    ValidConfigTest(test_id="one snapshot with a pre_id", snapshots=[{"root": {"pre_id": 1}}]),
-    ValidConfigTest(test_id="one snapshot with a pre and post id", snapshots=[{"root": {"pre_id": 1, "post_id": 2}}]),
+    ValidConfigTest(test_id="one snapshot with a pre_id", snapshots_deprecated=[{"root": {"pre_id": 1}}]),
+    ValidConfigTest(
+        test_id="one snapshot with a pre and post id", snapshots_deprecated=[{"root": {"pre_id": 1, "post_id": 2}}]
+    ),
     ValidConfigTest(
         test_id="one snapshot with two volumes, both having a pre id",
-        snapshots=[{"root": {"pre_id": 1}, "home": {"pre_id": 2}}],
+        snapshots_deprecated=[{"root": {"pre_id": 1}, "home": {"pre_id": 2}}],
     ),
     ValidConfigTest(
         test_id="one snapshot with a full root, but only a pre id for home",
-        snapshots=[{"root": {"pre_id": 1, "post_id": 2}, "home": {"pre_id": 3}}],
+        snapshots_deprecated=[{"root": {"pre_id": 1, "post_id": 2}, "home": {"pre_id": 3}}],
     ),
     ValidConfigTest(
         test_id="one snapshot with two volumes, both having a pre and post id",
-        snapshots=[{"root": {"pre_id": 1, "post_id": 2}, "home": {"pre_id": 3, "post_id": 4}}],
+        snapshots_deprecated=[{"root": {"pre_id": 1, "post_id": 2}, "home": {"pre_id": 3, "post_id": 4}}],
     ),
     ValidConfigTest(
-        test_id="two snapshots with a pre_id", snapshots=[{"root": {"pre_id": 1}}, {"root": {"pre_id": 2}}]
+        test_id="two snapshots_deprecated with a pre_id",
+        snapshots_deprecated=[{"root": {"pre_id": 1}}, {"root": {"pre_id": 2}}],
     ),
     ValidConfigTest(
-        test_id="two snapshots where the first one is full",
-        snapshots=[{"root": {"pre_id": 1, "post_id": 2}}, {"root": {"pre_id": 3}}],
+        test_id="two snapshots_deprecated where the first one is full",
+        snapshots_deprecated=[{"root": {"pre_id": 1, "post_id": 2}}, {"root": {"pre_id": 3}}],
     ),
     ValidConfigTest(
-        test_id="two snapshots where the directories are different",
-        snapshots=[{"root": {"pre_id": 1, "post_id": 2}}, {"home": {"pre_id": 3, "post_id": 4}}],
+        test_id="two snapshots_deprecated where the directories are different",
+        snapshots_deprecated=[{"root": {"pre_id": 1, "post_id": 2}}, {"home": {"pre_id": 3, "post_id": 4}}],
     ),
 ]
 
@@ -52,9 +55,9 @@ def test_valid_configs(test: ValidConfigTest):
     actual = PackageConfig.from_json(json_data)
     expected_snapshots = [
         {k: Snapshot(pre_id=v['pre_id'], post_id=v.get('post_id', None)) for k, v in item.items()}
-        for item in test.snapshots
+        for item in test.snapshots_deprecated
     ]
-    expected = PackageConfig(name=test.name, description=test.description, snapshots=expected_snapshots)
+    expected = PackageConfig(name=test.name, description=test.description, snapshots_deprecated=expected_snapshots)
     assert actual == expected
 
 
@@ -63,7 +66,7 @@ def config() -> PackageConfig:
     return PackageConfig(
         name='expected_name',
         description='expected_description',
-        snapshots=[
+        snapshots_deprecated=[
             {"root": Snapshot(pre_id=1, post_id=2), "home": Snapshot(pre_id=3, post_id=4)},
             {"root": Snapshot(pre_id=5, post_id=6), "home": Snapshot(pre_id=7, post_id=8)},
         ],
@@ -86,7 +89,7 @@ class TestSnapshotMapping:
         config = PackageConfig(
             name='expected_name',
             description='expected_description',
-            snapshots=[
+            snapshots_deprecated=[
                 {"root": Snapshot(pre_id=1), "home": Snapshot(pre_id=2)},
                 {"root": Snapshot(pre_id=3), "home": Snapshot(pre_id=4)},
             ],

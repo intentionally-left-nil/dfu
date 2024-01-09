@@ -127,7 +127,7 @@ def continue_diff(config: Config, package_dir: Path):
 
 def update_installed_packages(config: Config, package_dir: Path):
     package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
-    if len(package_config.snapshots) == 0:
+    if len(package_config.snapshots_deprecated) == 0:
         raise ValueError('Did not create a successful pre/post snapshot pair')
     old_packages = get_installed_packages(config, package_config.snapshot_mapping(use_pre_id=True))
     new_packages = get_installed_packages(config, package_config.snapshot_mapping(use_pre_id=False))

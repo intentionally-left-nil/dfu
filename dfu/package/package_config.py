@@ -19,13 +19,13 @@ SnapshotMapping = dict[str, int]
 class PackageConfig(JsonSerializableMixin):
     name: str
     description: str | None
-    snapshots: list[dict[str, Snapshot]] = field(default_factory=list)
+    snapshots_deprecated: list[dict[str, Snapshot]] = field(default_factory=list)
     programs_added: list[str] = field(default_factory=list)
     programs_removed: list[str] = field(default_factory=list)
     version: str = "0.0.1"
 
     def snapshot_mapping(self, *, use_pre_id: bool, index: int = -1) -> SnapshotMapping:
-        snapshot = self.snapshots[index]
+        snapshot = self.snapshots_deprecated[index]
         mapping: dict[str, int]
         if use_pre_id:
             mapping = {k: v.pre_id for k, v in snapshot.items()}
