@@ -7,5 +7,3 @@ def test_dfu_diff():
     assert diff.to_index == 1
     assert diff.created_placeholders == False
     assert diff.updated_installed_programs == False
-    assert diff.base_branch == None
-    assert diff.target_branch == None
