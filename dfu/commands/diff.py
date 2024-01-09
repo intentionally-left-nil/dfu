@@ -115,7 +115,7 @@ def continue_diff(config: Config, package_dir: Path):
 
     if not diff.updated_installed_programs:
         click.echo("Detecting which programs were installed and removed...", err=True)
-        update_installed_packages(config, package_dir)
+        update_installed_packages(config, package_dir, from_index=diff.from_index, to_index=diff.to_index)
         diff.updated_installed_programs = True
         diff.write(package_dir / '.dfu-diff')
         click.echo("Updated the installed programs", err=True)
@@ -125,12 +125,12 @@ def continue_diff(config: Config, package_dir: Path):
     abort_diff(package_dir)
 
 
-def update_installed_packages(config: Config, package_dir: Path):
+def update_installed_packages(config: Config, package_dir: Path, *, from_index: int, to_index: int):
     package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     if len(package_config.snapshots) < 2:
         raise ValueError('Did not create a successful pre/post snapshot pair')
-    old_packages = get_installed_packages(config, package_config.snapshots[0])
-    new_packages = get_installed_packages(config, package_config.snapshots[-1])
+    old_packages = get_installed_packages(config, package_config.snapshots[from_index])
+    new_packages = get_installed_packages(config, package_config.snapshots[to_index])
 
     diff = diff_packages(old_packages, new_packages)
     package_config.programs_added = diff.added
