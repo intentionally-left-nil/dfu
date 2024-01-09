@@ -52,7 +52,7 @@ def init(name: str | None, description: str | None):
 
 
 @main.command()
-def begin():
+def snap():
     config = load_config()
     package_dir = find_package_dir()
     create_snapshot(config, package_dir)
