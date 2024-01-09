@@ -47,7 +47,7 @@ class Snapper:
                 self.snapper_name,
                 'create',
                 '--type',
-                'pre',
+                'single',
                 '--print-number',
                 '--description',
                 description,
