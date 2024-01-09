@@ -1,7 +1,16 @@
 from dataclasses import dataclass, field, replace
 from pathlib import Path
+from typing import TypedDict, Unpack
 
 from dfu.helpers.json_serializable import JsonSerializableMixin
+
+
+class UpdateArgs(TypedDict, total=False):
+    description: str | None
+    snapshots: list[dict[str, int]]
+    programs_added: list[str]
+    programs_removed: list[str]
+    version: str
 
 
 @dataclass(frozen=True)
@@ -13,7 +22,7 @@ class PackageConfig(JsonSerializableMixin):
     programs_removed: list[str] = field(default_factory=list)
     version: str = "0.0.1"
 
-    def update(self, **kwargs) -> 'PackageConfig':
+    def update(self, **kwargs: Unpack[UpdateArgs]) -> 'PackageConfig':
         return replace(self, **kwargs)
 
 
