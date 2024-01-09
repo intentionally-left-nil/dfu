@@ -1,6 +1,4 @@
-import random
 import re
-import string
 import subprocess
 from pathlib import Path
 from shutil import rmtree
@@ -16,14 +14,9 @@ from dfu.revision.git import (
     git_add,
     git_check_ignore,
     git_checkout,
-    git_current_branch,
     git_default_branch,
-    git_delete_branch,
     git_diff,
     git_ls_files,
-    git_reset_branch,
-    git_stash,
-    git_stash_pop,
 )
 from dfu.snapshots.snapper import Snapper
 
@@ -42,20 +35,8 @@ def abort_diff(package_dir: Path):
     click.echo("Cleaning up...", err=True)
     _rmtree(package_dir, 'placeholders')
     _rmtree(package_dir, 'files')
-    try:
-        diff = DfuDiff.from_file(package_dir / '.dfu-diff')
-    except FileNotFoundError:
-        # The diff file doesn't exist, so there's nothing to abort
-        return
-
-    git_checkout(package_dir, git_default_branch(package_dir), exist_ok=True)
-    if diff.base_branch:
-        git_delete_branch(package_dir, diff.base_branch)
-
-    if diff.target_branch:
-        git_delete_branch(package_dir, diff.target_branch)
-
     (package_dir / '.dfu-diff').unlink(missing_ok=True)
+    git_checkout(package_dir, git_default_branch(package_dir), exist_ok=True)
 
 
 def continue_diff(config: Config, package_dir: Path):
@@ -76,12 +57,12 @@ def continue_diff(config: Config, package_dir: Path):
         )
         return
 
-    if not diff.base_branch:
+    if not diff.created_base_branch:
         create_base_branch(package_dir, diff)
         click.echo(
             dedent(
                 """\
-                The files/ directory is now populated with the contents at the time of `dfu begin`
+                The files/ directory is now populated with the contents at the time of the initial `dfu snap`
                 Make sure all the files here are what you wish to track. Then, commit ONLY the files/ directory to this base branch.
                 After you've git committed any changes to the base branch, run `dfu diff --continue`."""
             ),
@@ -89,12 +70,12 @@ def continue_diff(config: Config, package_dir: Path):
         )
         return
 
-    if not diff.target_branch:
+    if not diff.created_target_branch:
         create_target_branch(package_dir, diff)
         click.echo(
             dedent(
                 """\
-                The files/ directory is now populated with the contents at the time of `dfu end`
+                The files/ directory is now populated with the contents at the time of the final `dfu snap`
                 This represents the git diff for the files that were changed between the two snapshots.
                 Double-check that the final git diff is correct. If it is, commit ONLY the files/ directory to this target branch.
                 After you've git committed any changes to the target branch, run `dfu diff --continue`."""
@@ -121,7 +102,6 @@ def continue_diff(config: Config, package_dir: Path):
         click.echo("Updated the installed programs", err=True)
 
     click.echo("Deleting the temporary base and target branches...", err=True)
-    update_primary_branches(package_dir, diff)
     abort_diff(package_dir)
 
 
@@ -217,52 +197,34 @@ def copy_files(package_dir: Path, *, snapshot_index):
 
 
 def create_base_branch(package_dir: Path, diff: DfuDiff):
-    branch_name = f"base-{_rand_slug()}"
+    branch_name = _branch_name(diff.from_index)
     click.echo(f"Creating base branch {branch_name}...", err=True)
     git_checkout(package_dir, branch_name, exist_ok=False)
     copy_files(package_dir, snapshot_index=diff.from_index)
     git_add(package_dir, ['files'])
-    diff.base_branch = branch_name
+    diff.created_base_branch = True
     diff.write(package_dir / '.dfu-diff')
 
 
 def create_target_branch(package_dir: Path, diff: DfuDiff):
-    if diff.base_branch is None:
+    if not diff.created_base_branch:
         raise ValueError('Cannot create target branch without a base branch')
-    git_checkout(package_dir, diff.base_branch, exist_ok=True)
+    git_checkout(package_dir, _branch_name(diff.from_index), exist_ok=True)
 
-    branch_name = f"target-{_rand_slug()}"
+    branch_name = _branch_name(diff.to_index)
     click.echo(f"Creating target branch {branch_name}...", err=True)
     git_checkout(package_dir, branch_name, exist_ok=False)
     copy_files(package_dir, snapshot_index=diff.to_index)
     git_add(package_dir, ['files'])
-    diff.target_branch = branch_name
+    diff.created_target_branch = True
     diff.write(package_dir / '.dfu-diff')
 
 
 def create_patch_file(package_dir: Path, diff: DfuDiff):
-    if diff.base_branch is None or diff.target_branch is None:
+    if not diff.created_base_branch or not diff.created_target_branch:
         raise ValueError('Cannot create a patch file without a base and target branch')
-    patch = git_diff(package_dir, diff.base_branch, diff.target_branch)
+    patch = git_diff(package_dir, _branch_name(diff.from_index), _branch_name(diff.to_index))
     (package_dir / 'changes.patch').write_text(patch)
-
-
-def update_primary_branches(package_dir: Path, diff: DfuDiff):
-    git_add(package_dir, [package_dir])
-    current_branch = git_current_branch(package_dir)
-    git_stash(package_dir)
-    if diff.base_branch is None or diff.target_branch is None:
-        raise ValueError('Cannot update primary branches without a base and target branch')
-
-    git_checkout(package_dir, diff.base_branch, exist_ok=True)
-    git_checkout(package_dir, "base", exist_ok=True)
-    git_reset_branch(package_dir, diff.base_branch)
-
-    git_checkout(package_dir, "target", exist_ok=True)
-    git_reset_branch(package_dir, diff.target_branch)
-
-    git_checkout(package_dir, current_branch, exist_ok=True)
-    git_stash_pop(package_dir)
 
 
 def _rmtree(package_dir: Path, subdir: str):
@@ -275,5 +237,5 @@ def _strip_placeholders(p: Path | str) -> str:
     return re.sub(r'^placeholders/', '', str(p)).lstrip('/')
 
 
-def _rand_slug(length=10):
-    return ''.join(random.choice(string.ascii_lowercase) for _ in range(length))
+def _branch_name(snapshot_index: int) -> str:
+    return f"snapshot_{snapshot_index}"
