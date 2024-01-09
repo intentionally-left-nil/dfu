@@ -2,13 +2,13 @@ import subprocess
 from collections import namedtuple
 
 from dfu.config import Config
-from dfu.package.package_config import SnapshotMapping
+from dfu.package.package_config import SnapshotMappingDeprecated
 from dfu.snapshots.proot import proot
 
 Diff = namedtuple('Diff', ['added', 'removed'])
 
 
-def get_installed_packages(config: Config, snapshot_mapping_deprecated: SnapshotMapping | None = None):
+def get_installed_packages(config: Config, snapshot_mapping_deprecated: SnapshotMappingDeprecated | None = None):
     args = ['pacman', '-Qqe']
     if snapshot_mapping_deprecated:
         args = proot(args, config=config, snapshot_mapping_deprecated=snapshot_mapping_deprecated)

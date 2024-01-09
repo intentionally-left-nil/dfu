@@ -1,9 +1,9 @@
 from dfu.config import Config
-from dfu.package.package_config import SnapshotMapping
+from dfu.package.package_config import SnapshotMappingDeprecated
 from dfu.snapshots.snapper import Snapper
 
 
-def proot(args: list[str], config: Config, snapshot_mapping_deprecated: SnapshotMapping) -> list[str]:
+def proot(args: list[str], config: Config, snapshot_mapping_deprecated: SnapshotMappingDeprecated) -> list[str]:
     mount_order = [x for x in config.btrfs.snapper_configs if x in snapshot_mapping_deprecated]
     if len(mount_order) == 0:
         raise ValueError('No snapshots to mount')
