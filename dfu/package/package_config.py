@@ -7,36 +7,13 @@ from dfu.helpers.json_serializable import JsonSerializableMixin
 
 
 @dataclass
-class SnapshotDeprecated:
-    pre_id: int
-    post_id: int | None = None
-
-
-SnapshotMappingDeprecated = dict[str, int]
-
-
-@dataclass
 class PackageConfig(JsonSerializableMixin):
     name: str
     description: str | None
-    snapshots_deprecated: list[dict[str, SnapshotDeprecated]] = field(default_factory=list)
     snapshots: list[dict[str, int]] = field(default_factory=list)
     programs_added: list[str] = field(default_factory=list)
     programs_removed: list[str] = field(default_factory=list)
     version: str = "0.0.1"
-
-    def snapshot_mapping_deprecated(self, *, use_pre_id: bool, index: int = -1) -> SnapshotMappingDeprecated:
-        snapshot = self.snapshots_deprecated[index]
-        mapping: dict[str, int]
-        if use_pre_id:
-            mapping = {k: v.pre_id for k, v in snapshot.items()}
-        else:
-            mapping = {}
-            for k, v in snapshot.items():
-                if v.post_id is None:
-                    raise ValueError("Post-snapshot does not exist")
-                mapping[k] = v.post_id
-        return mapping
 
 
 def find_package_config(path: Path) -> Path | None:
