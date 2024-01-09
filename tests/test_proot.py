@@ -10,17 +10,17 @@ from dfu.snapshots.snapper import Snapper
 
 def test_proot_raises_if_no_snapshots(config: Config):
     with pytest.raises(ValueError, match="No snapshots to mount"):
-        proot(["hello"], config=config, snapshot_mapping={})
+        proot(["hello"], config=config, snapshot={})
 
 
 def test_proot_raises_if_config_mismatch(config: Config):
     with pytest.raises(ValueError, match="Not all snapshots are listed in the snapper_configs section of the config"):
-        proot(["hello"], config=config, snapshot_mapping={"home": 1, "missing": 2})
+        proot(["hello"], config=config, snapshot={"home": 1, "missing": 2})
 
 
 def test_proot_wraps_with_correct_args(config: Config):
     with patch.object(Snapper, 'get_mountpoint', new=lambda self: Path(f"/{self.snapper_name}")):
-        args = proot(["hello", "world"], config=config, snapshot_mapping={"root": 1, "home": 2, "log": 3})
+        args = proot(["hello", "world"], config=config, snapshot={"root": 1, "home": 2, "log": 3})
         assert args == [
             "sudo",
             "proot",

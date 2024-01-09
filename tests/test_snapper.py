@@ -46,49 +46,26 @@ def test_get_mountpoint_subprocess_error(mock_run):
 
 
 @patch('subprocess.run')
-def test_create_pre_snapshot_success(mock_run):
+def test_create_snapshot_success(mock_run):
     mock_run.return_value = Mock(stdout='1\n')
     snapper = Snapper('test')
-    assert snapper.create_pre_snapshot('description') == 1
+    assert snapper.create_snapshot('description') == 1
 
 
 @patch('subprocess.run')
-def test_create_pre_snapshot_subprocess_error(mock_run):
+def test_create_snapshot_subprocess_error(mock_run):
     mock_run.side_effect = subprocess.CalledProcessError(1, 'cmd')
     snapper = Snapper('test')
     with pytest.raises(subprocess.CalledProcessError):
-        snapper.create_pre_snapshot('description')
+        snapper.create_snapshot('description')
 
 
 @patch('subprocess.run')
-def test_create_pre_snapshot_invalid_output(mock_run):
+def test_create_snapshot_invalid_output(mock_run):
     mock_run.return_value = Mock(stdout='not a number\n')
     snapper = Snapper('test')
     with pytest.raises(ValueError):
-        snapper.create_pre_snapshot('description')
-
-
-@patch('subprocess.run')
-def test_create_post_snapshot_success(mock_run):
-    mock_run.return_value = Mock(stdout='2\n')
-    snapper = Snapper('test')
-    assert snapper.create_post_snapshot(1, 'description') == 2
-
-
-@patch('subprocess.run')
-def test_create_post_snapshot_subprocess_error(mock_run):
-    mock_run.side_effect = subprocess.CalledProcessError(1, 'cmd')
-    snapper = Snapper('test')
-    with pytest.raises(subprocess.CalledProcessError):
-        snapper.create_post_snapshot(1, 'description')
-
-
-@patch('subprocess.run')
-def test_create_post_snapshot_invalid_output(mock_run):
-    mock_run.return_value = Mock(stdout='not a number\n')
-    snapper = Snapper('test')
-    with pytest.raises(ValueError):
-        snapper.create_post_snapshot(1, 'description')
+        snapper.create_snapshot('description')
 
 
 @patch('subprocess.run')

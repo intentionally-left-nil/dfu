@@ -11,8 +11,7 @@ from dfu.commands import (
     create_config,
     create_distribution,
     create_package,
-    create_post_snapshot,
-    create_pre_snapshot,
+    create_snapshot,
     get_config_paths,
     load_config,
 )
@@ -53,16 +52,10 @@ def init(name: str | None, description: str | None):
 
 
 @main.command()
-def begin():
+def snap():
     config = load_config()
     package_dir = find_package_dir()
-    create_pre_snapshot(config, package_dir)
-
-
-@main.command()
-def end():
-    package_dir = find_package_dir()
-    create_post_snapshot(package_dir)
+    create_snapshot(config, package_dir)
 
 
 @main.command()

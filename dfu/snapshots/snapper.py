@@ -38,7 +38,7 @@ class Snapper:
         config = json.loads(result.stdout)
         return Path(config['SUBVOLUME'])
 
-    def create_pre_snapshot(self, description: str) -> int:
+    def create_snapshot(self, description: str) -> int:
         result = subprocess.run(
             [
                 'sudo',
@@ -47,29 +47,7 @@ class Snapper:
                 self.snapper_name,
                 'create',
                 '--type',
-                'pre',
-                '--print-number',
-                '--description',
-                description,
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return int(result.stdout.strip())
-
-    def create_post_snapshot(self, pre_snapshot_id: int, description: str) -> int:
-        result = subprocess.run(
-            [
-                'sudo',
-                'snapper',
-                '-c',
-                self.snapper_name,
-                'create',
-                '--type',
-                'post',
-                '--pre-number',
-                str(pre_snapshot_id),
+                'single',
                 '--print-number',
                 '--description',
                 description,
