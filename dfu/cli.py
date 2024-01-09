@@ -61,7 +61,9 @@ def snap():
 @main.command()
 @click.option('--abort', is_flag=True, help='Abort the operation', default=None)
 @click.option('--continue', 'continue_', is_flag=True, help='Continue the rebase operation', default=None)
-def diff(abort: bool | None, continue_: bool | None):
+@click.option('--from', 'from_', type=int, default=0, help='Snapshot index to compute the before state')
+@click.option('--to', type=int, default=-1, help='Snapshot index to compute the end state')
+def diff(abort: bool | None, continue_: bool | None, from_: int, to: int):
     if abort and continue_:
         raise ValueError("Cannot specify both --abort and --continue")
     config = load_config()
@@ -71,7 +73,7 @@ def diff(abort: bool | None, continue_: bool | None):
     elif continue_:
         continue_diff(config, package_dir)
     else:
-        begin_diff(config, package_dir)
+        begin_diff(config, package_dir, from_index=from_, to_index=to)
 
 
 @main.command()
