@@ -28,9 +28,9 @@ from dfu.revision.git import (
 from dfu.snapshots.snapper import Snapper
 
 
-def begin_diff(config: Config, package_dir: Path):
+def begin_diff(config: Config, package_dir: Path, *, from_index: int, to_index: int):
     dfu_diff_path = package_dir / '.dfu-diff'
-    diff = DfuDiff()
+    diff = DfuDiff(from_index=from_index, to_index=to_index)
     try:
         diff.write(dfu_diff_path, mode="x")
     except FileExistsError:
@@ -62,7 +62,7 @@ def continue_diff(config: Config, package_dir: Path):
     diff = DfuDiff.from_file(package_dir / '.dfu-diff')
     if not diff.created_placeholders:
         click.echo("Creating placeholder files...", err=True)
-        create_changed_placeholders(package_dir)
+        create_changed_placeholders(package_dir, from_index=diff.from_index, to_index=diff.to_index)
         diff.created_placeholders = True
         diff.write(package_dir / '.dfu-diff')
         click.echo(
@@ -115,7 +115,7 @@ def continue_diff(config: Config, package_dir: Path):
 
     if not diff.updated_installed_programs:
         click.echo("Detecting which programs were installed and removed...", err=True)
-        update_installed_packages(config, package_dir)
+        update_installed_packages(config, package_dir, from_index=diff.from_index, to_index=diff.to_index)
         diff.updated_installed_programs = True
         diff.write(package_dir / '.dfu-diff')
         click.echo("Updated the installed programs", err=True)
@@ -125,12 +125,12 @@ def continue_diff(config: Config, package_dir: Path):
     abort_diff(package_dir)
 
 
-def update_installed_packages(config: Config, package_dir: Path):
+def update_installed_packages(config: Config, package_dir: Path, *, from_index: int, to_index: int):
     package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     if len(package_config.snapshots) < 2:
         raise ValueError('Did not create a successful pre/post snapshot pair')
-    old_packages = get_installed_packages(config, package_config.snapshots[0])
-    new_packages = get_installed_packages(config, package_config.snapshots[-1])
+    old_packages = get_installed_packages(config, package_config.snapshots[from_index])
+    new_packages = get_installed_packages(config, package_config.snapshots[to_index])
 
     diff = diff_packages(old_packages, new_packages)
     package_config.programs_added = diff.added
@@ -138,11 +138,11 @@ def update_installed_packages(config: Config, package_dir: Path):
     package_config.write(package_dir / "dfu_config.json")
 
 
-def create_changed_placeholders(package_dir: Path):
+def create_changed_placeholders(package_dir: Path, *, from_index: int, to_index: int):
     package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
     # This method has been performance optimized in several places. Take care when modifying the file for both correctness and speed
-    pre_snapshot = package_config.snapshots[0]
-    post_snapshot = package_config.snapshots[-1]
+    pre_snapshot = package_config.snapshots[from_index]
+    post_snapshot = package_config.snapshots[to_index]
 
     _rmtree(package_dir, 'placeholders')
     placeholder_dir = package_dir / 'placeholders'
@@ -220,7 +220,7 @@ def create_base_branch(package_dir: Path, diff: DfuDiff):
     branch_name = f"base-{_rand_slug()}"
     click.echo(f"Creating base branch {branch_name}...", err=True)
     git_checkout(package_dir, branch_name, exist_ok=False)
-    copy_files(package_dir, snapshot_index=0)
+    copy_files(package_dir, snapshot_index=diff.from_index)
     git_add(package_dir, ['files'])
     diff.base_branch = branch_name
     diff.write(package_dir / '.dfu-diff')
@@ -234,7 +234,7 @@ def create_target_branch(package_dir: Path, diff: DfuDiff):
     branch_name = f"target-{_rand_slug()}"
     click.echo(f"Creating target branch {branch_name}...", err=True)
     git_checkout(package_dir, branch_name, exist_ok=False)
-    copy_files(package_dir, snapshot_index=-1)
+    copy_files(package_dir, snapshot_index=diff.to_index)
     git_add(package_dir, ['files'])
     diff.target_branch = branch_name
     diff.write(package_dir / '.dfu-diff')
