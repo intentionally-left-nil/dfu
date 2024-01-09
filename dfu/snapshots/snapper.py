@@ -38,7 +38,7 @@ class Snapper:
         config = json.loads(result.stdout)
         return Path(config['SUBVOLUME'])
 
-    def create_pre_snapshot(self, description: str) -> int:
+    def create_snapshot(self, description: str) -> int:
         result = subprocess.run(
             [
                 'sudo',
