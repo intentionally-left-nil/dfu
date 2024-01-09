@@ -7,7 +7,7 @@ from dfu.helpers.json_serializable import JsonSerializableMixin
 
 
 @dataclass
-class Snapshot:
+class SnapshotDeprecated:
     pre_id: int
     post_id: int | None = None
 
@@ -19,7 +19,7 @@ SnapshotMappingDeprecated = dict[str, int]
 class PackageConfig(JsonSerializableMixin):
     name: str
     description: str | None
-    snapshots_deprecated: list[dict[str, Snapshot]] = field(default_factory=list)
+    snapshots_deprecated: list[dict[str, SnapshotDeprecated]] = field(default_factory=list)
     snapshots: list[dict[str, int]] = field(default_factory=list)
     programs_added: list[str] = field(default_factory=list)
     programs_removed: list[str] = field(default_factory=list)
