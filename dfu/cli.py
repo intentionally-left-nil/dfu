@@ -15,9 +15,8 @@ from dfu.commands import (
     create_package,
     create_snapshot,
     get_config_paths,
-    load_config,
+    load_store,
 )
-from dfu.package.package_config import PackageConfig, find_package_config
 from dfu.snapshots.snapper import Snapper
 
 
@@ -28,13 +27,6 @@ class NullableString(click.ParamType):
         if value == "":
             return None
         return value
-
-
-def find_package_dir(path: Path = Path.cwd()) -> Path:
-    config_path = find_package_config(path)
-    if not config_path:
-        raise ValueError("No dfu_config.json found in the current directory or any parent directory")
-    return config_path.parent
 
 
 @click.group()
@@ -54,11 +46,7 @@ def init(name: str | None, description: str | None):
 
 @main.command()
 def snap():
-    package_dir = find_package_dir()
-    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
-    state = State(config=load_config(), package_dir=package_dir, package_config=package_config)
-    store = Store(state)
-    create_snapshot(store)
+    create_snapshot(load_store())
 
 
 @main.command()
@@ -69,10 +57,7 @@ def snap():
 def diff(abort: bool | None, continue_: bool | None, from_: int, to: int):
     if abort and continue_:
         raise ValueError("Cannot specify both --abort and --continue")
-    package_dir = find_package_dir()
-    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
-    state = State(config=load_config(), package_dir=package_dir, package_config=package_config)
-    store = Store(state)
+    store = load_store()
     if abort:
         abort_diff(store)
     elif continue_:
@@ -83,11 +68,7 @@ def diff(abort: bool | None, continue_: bool | None, from_: int, to: int):
 
 @main.command()
 def dist():
-    package_dir = find_package_dir()
-    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
-    state = State(config=load_config(), package_dir=package_dir, package_config=package_config)
-    store = Store(state)
-    create_distribution(store)
+    create_distribution(load_store())
 
 
 @click.group
