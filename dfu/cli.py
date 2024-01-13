@@ -4,6 +4,8 @@ from pathlib import Path
 
 import click
 
+from dfu.api.state import State
+from dfu.api.store import Store
 from dfu.commands import (
     abort_diff,
     begin_diff,
@@ -15,8 +17,7 @@ from dfu.commands import (
     get_config_paths,
     load_config,
 )
-from dfu.config import Config
-from dfu.package.package_config import find_package_config
+from dfu.package.package_config import PackageConfig, find_package_config
 from dfu.snapshots.snapper import Snapper
 
 
@@ -53,9 +54,11 @@ def init(name: str | None, description: str | None):
 
 @main.command()
 def snap():
-    config = load_config()
     package_dir = find_package_dir()
-    create_snapshot(config, package_dir)
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
+    state = State(config=load_config(), package_dir=package_dir, package_config=package_config)
+    store = Store(state)
+    create_snapshot(store)
 
 
 @main.command()
@@ -66,20 +69,25 @@ def snap():
 def diff(abort: bool | None, continue_: bool | None, from_: int, to: int):
     if abort and continue_:
         raise ValueError("Cannot specify both --abort and --continue")
-    config = load_config()
     package_dir = find_package_dir()
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
+    state = State(config=load_config(), package_dir=package_dir, package_config=package_config)
+    store = Store(state)
     if abort:
-        abort_diff(package_dir)
+        abort_diff(store)
     elif continue_:
-        continue_diff(config, package_dir)
+        continue_diff(store)
     else:
-        begin_diff(config, package_dir, from_index=from_, to_index=to)
+        begin_diff(store, from_index=from_, to_index=to)
 
 
 @main.command()
 def dist():
     package_dir = find_package_dir()
-    create_distribution(package_dir)
+    package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
+    state = State(config=load_config(), package_dir=package_dir, package_config=package_config)
+    store = Store(state)
+    create_distribution(store)
 
 
 @click.group

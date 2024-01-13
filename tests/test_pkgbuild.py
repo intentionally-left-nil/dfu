@@ -12,10 +12,7 @@ def patch() -> str:
     return "".join(diff)
 
 
-def test_to_pkgbuild_no_patch_file():
-    package_config = PackageConfig(
-        name="test", description="my cool description", programs_added=["test1", "test2"], version="0.0.2"
-    )
+def test_to_pkgbuild_no_patch_file(package_config: PackageConfig):
     actual = to_pkgbuild(package_config, patch=None)
     expected = """\
 pkgname='test'
@@ -32,11 +29,7 @@ sha256sums=()
     assert actual == expected
 
 
-def test_to_pkgbuild(patch: str):
-    package_config = PackageConfig(
-        name="test", description="my cool description", programs_added=["test1", "test2"], version="0.0.2"
-    )
-
+def test_to_pkgbuild(patch: str, package_config: PackageConfig):
     actual = to_pkgbuild(package_config, patch=patch)
     expected = """\
 pkgname='test'

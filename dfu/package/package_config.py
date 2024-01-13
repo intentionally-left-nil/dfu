@@ -1,12 +1,19 @@
-import json
-import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
+from typing import TypedDict, Unpack
 
 from dfu.helpers.json_serializable import JsonSerializableMixin
 
 
-@dataclass
+class UpdateArgs(TypedDict, total=False):
+    description: str | None
+    snapshots: list[dict[str, int]]
+    programs_added: list[str]
+    programs_removed: list[str]
+    version: str
+
+
+@dataclass(frozen=True)
 class PackageConfig(JsonSerializableMixin):
     name: str
     description: str | None
@@ -14,6 +21,9 @@ class PackageConfig(JsonSerializableMixin):
     programs_added: list[str] = field(default_factory=list)
     programs_removed: list[str] = field(default_factory=list)
     version: str = "0.0.1"
+
+    def update(self, **kwargs: Unpack[UpdateArgs]) -> 'PackageConfig':
+        return replace(self, **kwargs)
 
 
 def find_package_config(path: Path) -> Path | None:
