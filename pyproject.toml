@@ -48,6 +48,9 @@ packages = ["dfu"]
 [project.scripts]
 dfu = "dfu.cli:main"
 
+[project.entry-points."dfu.plugin"]
+pacman = "dfu.plugins.pacman:entrypoint"
+
 [tool.hatch.envs.default]
 dependencies = [
   "pytest",

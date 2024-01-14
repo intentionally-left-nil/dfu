@@ -1,5 +1,6 @@
 from typing import Callable
 
+from dfu.api.plugin import DfuPlugin
 from dfu.api.state import State
 
 Callback = Callable[[State, State], None]
@@ -8,10 +9,15 @@ Callback = Callable[[State, State], None]
 class Store:
     _state: State
     _callbacks: set[Callback]
+    plugins: set[DfuPlugin]
 
     def __init__(self, state: State):
         self._state = state
         self._callbacks = set()
+        self.plugins = set()
+
+    def add_plugin(self, plugin: DfuPlugin):
+        self.plugins.add(plugin)
 
     def subscribe(self, callback: Callback):
         self._callbacks.add(callback)
