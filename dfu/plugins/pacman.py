@@ -30,8 +30,8 @@ class PacmanPlugin(DfuPlugin):
 
         self.store.state = self.store.state.update(
             package_config=self.store.state.package_config.update(
-                programs_added=added,
-                programs_removed=removed,
+                programs_added=tuple(added),
+                programs_removed=tuple(removed),
             ),
             diff=self.store.state.diff.update(updated_installed_programs=True),
         )
