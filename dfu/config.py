@@ -1,13 +1,14 @@
 import os
 import tomllib
 from dataclasses import dataclass
+from typing import Tuple
 
 from dataclass_wizard import fromdict
 
 
 @dataclass
 class Btrfs:
-    snapper_configs: list[str]
+    snapper_configs: Tuple[str, ...]
 
 
 @dataclass
