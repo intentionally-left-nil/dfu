@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from dfu.api.plugin import DfuPlugin
 from dfu.api.state import State
 from dfu.api.store import Callback, Store
 from dfu.config import Config
@@ -64,3 +65,10 @@ def test_state_setter_multiple_callbacks(state: State):
     store.state = new_state
     mock_callback1.assert_called_once_with(old_state, new_state)
     mock_callback2.assert_called_once_with(old_state, new_state)
+
+
+def test_add_plugin(state: State):
+    store = Store(state)
+    mock_plugin = Mock(spec=DfuPlugin)
+    store.add_plugin(mock_plugin)
+    assert mock_plugin in store.plugins
