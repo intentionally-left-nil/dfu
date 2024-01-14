@@ -47,7 +47,7 @@ def continue_diff(store: Store):
     if not diff.created_placeholders:
         click.echo("Creating placeholder files...", err=True)
         create_changed_placeholders(store, from_index=diff.from_index, to_index=diff.to_index)
-        diff.created_placeholders = True
+        diff = diff.update(created_placeholders=True)
         diff.write(store.state.package_dir / '.dfu-diff')
         click.echo(
             dedent(
@@ -93,14 +93,14 @@ def continue_diff(store: Store):
 
     if not diff.created_patch_file:
         create_patch_file(store.state.package_dir, diff)
-        diff.created_patch_file = True
+        diff = diff.update(created_patch_file=True)
         diff.write(store.state.package_dir / '.dfu-diff')
         click.echo("Created the changes.patch file", err=True)
 
     if not diff.updated_installed_programs:
         click.echo("Detecting which programs were installed and removed...", err=True)
         update_installed_packages(store, from_index=diff.from_index, to_index=diff.to_index)
-        diff.updated_installed_programs = True
+        diff = diff.update(updated_installed_programs=True)
         diff.write(store.state.package_dir / '.dfu-diff')
         click.echo("Updated the installed programs", err=True)
 
@@ -203,7 +203,7 @@ def create_base_branch(store: Store, diff: DfuDiff):
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
     copy_files(store, snapshot_index=diff.from_index)
     git_add(store.state.package_dir, ['files'])
-    diff.created_base_branch = True
+    diff = diff.update(created_base_branch=True)
     diff.write(store.state.package_dir / '.dfu-diff')
 
 
@@ -217,7 +217,7 @@ def create_target_branch(store: Store, diff: DfuDiff):
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
     copy_files(store, snapshot_index=diff.to_index)
     git_add(store.state.package_dir, ['files'])
-    diff.created_target_branch = True
+    diff = diff.update(created_target_branch=True)
     diff.write(store.state.package_dir / '.dfu-diff')
 
 
