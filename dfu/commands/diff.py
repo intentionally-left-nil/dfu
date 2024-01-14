@@ -6,9 +6,9 @@ from textwrap import dedent
 
 import click
 
+from dfu.api.plugin import Event
 from dfu.api.store import Store
 from dfu.config import Config
-from dfu.installed_packages.pacman import diff_packages, get_installed_packages
 from dfu.package.dfu_diff import DfuDiff
 from dfu.package.package_config import PackageConfig
 from dfu.revision.git import (
@@ -47,7 +47,7 @@ def continue_diff(store: Store):
     if not diff.created_placeholders:
         click.echo("Creating placeholder files...", err=True)
         create_changed_placeholders(store, from_index=diff.from_index, to_index=diff.to_index)
-        diff.created_placeholders = True
+        diff = diff.update(created_placeholders=True)
         diff.write(store.state.package_dir / '.dfu-diff')
         click.echo(
             dedent(
@@ -93,32 +93,19 @@ def continue_diff(store: Store):
 
     if not diff.created_patch_file:
         create_patch_file(store.state.package_dir, diff)
-        diff.created_patch_file = True
+        diff = diff.update(created_patch_file=True)
         diff.write(store.state.package_dir / '.dfu-diff')
         click.echo("Created the changes.patch file", err=True)
 
     if not diff.updated_installed_programs:
         click.echo("Detecting which programs were installed and removed...", err=True)
-        update_installed_packages(store, from_index=diff.from_index, to_index=diff.to_index)
-        diff.updated_installed_programs = True
+        store.dispatch(Event.TARGET_BRANCH_FINALIZED)
         diff.write(store.state.package_dir / '.dfu-diff')
+        store.state.package_config.write(store.state.package_dir / "dfu_config.json")
         click.echo("Updated the installed programs", err=True)
 
     click.echo("Deleting the temporary base and target branches...", err=True)
     abort_diff(store)
-
-
-def update_installed_packages(store: Store, *, from_index: int, to_index: int):
-    if len(store.state.package_config.snapshots) < 2:
-        raise ValueError('Did not create a successful pre/post snapshot pair')
-    old_packages = get_installed_packages(store.state.config, store.state.package_config.snapshots[from_index])
-    new_packages = get_installed_packages(store.state.config, store.state.package_config.snapshots[to_index])
-
-    diff = diff_packages(old_packages, new_packages)
-    store.state = store.state.update(
-        package_config=store.state.package_config.update(programs_added=diff.added, programs_removed=diff.removed)
-    )
-    store.state.package_config.write(store.state.package_dir / "dfu_config.json")
 
 
 def create_changed_placeholders(store: Store, *, from_index: int, to_index: int):
@@ -203,7 +190,7 @@ def create_base_branch(store: Store, diff: DfuDiff):
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
     copy_files(store, snapshot_index=diff.from_index)
     git_add(store.state.package_dir, ['files'])
-    diff.created_base_branch = True
+    diff = diff.update(created_base_branch=True)
     diff.write(store.state.package_dir / '.dfu-diff')
 
 
@@ -217,7 +204,7 @@ def create_target_branch(store: Store, diff: DfuDiff):
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
     copy_files(store, snapshot_index=diff.to_index)
     git_add(store.state.package_dir, ['files'])
-    diff.created_target_branch = True
+    diff = diff.update(created_target_branch=True)
     diff.write(store.state.package_dir / '.dfu-diff')
 
 

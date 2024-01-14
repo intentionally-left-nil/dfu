@@ -7,3 +7,7 @@ def test_dfu_diff():
     assert diff.to_index == 1
     assert diff.created_placeholders == False
     assert diff.updated_installed_programs == False
+
+    diff = diff.update(created_placeholders=True, updated_installed_programs=True)
+    assert diff.created_placeholders == True
+    assert diff.updated_installed_programs == True

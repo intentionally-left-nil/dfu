@@ -1,6 +1,6 @@
 from typing import Callable
 
-from dfu.api.plugin import DfuPlugin
+from dfu.api.plugin import DfuPlugin, Event
 from dfu.api.state import State
 
 Callback = Callable[[State, State], None]
@@ -24,6 +24,10 @@ class Store:
 
     def unsubscribe(self, callback: Callback):
         self._callbacks.remove(callback)
+
+    def dispatch(self, event: Event):
+        for plugin in self.plugins:
+            plugin.handle(event)
 
     @property
     def state(self):
