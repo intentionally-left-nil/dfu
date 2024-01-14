@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from enum import StrEnum, auto
-from typing import Literal
 
 
 class Event(StrEnum):
