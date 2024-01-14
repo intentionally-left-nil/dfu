@@ -19,9 +19,7 @@ class PacmanPlugin(DfuPlugin):
             self.update_installed_packages()
 
     def update_installed_packages(self):
-        if self.store.state.diff is None:
-            raise ValueError("state.diff is unexpectedly None")
-
+        assert self.store.state.diff
         old = self.get_installed_packages(self.store.state.diff.from_index)
         new = self.get_installed_packages(self.store.state.diff.to_index)
 

@@ -8,5 +8,5 @@ class Event(StrEnum):
 
 class DfuPlugin(ABC):
     @abstractmethod
-    def handle(self, event: Event):
+    def handle(self, event: Event):  # pragma: no cover
         pass
