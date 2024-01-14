@@ -50,6 +50,7 @@ dfu = "dfu.cli:main"
 
 [project.entry-points."dfu.plugin"]
 pacman = "dfu.plugins.pacman:entrypoint"
+autosave = "dfu.plugins.autosave:entrypoint"
 
 [tool.hatch.envs.default]
 dependencies = [
