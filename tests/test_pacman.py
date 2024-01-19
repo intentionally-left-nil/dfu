@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from pathlib import Path
+from types import MappingProxyType
 from unittest.mock import Mock, patch
 
 import pytest
@@ -22,7 +23,7 @@ def store(config: Config) -> Store:
             name="test",
             description="my cool description",
             programs_added=tuple(),
-            snapshots=({"root": 1, "home": 1}, {"root": 2, "home": 2}),
+            snapshots=(MappingProxyType({"root": 1, "home": 1}), MappingProxyType({"root": 2, "home": 2})),
             version="0.0.2",
         ),
         diff=DfuDiff(

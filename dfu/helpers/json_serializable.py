@@ -38,9 +38,8 @@ class JsonSerializableMixin:
             if len(args) == 2:
                 key_type: Any = args[0]
                 value_type: Any = args[1]
-                sub_type = Dict[key_type, value_type]
+                return MappingProxyType(msgspec.convert(obj, Dict[key_type, value_type]))
             else:
-                sub_type = dict
-            return MappingProxyType(msgspec.convert(obj, sub_type))
-        else:
-            raise NotImplementedError(f"Unknown type: {type(obj)}")
+                return MappingProxyType(msgspec.convert(obj, dict, dec_hook=cls.dec_hook))
+
+        raise NotImplementedError(f"Unknown type: {type(obj)}")

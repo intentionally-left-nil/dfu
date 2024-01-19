@@ -6,7 +6,7 @@ from dfu.api.plugin import DfuPlugin
 
 def test_plugin():
     class TestPlugin(DfuPlugin):
-        def handle(self):
+        def handle(self) -> None:
             pass
 
     entrypoint: Entrypoint = lambda store: TestPlugin()

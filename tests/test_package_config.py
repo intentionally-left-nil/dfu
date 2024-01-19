@@ -144,18 +144,18 @@ def test_mount_point_in_hierarchy(tmp_path):
 def test_package_config_is_immutable(package_config: PackageConfig):
     package_config = package_config.update(snapshots=(MappingProxyType({"root": 1}),))
     with pytest.raises(FrozenInstanceError):
-        package_config.name = "new_name"
+        package_config.name = "new_name"  # type: ignore
     with pytest.raises(FrozenInstanceError):
-        package_config.description = "new_description"
+        package_config.description = "new_description"  # type: ignore
 
     with pytest.raises(TypeError):
-        package_config.snapshots[0]["root"] = 5
+        package_config.snapshots[0]["root"] = 5  # type: ignore
 
     with pytest.raises(FrozenInstanceError):
-        package_config.snapshots += (MappingProxyType({"root": 2}),)
+        package_config.snapshots += (MappingProxyType({"root": 2}),)  # type: ignore
 
     with pytest.raises(FrozenInstanceError):
-        package_config.programs_added += ("test3",)
+        package_config.programs_added += ("test3",)  # type: ignore
 
     with pytest.raises(FrozenInstanceError):
-        package_config.programs_removed += ("test3",)
+        package_config.programs_removed += ("test3",)  # type: ignore

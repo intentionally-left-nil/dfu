@@ -13,7 +13,7 @@ from dfu.snapshots.snapper import Snapper
 from dfu.snapshots.sort_snapper_configs import sort_snapper_configs
 
 
-def create_config(file: Path, snapper_configs: list[str]):
+def create_config(file: Path, snapper_configs: tuple[str, ...]):
     all_subvolumes = set(get_all_subvolumes())
     all_snapper_configs = Snapper.get_configs()
     unknown_configs = set(snapper_configs) - set([c.name for c in all_snapper_configs])

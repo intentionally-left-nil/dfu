@@ -89,7 +89,7 @@ def config_init(snapper_config: list[str], file: str | None):
         snapper_config = [c.strip() for c in response.split(",") if c.strip()]
     if file is None:
         file = str(click.prompt("Where would you like to store the dfu config?", default=get_config_paths()[0]))
-    create_config(file=Path(file), snapper_configs=snapper_config)
+    create_config(file=Path(file), snapper_configs=tuple(*snapper_config))
 
 
 main.add_command(config)
