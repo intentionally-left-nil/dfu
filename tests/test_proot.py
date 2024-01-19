@@ -11,7 +11,7 @@ from dfu.snapshots.snapper import Snapper
 
 def test_proot_raises_if_no_snapshots(config: Config):
     with pytest.raises(ValueError, match="No snapshots to mount"):
-        proot(["hello"], config=config, snapshot={})
+        proot(["hello"], config=config, snapshot=MappingProxyType({}))
 
 
 def test_proot_raises_if_config_mismatch(config: Config):
