@@ -1,9 +1,11 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 
+import msgspec
 import pytest
-from dataclass_wizard.errors import MissingFields
+from msgspec import ValidationError
 
 from dfu.helpers.json_serializable import JsonSerializableMixin
 
@@ -28,7 +30,7 @@ def test_from_json():
 
 def test_from_json_missing_fields():
     json_data = '{"name": "Ash"}'
-    with pytest.raises(MissingFields):
+    with pytest.raises(ValidationError):
         Dog.from_json(json_data)
 
 
@@ -49,3 +51,54 @@ def test_write_exclusive_fails_if_file_exists(tmp_path: Path):
     (tmp_path / "dog.json").write_text("{}")
     with pytest.raises(FileExistsError):
         dog.write(tmp_path / "dog.json", mode="x")
+
+
+def test_mapping_proxy(tmp_path: Path):
+    @dataclass
+    class Inner(JsonSerializableMixin):
+        data: MappingProxyType[str, int]
+        untyped: MappingProxyType
+
+    @dataclass
+    class Outer(JsonSerializableMixin):
+        inner: Inner
+
+    outer = Outer(
+        inner=Inner(
+            data=MappingProxyType({"a": 1, "b": 2}),
+            untyped=MappingProxyType({"a": 1, "b": "not_an_int", "c": MappingProxyType({"d": "hello"})}),
+        )
+    )
+    outer.write(tmp_path / "example.json")
+    assert json.loads((tmp_path / "example.json").read_text()) == {
+        "inner": {"data": {"a": 1, "b": 2}, "untyped": {"a": 1, "b": "not_an_int", "c": {"d": "hello"}}}
+    }
+
+    assert Outer.from_file(tmp_path / "example.json") == Outer(
+        inner=Inner(
+            data=MappingProxyType({"a": 1, "b": 2}),
+            untyped=MappingProxyType({"a": 1, "b": "not_an_int", "c": MappingProxyType({"d": "hello"})}),
+        )
+    )
+
+
+def test_unknown_sub_types(tmp_path: Path):
+    class Custom:
+        def __init__(self, x: int = 0):
+            self.x = x
+
+        pass
+
+    @dataclass
+    class Example(JsonSerializableMixin):
+        custom: Custom
+
+    with pytest.raises(TypeError):
+        msgspec.json.encode(Custom())
+
+    example = Example(custom=Custom())
+    with pytest.raises(NotImplementedError):
+        example.write(tmp_path / "example.json")
+
+    with pytest.raises(NotImplementedError):
+        Example.from_json('{"custom": {}}')

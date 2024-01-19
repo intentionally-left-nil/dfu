@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from pathlib import Path
+from types import MappingProxyType
 from unittest.mock import Mock, patch
 
 import pytest
@@ -21,8 +22,8 @@ def store(config: Config) -> Store:
         package_config=PackageConfig(
             name="test",
             description="my cool description",
-            programs_added=[],
-            snapshots=[{"root": 1, "home": 1}, {"root": 2, "home": 2}],
+            programs_added=tuple(),
+            snapshots=(MappingProxyType({"root": 1, "home": 1}), MappingProxyType({"root": 2, "home": 2})),
             version="0.0.2",
         ),
         diff=DfuDiff(
@@ -68,7 +69,7 @@ def test_one_package_added(store: Store):
     after = 'package1\nnew_package\npackage2\npackage3\n'
     with mock_proot(store, before, after):
         store.dispatch(Event.TARGET_BRANCH_FINALIZED)
-    assert store.state.package_config.programs_added == ['new_package']
+    assert store.state.package_config.programs_added == ('new_package',)
 
 
 def test_trims_whitespace(store: Store):
@@ -82,13 +83,13 @@ package2
 '''
     with mock_proot(store, '', after):
         store.dispatch(Event.TARGET_BRANCH_FINALIZED)
-    assert store.state.package_config.programs_added == [
+    assert store.state.package_config.programs_added == (
         'leading_and_trailing_whitespace',
         'leading_whitespace',
         'package1',
         'package2',
         'package3',
-    ]
+    )
 
 
 def test_no_packages_added(store: Store):
@@ -96,7 +97,7 @@ def test_no_packages_added(store: Store):
     after = 'package1\npackage2\npackage3\n'
     with mock_proot(store, before, after):
         store.dispatch(Event.TARGET_BRANCH_FINALIZED)
-    assert store.state.package_config.programs_added == []
+    assert store.state.package_config.programs_added == tuple()
 
 
 def test_packages_added_and_removed(store: Store):
@@ -104,19 +105,19 @@ def test_packages_added_and_removed(store: Store):
     after = 'package1\npackage3\npackage4\n'
     with mock_proot(store, before, after):
         store.dispatch(Event.TARGET_BRANCH_FINALIZED)
-    assert store.state.package_config.programs_added == ['package4']
-    assert store.state.package_config.programs_removed == ['package2']
+    assert store.state.package_config.programs_added == ('package4',)
+    assert store.state.package_config.programs_removed == ('package2',)
 
 
 def test_appends_to_existing_updates(store: Store):
     store.state = store.state.update(
         package_config=store.state.package_config.update(
-            programs_added=['package1', 'other_new_package'], programs_removed=['package_removed']
+            programs_added=('package1', 'other_new_package'), programs_removed=('package_removed',)
         )
     )
     before = 'package1\npackage2\npackage3\n'
     after = 'package1\nnew_package\n\npackage3\n'
     with mock_proot(store, before, after):
         store.dispatch(Event.TARGET_BRANCH_FINALIZED)
-    assert store.state.package_config.programs_added == ['new_package', 'other_new_package', 'package1']
-    assert store.state.package_config.programs_removed == ['package2', 'package_removed']
+    assert store.state.package_config.programs_added == ('new_package', 'other_new_package', 'package1')
+    assert store.state.package_config.programs_removed == ('package2', 'package_removed')

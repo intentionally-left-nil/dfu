@@ -1,13 +1,12 @@
 import os
-import tomllib
 from dataclasses import dataclass
 
-from dataclass_wizard import fromdict
+import msgspec
 
 
 @dataclass
 class Btrfs:
-    snapper_configs: list[str]
+    snapper_configs: tuple[str, ...]
 
 
 @dataclass
@@ -21,5 +20,4 @@ class Config:
 
     @classmethod
     def from_toml(cls, toml: str) -> "Config":
-        data = tomllib.loads(toml)
-        return fromdict(cls, data)
+        return msgspec.toml.decode(toml, type=cls)
