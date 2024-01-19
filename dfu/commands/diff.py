@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 from shutil import rmtree
 from textwrap import dedent
+from typing import Literal
 
 import click
 
@@ -185,7 +186,7 @@ def copy_files(store: Store, *, snapshot_index):
 
 def create_base_branch(store: Store):
     assert store.state.diff
-    branch_name = _branch_name(store.state.diff.from_index)
+    branch_name = _branch_name(store.state.diff, 'base')
     click.echo(f"Creating base branch {branch_name}...", err=True)
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
     copy_files(store, snapshot_index=store.state.diff.from_index)
@@ -197,9 +198,9 @@ def create_target_branch(store: Store):
     assert store.state.diff
     if not store.state.diff.created_base_branch:
         raise ValueError('Cannot create target branch without a base branch')
-    git_checkout(store.state.package_dir, _branch_name(store.state.diff.from_index), exist_ok=True)
+    git_checkout(store.state.package_dir, _branch_name(store.state.diff, 'base'), exist_ok=True)
 
-    branch_name = _branch_name(store.state.diff.to_index)
+    branch_name = _branch_name(store.state.diff, 'target')
     click.echo(f"Creating target branch {branch_name}...", err=True)
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
     copy_files(store, snapshot_index=store.state.diff.to_index)
@@ -210,8 +211,8 @@ def create_target_branch(store: Store):
 def create_patch_file(package_dir: Path, diff: DfuDiff):
     if not diff.created_base_branch or not diff.created_target_branch:
         raise ValueError('Cannot create a patch file without a base and target branch')
-    patch = git_diff(package_dir, _branch_name(diff.from_index), _branch_name(diff.to_index))
-    (package_dir / 'changes.patch').write_text(patch)
+    patch = git_diff(package_dir, _branch_name(diff, 'base'), _branch_name(diff, 'target'))
+    (package_dir / _patch_name(diff)).write_text(patch)
 
 
 def _rmtree(package_dir: Path, subdir: str):
@@ -224,8 +225,12 @@ def _strip_placeholders(p: Path | str) -> str:
     return re.sub(r'^placeholders/', '', str(p)).lstrip('/')
 
 
-def _branch_name(snapshot_index: int) -> str:
-    return f"snapshot_{snapshot_index}"
+def _branch_name(diff: DfuDiff, branch_type: Literal['base', 'target']) -> str:
+    return f"{diff.from_index:03}_to_{diff.to_index:03}_{branch_type}"
+
+
+def _patch_name(diff: DfuDiff):
+    return f"{diff.from_index:03}_to_{diff.to_index:03}.patch"
 
 
 def _normalize_snapshot_index(package_config: PackageConfig, index: int) -> int:
