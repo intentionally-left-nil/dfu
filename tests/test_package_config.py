@@ -1,10 +1,12 @@
-import json
-from dataclasses import dataclass, field
+from dataclasses import FrozenInstanceError, dataclass, field
 from pathlib import Path
+from types import MappingProxyType
 from unittest.mock import patch
 
+import msgspec
 import pytest
 
+from dfu.helpers.json_serializable import JsonSerializableMixin
 from dfu.package.package_config import PackageConfig, find_package_config
 
 
@@ -13,28 +15,35 @@ class ValidConfigTest:
     test_id: str
     name: str = "expected_name"
     description: str | None = "expected_description"
-    snapshots: list[dict[str, int]] = field(default_factory=list)
+    snapshots: tuple[MappingProxyType[str, int], ...] = field(default_factory=tuple)
 
 
 valid_config_tests = [
     ValidConfigTest(test_id="empty"),
-    ValidConfigTest(test_id="one snapshot", snapshots=[{"root": 1}]),
-    ValidConfigTest(test_id="two snapshots", snapshots=[{"root": 1}, {"root": 2}]),
+    ValidConfigTest(test_id="one snapshot", snapshots=(MappingProxyType({"root": 1}),)),
+    ValidConfigTest(test_id="two snapshots", snapshots=(MappingProxyType({"root": 1}), MappingProxyType({"root": 2}))),
     ValidConfigTest(
         test_id="one snapshot with root & home, and the second snapshot with only root",
-        snapshots=[{"root": 1, "home": 2}, {"root": 3}],
+        snapshots=(MappingProxyType({"root": 1, "home": 2}), MappingProxyType({"root": 3})),
     ),
     ValidConfigTest(
-        test_id="two snapshots with root & home", snapshots=[{"root": 1, "home": 2}, {"root": 3, "home": 4}]
+        test_id="two snapshots with root & home",
+        snapshots=(MappingProxyType({"root": 1, "home": 2}), MappingProxyType({"root": 3, "home": 4})),
     ),
-    ValidConfigTest(test_id="two snapshots where the directories are different", snapshots=[{"root": 1}, {"home": 2}]),
-    ValidConfigTest(test_id="Three snapshots", snapshots=[{"root": 1}, {"root": 2}, {"root": 3}]),
+    ValidConfigTest(
+        test_id="two snapshots where the directories are different",
+        snapshots=(MappingProxyType({"root": 1}), MappingProxyType({"home": 2})),
+    ),
+    ValidConfigTest(
+        test_id="Three snapshots",
+        snapshots=(MappingProxyType({"root": 1}), MappingProxyType({"root": 2}), MappingProxyType({"root": 3})),
+    ),
 ]
 
 
 @pytest.mark.parametrize("test", valid_config_tests, ids=[t.test_id for t in valid_config_tests])
 def test_valid_configs(test: ValidConfigTest):
-    json_data = json.dumps(test.__dict__)
+    json_data = msgspec.json.encode(test, enc_hook=JsonSerializableMixin.enc_hook).decode('utf-8')
     actual = PackageConfig.from_json(json_data)
     expected = PackageConfig(name=test.name, description=test.description, snapshots=test.snapshots)
     assert actual == expected
@@ -130,3 +139,23 @@ def test_mount_point_in_hierarchy(tmp_path):
 
     with patch.object(Path, 'is_mount', side_effect=lambda self: self == mount_dir, autospec=True):
         assert find_package_config(child_dir) is None
+
+
+def test_package_config_is_immutable(package_config: PackageConfig):
+    package_config = package_config.update(snapshots=(MappingProxyType({"root": 1}),))
+    with pytest.raises(FrozenInstanceError):
+        package_config.name = "new_name"  # type: ignore
+    with pytest.raises(FrozenInstanceError):
+        package_config.description = "new_description"  # type: ignore
+
+    with pytest.raises(TypeError):
+        package_config.snapshots[0]["root"] = 5  # type: ignore
+
+    with pytest.raises(FrozenInstanceError):
+        package_config.snapshots += (MappingProxyType({"root": 2}),)  # type: ignore
+
+    with pytest.raises(FrozenInstanceError):
+        package_config.programs_added += ("test3",)  # type: ignore
+
+    with pytest.raises(FrozenInstanceError):
+        package_config.programs_removed += ("test3",)  # type: ignore

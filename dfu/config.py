@@ -6,7 +6,7 @@ import msgspec
 
 @dataclass
 class Btrfs:
-    snapper_configs: list[str]
+    snapper_configs: tuple[str, ...]
 
 
 @dataclass

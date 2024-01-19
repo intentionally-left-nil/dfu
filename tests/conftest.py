@@ -17,5 +17,5 @@ snapper_configs = ["root", "home", "log"]
 @pytest.fixture
 def package_config() -> PackageConfig:
     return PackageConfig(
-        name="test", description="my cool description", programs_added=["test1", "test2"], version="0.0.2"
+        name="test", description="my cool description", programs_added=("test1", "test2"), version="0.0.2"
     )
