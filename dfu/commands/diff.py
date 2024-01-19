@@ -23,14 +23,14 @@ from dfu.snapshots.snapper import Snapper
 
 
 def begin_diff(store: Store, *, from_index: int, to_index: int):
+    if store.state.diff is not None:
+        raise ValueError("A diff is already in progress. Run `dfu diff --continue` to continue the diff.")
+
     from_index = _normalize_snapshot_index(store.state.package_config, from_index)
     to_index = _normalize_snapshot_index(store.state.package_config, to_index)
-    dfu_diff_path = store.state.package_dir / '.dfu-diff'
     diff = DfuDiff(from_index=from_index, to_index=to_index)
-    try:
-        diff.write(dfu_diff_path, mode="xb")
-    except FileExistsError:
-        raise ValueError("A diff is already in progress. Run `dfu diff --continue` to continue the diff.")
+    store.state = store.state.update(diff=diff)
+    diff.write(store.state.package_dir / '.dfu-diff')
     continue_diff(store)
 
 
@@ -38,17 +38,20 @@ def abort_diff(store: Store):
     click.echo("Cleaning up...", err=True)
     _rmtree(store.state.package_dir, 'placeholders')
     _rmtree(store.state.package_dir, 'files')
+    store.state = store.state.update(diff=None)
     (store.state.package_dir / '.dfu-diff').unlink(missing_ok=True)
     git_checkout(store.state.package_dir, git_default_branch(store.state.package_dir), exist_ok=True)
 
 
 def continue_diff(store: Store):
-    diff = DfuDiff.from_file(store.state.package_dir / '.dfu-diff')
-    if not diff.created_placeholders:
+    if store.state.diff is None:
+        raise ValueError("Cannot continue a diff if there is no diff in progress")
+    if not store.state.diff.created_placeholders:
         click.echo("Creating placeholder files...", err=True)
-        create_changed_placeholders(store, from_index=diff.from_index, to_index=diff.to_index)
-        diff = diff.update(created_placeholders=True)
-        diff.write(store.state.package_dir / '.dfu-diff')
+        create_changed_placeholders(store)
+        store.state = store.state.update(diff=store.state.diff.update(created_placeholders=True))
+        assert store.state.diff is not None
+        store.state.diff.write(store.state.package_dir / '.dfu-diff')
         click.echo(
             dedent(
                 """\
@@ -60,8 +63,8 @@ def continue_diff(store: Store):
         )
         return
 
-    if not diff.created_base_branch:
-        create_base_branch(store, diff)
+    if not store.state.diff.created_base_branch:
+        create_base_branch(store)
         click.echo(
             dedent(
                 """\
@@ -73,8 +76,8 @@ def continue_diff(store: Store):
         )
         return
 
-    if not diff.created_target_branch:
-        create_target_branch(store, diff)
+    if not store.state.diff.created_target_branch:
+        create_target_branch(store)
         click.echo(
             dedent(
                 """\
@@ -91,16 +94,17 @@ def continue_diff(store: Store):
     click.echo(f"Checking out the {default_branch} branch", err=True)
     git_checkout(store.state.package_dir, default_branch, exist_ok=True)
 
-    if not diff.created_patch_file:
-        create_patch_file(store.state.package_dir, diff)
-        diff = diff.update(created_patch_file=True)
-        diff.write(store.state.package_dir / '.dfu-diff')
+    if not store.state.diff.created_patch_file:
+        create_patch_file(store.state.package_dir, store.state.diff)
+        store.state = store.state.update(diff=store.state.diff.update(created_patch_file=True))
+        assert store.state.diff
+        store.state.diff.write(store.state.package_dir / '.dfu-diff')
         click.echo("Created the changes.patch file", err=True)
 
-    if not diff.updated_installed_programs:
+    if not store.state.diff.updated_installed_programs:
         click.echo("Detecting which programs were installed and removed...", err=True)
         store.dispatch(Event.TARGET_BRANCH_FINALIZED)
-        diff.write(store.state.package_dir / '.dfu-diff')
+        store.state.diff.write(store.state.package_dir / '.dfu-diff')
         store.state.package_config.write(store.state.package_dir / "dfu_config.json")
         click.echo("Updated the installed programs", err=True)
 
@@ -108,10 +112,11 @@ def continue_diff(store: Store):
     abort_diff(store)
 
 
-def create_changed_placeholders(store: Store, *, from_index: int, to_index: int):
+def create_changed_placeholders(store: Store):
+    assert store.state.diff
     # This method has been performance optimized in several places. Take care when modifying the file for both correctness and speed
-    pre_snapshot = store.state.package_config.snapshots[from_index]
-    post_snapshot = store.state.package_config.snapshots[to_index]
+    pre_snapshot = store.state.package_config.snapshots[store.state.diff.from_index]
+    post_snapshot = store.state.package_config.snapshots[store.state.diff.to_index]
 
     _rmtree(store.state.package_dir, 'placeholders')
     placeholder_dir = store.state.package_dir / 'placeholders'
@@ -184,28 +189,32 @@ def copy_files(store: Store, *, snapshot_index):
                 )
 
 
-def create_base_branch(store: Store, diff: DfuDiff):
-    branch_name = _branch_name(diff.from_index)
+def create_base_branch(store: Store):
+    assert store.state.diff
+    branch_name = _branch_name(store.state.diff.from_index)
     click.echo(f"Creating base branch {branch_name}...", err=True)
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
-    copy_files(store, snapshot_index=diff.from_index)
+    copy_files(store, snapshot_index=store.state.diff.from_index)
     git_add(store.state.package_dir, ['files'])
-    diff = diff.update(created_base_branch=True)
-    diff.write(store.state.package_dir / '.dfu-diff')
+    store.state = store.state.update(diff=store.state.diff.update(created_base_branch=True))
+    assert store.state.diff
+    store.state.diff.write(store.state.package_dir / '.dfu-diff')
 
 
-def create_target_branch(store: Store, diff: DfuDiff):
-    if not diff.created_base_branch:
+def create_target_branch(store: Store):
+    assert store.state.diff
+    if not store.state.diff.created_base_branch:
         raise ValueError('Cannot create target branch without a base branch')
-    git_checkout(store.state.package_dir, _branch_name(diff.from_index), exist_ok=True)
+    git_checkout(store.state.package_dir, _branch_name(store.state.diff.from_index), exist_ok=True)
 
-    branch_name = _branch_name(diff.to_index)
+    branch_name = _branch_name(store.state.diff.to_index)
     click.echo(f"Creating target branch {branch_name}...", err=True)
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
-    copy_files(store, snapshot_index=diff.to_index)
+    copy_files(store, snapshot_index=store.state.diff.to_index)
     git_add(store.state.package_dir, ['files'])
-    diff = diff.update(created_target_branch=True)
-    diff.write(store.state.package_dir / '.dfu-diff')
+    store.state = store.state.update(diff=store.state.diff.update(created_target_branch=True))
+    assert store.state.diff
+    store.state.diff.write(store.state.package_dir / '.dfu-diff')
 
 
 def create_patch_file(package_dir: Path, diff: DfuDiff):
