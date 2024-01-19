@@ -13,4 +13,3 @@ def create_snapshot(store: Store):
 
     snapshots = (*store.state.package_config.snapshots, MappingProxyType(snapshot))
     store.state = store.state.update(package_config=store.state.package_config.update(snapshots=snapshots))
-    store.state.package_config.write(store.state.package_dir / "dfu_config.json")

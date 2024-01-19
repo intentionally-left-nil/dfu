@@ -100,7 +100,6 @@ def continue_diff(store: Store):
     if not store.state.diff.updated_installed_programs:
         click.echo("Detecting which programs were installed and removed...", err=True)
         store.dispatch(Event.TARGET_BRANCH_FINALIZED)
-        store.state.package_config.write(store.state.package_dir / "dfu_config.json")
         click.echo("Updated the installed programs", err=True)
 
     click.echo("Deleting the temporary base and target branches...", err=True)
