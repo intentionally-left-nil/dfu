@@ -30,7 +30,6 @@ def begin_diff(store: Store, *, from_index: int, to_index: int):
     to_index = _normalize_snapshot_index(store.state.package_config, to_index)
     diff = DfuDiff(from_index=from_index, to_index=to_index)
     store.state = store.state.update(diff=diff)
-    diff.write(store.state.package_dir / '.dfu-diff')
     continue_diff(store)
 
 
@@ -39,7 +38,7 @@ def abort_diff(store: Store):
     _rmtree(store.state.package_dir, 'placeholders')
     _rmtree(store.state.package_dir, 'files')
     store.state = store.state.update(diff=None)
-    (store.state.package_dir / '.dfu-diff').unlink(missing_ok=True)
+    (store.state.package_dir / '.dfu' / 'diff.json').unlink(missing_ok=True)
     git_checkout(store.state.package_dir, git_default_branch(store.state.package_dir), exist_ok=True)
 
 
@@ -50,8 +49,6 @@ def continue_diff(store: Store):
         click.echo("Creating placeholder files...", err=True)
         create_changed_placeholders(store)
         store.state = store.state.update(diff=store.state.diff.update(created_placeholders=True))
-        assert store.state.diff is not None
-        store.state.diff.write(store.state.package_dir / '.dfu-diff')
         click.echo(
             dedent(
                 """\
@@ -97,14 +94,12 @@ def continue_diff(store: Store):
     if not store.state.diff.created_patch_file:
         create_patch_file(store.state.package_dir, store.state.diff)
         store.state = store.state.update(diff=store.state.diff.update(created_patch_file=True))
-        assert store.state.diff
-        store.state.diff.write(store.state.package_dir / '.dfu-diff')
         click.echo("Created the changes.patch file", err=True)
 
+    assert store.state.diff
     if not store.state.diff.updated_installed_programs:
         click.echo("Detecting which programs were installed and removed...", err=True)
         store.dispatch(Event.TARGET_BRANCH_FINALIZED)
-        store.state.diff.write(store.state.package_dir / '.dfu-diff')
         store.state.package_config.write(store.state.package_dir / "dfu_config.json")
         click.echo("Updated the installed programs", err=True)
 
@@ -197,8 +192,6 @@ def create_base_branch(store: Store):
     copy_files(store, snapshot_index=store.state.diff.from_index)
     git_add(store.state.package_dir, ['files'])
     store.state = store.state.update(diff=store.state.diff.update(created_base_branch=True))
-    assert store.state.diff
-    store.state.diff.write(store.state.package_dir / '.dfu-diff')
 
 
 def create_target_branch(store: Store):
@@ -213,8 +206,6 @@ def create_target_branch(store: Store):
     copy_files(store, snapshot_index=store.state.diff.to_index)
     git_add(store.state.package_dir, ['files'])
     store.state = store.state.update(diff=store.state.diff.update(created_target_branch=True))
-    assert store.state.diff
-    store.state.diff.write(store.state.package_dir / '.dfu-diff')
 
 
 def create_patch_file(package_dir: Path, diff: DfuDiff):
