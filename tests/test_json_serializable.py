@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from dataclass_wizard.errors import MissingFields
+from msgspec import ValidationError
 
 from dfu.helpers.json_serializable import JsonSerializableMixin
 
@@ -28,7 +28,7 @@ def test_from_json():
 
 def test_from_json_missing_fields():
     json_data = '{"name": "Ash"}'
-    with pytest.raises(MissingFields):
+    with pytest.raises(ValidationError):
         Dog.from_json(json_data)
 
 

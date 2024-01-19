@@ -1,8 +1,7 @@
 import tempfile
-import tomllib
 
-import dataclass_wizard.errors
 import pytest
+from msgspec import DecodeError, ValidationError
 
 from dfu.config import Btrfs, Config
 
@@ -50,7 +49,7 @@ package_dir = "/path/to/package_dir"
 [btrfs]
 snapper_configs = 5
 """
-    with pytest.raises(dataclass_wizard.errors.ParseError):
+    with pytest.raises(ValidationError):
         Config.from_toml(toml)
 
 
@@ -60,11 +59,11 @@ package_dir = "/path/to/package_dir"
 [[btrfs.mounts]]
     src = "/home"
 """
-    with pytest.raises(dataclass_wizard.errors.MissingFields):
+    with pytest.raises(ValidationError):
         Config.from_toml(toml)
 
 
 def test_invalid_toml():
     toml = """{]"""
-    with pytest.raises(tomllib.TOMLDecodeError):
+    with pytest.raises(DecodeError):
         Config.from_toml(toml)
