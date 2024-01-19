@@ -21,8 +21,8 @@ def store(config: Config) -> Store:
         package_config=PackageConfig(
             name="test",
             description="my cool description",
-            programs_added=[],
-            snapshots=[{"root": 1, "home": 1}, {"root": 2, "home": 2}],
+            programs_added=tuple(),
+            snapshots=({"root": 1, "home": 1}, {"root": 2, "home": 2}),
             version="0.0.2",
         ),
         diff=DfuDiff(

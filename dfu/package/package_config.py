@@ -7,7 +7,7 @@ from dfu.helpers.json_serializable import JsonSerializableMixin
 
 class UpdateArgs(TypedDict, total=False):
     description: str | None
-    snapshots: list[dict[str, int]]
+    snapshots: Tuple[dict[str, int], ...]
     programs_added: Tuple[str, ...]
     programs_removed: Tuple[str, ...]
     version: str
@@ -17,7 +17,7 @@ class UpdateArgs(TypedDict, total=False):
 class PackageConfig(JsonSerializableMixin):
     name: str
     description: str | None
-    snapshots: list[dict[str, int]] = field(default_factory=list)
+    snapshots: Tuple[dict[str, int], ...] = field(default_factory=tuple)
     programs_added: Tuple[str, ...] = field(default_factory=tuple)
     programs_removed: Tuple[str, ...] = field(default_factory=tuple)
     version: str = "0.0.1"

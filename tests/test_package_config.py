@@ -13,22 +13,22 @@ class ValidConfigTest:
     test_id: str
     name: str = "expected_name"
     description: str | None = "expected_description"
-    snapshots: list[dict[str, int]] = field(default_factory=list)
+    snapshots: tuple[dict[str, int], ...] = field(default_factory=tuple)
 
 
 valid_config_tests = [
     ValidConfigTest(test_id="empty"),
-    ValidConfigTest(test_id="one snapshot", snapshots=[{"root": 1}]),
-    ValidConfigTest(test_id="two snapshots", snapshots=[{"root": 1}, {"root": 2}]),
+    ValidConfigTest(test_id="one snapshot", snapshots=({"root": 1},)),
+    ValidConfigTest(test_id="two snapshots", snapshots=({"root": 1}, {"root": 2})),
     ValidConfigTest(
         test_id="one snapshot with root & home, and the second snapshot with only root",
-        snapshots=[{"root": 1, "home": 2}, {"root": 3}],
+        snapshots=({"root": 1, "home": 2}, {"root": 3}),
     ),
     ValidConfigTest(
-        test_id="two snapshots with root & home", snapshots=[{"root": 1, "home": 2}, {"root": 3, "home": 4}]
+        test_id="two snapshots with root & home", snapshots=({"root": 1, "home": 2}, {"root": 3, "home": 4})
     ),
-    ValidConfigTest(test_id="two snapshots where the directories are different", snapshots=[{"root": 1}, {"home": 2}]),
-    ValidConfigTest(test_id="Three snapshots", snapshots=[{"root": 1}, {"root": 2}, {"root": 3}]),
+    ValidConfigTest(test_id="two snapshots where the directories are different", snapshots=({"root": 1}, {"home": 2})),
+    ValidConfigTest(test_id="Three snapshots", snapshots=({"root": 1}, {"root": 2}, {"root": 3})),
 ]
 
 

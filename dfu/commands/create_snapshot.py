@@ -12,5 +12,7 @@ def create_snapshot(store: Store):
         snapper = Snapper(snapper_config)
         snapshot_id = snapper.create_snapshot(store.state.package_config.description or store.state.package_config.name)
         snapshot[snapper_config] = snapshot_id
-    store.state.package_config.snapshots.append(snapshot)
+
+    snapshots = (*store.state.package_config.snapshots, snapshot)
+    store.state = store.state.update(package_config=store.state.package_config.update(snapshots=snapshots))
     store.state.package_config.write(store.state.package_dir / "dfu_config.json")
