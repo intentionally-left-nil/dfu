@@ -1,13 +1,12 @@
 import os
 from dataclasses import dataclass
-from typing import Tuple
 
 import msgspec
 
 
 @dataclass
 class Btrfs:
-    snapper_configs: Tuple[str, ...]
+    snapper_configs: tuple[str, ...]
 
 
 @dataclass
