@@ -21,8 +21,8 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "dataclass-wizard >=0.22",
   "click >=8.1.7",
+  "msgspec >= 0.18.5",
   "platformdirs >= 4.1.0",
   "tomlkit >= 0.12.3",
   "unidiff >= 0.7.5",

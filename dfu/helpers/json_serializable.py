@@ -1,9 +1,8 @@
 import json
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Type, TypeVar
 
-from dataclass_wizard import asdict, fromdict
+import msgspec
 
 T = TypeVar('T', bound='JsonSerializableMixin')
 
@@ -16,8 +15,11 @@ class JsonSerializableMixin:
 
     @classmethod
     def from_json(cls: Type[T], data: str) -> T:
-        return fromdict(cls, json.loads(data))
+        return msgspec.json.decode(data, type=cls)
 
-    def write(self, path: Path, mode: str = "w"):
+    def write(self, path: Path, mode: str = "wb"):
+        if 'b' not in mode:
+            mode += 'b'
+        data = msgspec.json.encode(self)
         with open(path, mode) as f:
-            json.dump(asdict(self), f, indent=4)
+            f.write(data)

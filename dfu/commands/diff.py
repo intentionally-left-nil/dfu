@@ -28,7 +28,7 @@ def begin_diff(store: Store, *, from_index: int, to_index: int):
     dfu_diff_path = store.state.package_dir / '.dfu-diff'
     diff = DfuDiff(from_index=from_index, to_index=to_index)
     try:
-        diff.write(dfu_diff_path, mode="x")
+        diff.write(dfu_diff_path, mode="xb")
     except FileExistsError:
         raise ValueError("A diff is already in progress. Run `dfu diff --continue` to continue the diff.")
     continue_diff(store)
