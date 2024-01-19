@@ -57,6 +57,8 @@ def test_mapping_proxy(tmp_path: Path):
     @dataclass
     class Inner(JsonSerializableMixin):
         data: MappingProxyType[str, int]
+        typed_sub_data: MappingProxyType[str, MappingProxyType[str, int]]
+        untyped_sub_data: MappingProxyType[str, MappingProxyType]
         untyped: MappingProxyType
 
     @dataclass
@@ -66,20 +68,22 @@ def test_mapping_proxy(tmp_path: Path):
     outer = Outer(
         inner=Inner(
             data=MappingProxyType({"a": 1, "b": 2}),
+            typed_sub_data=MappingProxyType({"a": MappingProxyType({"b": 1})}),
+            untyped_sub_data=MappingProxyType({"a": MappingProxyType({"b": 1})}),
             untyped=MappingProxyType({"a": 1, "b": "not_an_int", "c": MappingProxyType({"d": "hello"})}),
         )
     )
     outer.write(tmp_path / "example.json")
     assert json.loads((tmp_path / "example.json").read_text()) == {
-        "inner": {"data": {"a": 1, "b": 2}, "untyped": {"a": 1, "b": "not_an_int", "c": {"d": "hello"}}}
+        "inner": {
+            "data": {"a": 1, "b": 2},
+            "typed_sub_data": {"a": {"b": 1}},
+            "untyped_sub_data": {"a": {"b": 1}},
+            "untyped": {"a": 1, "b": "not_an_int", "c": {"d": "hello"}},
+        }
     }
 
-    assert Outer.from_file(tmp_path / "example.json") == Outer(
-        inner=Inner(
-            data=MappingProxyType({"a": 1, "b": 2}),
-            untyped=MappingProxyType({"a": 1, "b": "not_an_int", "c": MappingProxyType({"d": "hello"})}),
-        )
-    )
+    assert Outer.from_file(tmp_path / "example.json") == outer
 
 
 def test_unknown_sub_types(tmp_path: Path):
