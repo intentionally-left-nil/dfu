@@ -58,4 +58,4 @@ def _breadth_first_search(roots: list[_Node]) -> tuple[str, ...]:
         node = queue.pop(0)
         names.append(node.config.name)
         queue.extend(node.children)
-    return tuple(*names)
+    return tuple(names)
