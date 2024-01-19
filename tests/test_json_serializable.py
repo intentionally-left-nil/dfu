@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
 
+import msgspec
 import pytest
 from msgspec import ValidationError
 
@@ -79,3 +80,25 @@ def test_mapping_proxy(tmp_path: Path):
             untyped=MappingProxyType({"a": 1, "b": "not_an_int", "c": MappingProxyType({"d": "hello"})}),
         )
     )
+
+
+def test_unknown_sub_types(tmp_path: Path):
+    class Custom:
+        def __init__(self, x: int = 0):
+            self.x = x
+
+        pass
+
+    @dataclass
+    class Example(JsonSerializableMixin):
+        custom: Custom
+
+    with pytest.raises(TypeError):
+        msgspec.json.encode(Custom())
+
+    example = Example(custom=Custom())
+    with pytest.raises(NotImplementedError):
+        example.write(tmp_path / "example.json")
+
+    with pytest.raises(NotImplementedError):
+        Example.from_json('{"custom": {}}')
