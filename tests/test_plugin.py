@@ -1,14 +1,18 @@
+from typing import Any
 from unittest.mock import Mock
 
+from dfu.api import DfuPlugin, Event, Store
 from dfu.api.entrypoint import Entrypoint
-from dfu.api.plugin import DfuPlugin
 
 
 def test_plugin():
     class TestPlugin(DfuPlugin):
-        def handle(self) -> None:
+        def handle(self, event: Event) -> Any:
             pass
 
-    entrypoint: Entrypoint = lambda store: TestPlugin()
+    def _entrypoint(store: Store) -> DfuPlugin:
+        return TestPlugin()
+
+    entrypoint: Entrypoint = _entrypoint
     plugin = entrypoint(Mock())
     assert isinstance(plugin, TestPlugin)
