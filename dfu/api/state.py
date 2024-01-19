@@ -11,7 +11,7 @@ class UpdateArgs(TypedDict, total=False):
     config: Config
     package_dir: Path
     package_config: PackageConfig
-    diff: DfuDiff
+    diff: DfuDiff | None
 
 
 @dataclass(frozen=True)
