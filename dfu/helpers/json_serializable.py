@@ -38,7 +38,7 @@ class JsonSerializableMixin:
             if len(args) == 2:
                 key_type: Any = args[0]
                 value_type: Any = args[1]
-                return MappingProxyType(msgspec.convert(obj, Dict[key_type, value_type]))
+                return MappingProxyType(msgspec.convert(obj, Dict[key_type, value_type], dec_hook=cls.dec_hook))
             else:
                 return MappingProxyType(msgspec.convert(obj, dict, dec_hook=cls.dec_hook))
 
