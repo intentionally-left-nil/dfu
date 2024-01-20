@@ -4,14 +4,11 @@ from pathlib import Path
 
 import click
 
-from dfu.api.state import State
-from dfu.api.store import Store
 from dfu.commands import (
     abort_diff,
     begin_diff,
     continue_diff,
     create_config,
-    create_distribution,
     create_package,
     create_snapshot,
     get_config_paths,
@@ -68,7 +65,7 @@ def diff(abort: bool | None, continue_: bool | None, from_: int, to: int):
 
 @main.command()
 def dist():
-    create_distribution(load_store())
+    store = load_store()
 
 
 @click.group

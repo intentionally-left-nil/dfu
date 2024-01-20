@@ -10,7 +10,7 @@ T = TypeVar('T', bound='JsonSerializableMixin')
 class JsonSerializableMixin:
     @classmethod
     def from_file(cls: Type[T], path: Path) -> T:
-        with open(path) as f:
+        with open(path, "r") as f:
             return cls.from_json(f.read())
 
     @classmethod
