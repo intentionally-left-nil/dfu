@@ -39,7 +39,6 @@ def abort_diff(store: Store):
     _rmtree(store.state.package_dir, 'placeholders')
     _rmtree(store.state.package_dir, 'files')
     store.state = store.state.update(diff=None)
-    (store.state.package_dir / '.dfu' / 'diff.json').unlink(missing_ok=True)
     git_checkout(store.state.package_dir, git_default_branch(store.state.package_dir), exist_ok=True)
 
 

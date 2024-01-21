@@ -4,6 +4,7 @@ from typing import TypedDict, Unpack
 
 from dfu.config import Config
 from dfu.package.dfu_diff import DfuDiff
+from dfu.package.install import Install
 from dfu.package.package_config import PackageConfig
 
 
@@ -12,6 +13,7 @@ class UpdateArgs(TypedDict, total=False):
     package_dir: Path
     package_config: PackageConfig
     diff: DfuDiff | None
+    install: Install | None
 
 
 @dataclass(frozen=True)
@@ -20,6 +22,7 @@ class State:
     package_dir: Path
     package_config: PackageConfig
     diff: DfuDiff | None = None
+    install: Install | None = None
 
     def update(self, **kwargs: Unpack[UpdateArgs]) -> 'State':
         return replace(self, **kwargs)
