@@ -121,3 +121,30 @@ def test_appends_to_existing_updates(store: Store):
         store.dispatch(Event.TARGET_BRANCH_FINALIZED)
     assert store.state.package_config.programs_added == ('new_package', 'other_new_package', 'package1')
     assert store.state.package_config.programs_removed == ('package2', 'package_removed')
+
+
+def test_install_zero_dependencies(store: Store):
+    with patch('subprocess.run') as mock_run:
+        store.dispatch(Event.INSTALL_DEPENDENCIES)
+        mock_run.assert_not_called()
+
+
+def test_install_dependencies(store: Store):
+    store.state = store.state.update(
+        package_config=store.state.package_config.update(programs_added=('package1', 'package2'))
+    )
+    with patch('subprocess.run') as mock_run:
+        store.dispatch(Event.INSTALL_DEPENDENCIES)
+        mock_run.assert_called_once_with(['sudo', 'pacman', '-S', '--needed', 'package1', 'package2'], check=True)
+
+
+def test_remove_and_install_a_dependency(store: Store):
+    store.state = store.state.update(
+        package_config=store.state.package_config.update(
+            programs_added=('package1', 'package2'), programs_removed=('package3', 'package4')
+        )
+    )
+    with patch('subprocess.run') as mock_run:
+        store.dispatch(Event.INSTALL_DEPENDENCIES)
+        mock_run.assert_any_call(['sudo', 'pacman', '-S', '--needed', 'package1', 'package2'], check=True)
+        mock_run.assert_any_call(['sudo', 'pacman', '-R', 'package3', 'package4'], check=True)
