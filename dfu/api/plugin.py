@@ -4,6 +4,7 @@ from enum import StrEnum, auto
 
 class Event(StrEnum):
     TARGET_BRANCH_FINALIZED = auto()
+    INSTALL_DEPENDENCIES = auto()
 
 
 class DfuPlugin(ABC):

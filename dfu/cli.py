@@ -4,6 +4,7 @@ from pathlib import Path
 
 import click
 
+from dfu.api import Event
 from dfu.commands import (
     abort_diff,
     begin_diff,
@@ -64,8 +65,9 @@ def diff(abort: bool | None, continue_: bool | None, from_: int, to: int):
 
 
 @main.command()
-def dist():
+def install():
     store = load_store()
+    store.dispatch(Event.INSTALL_DEPENDENCIES)
 
 
 @click.group

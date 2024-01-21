@@ -1,5 +1,7 @@
 import subprocess
 
+import click
+
 from dfu.api.entrypoint import Entrypoint
 from dfu.api.plugin import DfuPlugin, Event
 from dfu.api.store import Store
@@ -15,13 +17,16 @@ class PacmanPlugin(DfuPlugin):
         self.store = store
 
     def handle(self, event: Event):
-        if event == Event.TARGET_BRANCH_FINALIZED:
-            self.update_installed_packages()
+        match event:
+            case Event.TARGET_BRANCH_FINALIZED:
+                self._update_installed_packages()
+            case Event.INSTALL_DEPENDENCIES:
+                self._install_dependencies()
 
-    def update_installed_packages(self):
+    def _update_installed_packages(self):
         assert self.store.state.diff
-        old = self.get_installed_packages(self.store.state.diff.from_index)
-        new = self.get_installed_packages(self.store.state.diff.to_index)
+        old = self._get_installed_packages(self.store.state.diff.from_index)
+        new = self._get_installed_packages(self.store.state.diff.to_index)
 
         added = list((new - old) | set(self.store.state.package_config.programs_added))
         removed = list((old - new) | set(self.store.state.package_config.programs_removed))
@@ -36,7 +41,7 @@ class PacmanPlugin(DfuPlugin):
             diff=self.store.state.diff.update(updated_installed_programs=True),
         )
 
-    def get_installed_packages(self, snapshot_index: int) -> set[str]:
+    def _get_installed_packages(self, snapshot_index: int) -> set[str]:
         args = ['pacman', '-Qqe']
         snapshot = self.store.state.package_config.snapshots[snapshot_index]
         args = proot(args, config=self.store.state.config, snapshot=snapshot)
@@ -45,6 +50,20 @@ class PacmanPlugin(DfuPlugin):
         packages = result.stdout.split('\n')
         packages = [package.strip() for package in packages]
         return set([package for package in packages if package])
+
+    def _install_dependencies(self):
+        if self.store.state.package_config.programs_removed:
+            click.echo(
+                f"Removing dependencies: {', '.join(self.store.state.package_config.programs_removed)}", err=True
+            )
+            args = ['sudo', 'pacman', '-R', *self.store.state.package_config.programs_removed]
+            subprocess.run(args, check=True)
+        if self.store.state.package_config.programs_added:
+            click.echo(
+                f"Installing dependencies: {', '.join(self.store.state.package_config.programs_added)}", err=True
+            )
+            args = ['sudo', 'pacman', '-S', '--needed', *self.store.state.package_config.programs_added]
+            subprocess.run(args, check=True)
 
 
 entrypoint: Entrypoint = lambda store: PacmanPlugin(store)
