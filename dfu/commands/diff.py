@@ -102,7 +102,7 @@ def continue_diff(store: Store):
         store.dispatch(Event.TARGET_BRANCH_FINALIZED)
         click.echo("Updated the installed programs", err=True)
 
-    click.echo("Deleting the temporary base and target branches...", err=True)
+    click.echo("Cleaning up...", err=True)
     abort_diff(store)
 
 
