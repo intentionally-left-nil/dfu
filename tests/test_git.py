@@ -9,6 +9,7 @@ from dfu.revision.git import (
     DEFAULT_GITIGNORE,
     copy_template_gitignore,
     git_add,
+    git_apply,
     git_check_ignore,
     git_checkout,
     git_commit,
@@ -310,3 +311,21 @@ def test_git_current_branch(tmp_path: Path):
     git_commit(tmp_path, 'Initial commit')
     git_checkout(tmp_path, 'new_branch')
     assert git_current_branch(tmp_path) == 'new_branch'
+
+
+def test_git_apply(tmp_path: Path):
+    (tmp_path / '.gitignore').touch()
+    git_add(tmp_path, ['.gitignore'])
+    git_commit(tmp_path, 'Initial commit')
+    git_checkout(tmp_path, 'new_branch')
+    (tmp_path / 'file.txt').write_text('hello')
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Created file.txt')
+    diff = git_diff(tmp_path, git_default_branch(tmp_path), 'new_branch')
+    git_checkout(tmp_path, git_default_branch(tmp_path), exist_ok=True)
+
+    assert not (tmp_path / 'file.txt').exists()
+
+    (tmp_path / 'changes.patch').write_text(diff)
+    git_apply(tmp_path, (tmp_path / 'changes.patch'))
+    assert (tmp_path / 'file.txt').read_text() == 'hello'
