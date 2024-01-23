@@ -10,7 +10,7 @@ from unidiff.constants import DEV_NULL
 
 from dfu.api import Event, Store
 from dfu.package.install import Install
-from dfu.revision.git import git_add, git_apply, git_checkout, git_commit, git_init
+from dfu.revision.git import git_add, git_apply, git_commit, git_init
 
 
 def begin_install(store: Store):
@@ -31,7 +31,7 @@ def continue_install(store: Store):
         assert store.state.install
 
     if not store.state.install.dry_run_dir:
-        dry_run_dir = Path(mkdtemp())
+        dry_run_dir = Path(mkdtemp(prefix="dfu_dry_run_"))
         try:
             git_init(dry_run_dir)
             _copy_base_files(store, dry_run_dir)
@@ -47,8 +47,9 @@ def continue_install(store: Store):
             dedent(
                 f"""\
                 Completed a dry run of the patches here: {dry_run_dir}
-                If everything looks good, run dfu install --continue to continue installation.
-                Otherwise, run dfu install --abort, and then dfu rebase to modify the patches""",
+                Make any necessary changes to the files in that directory.
+                Once you're satisfied, run dfu install --continue to apply the patches to the system
+                If everything looks good, run dfu install --continue to continue installation""",
             ),
             err=True,
         )
@@ -91,6 +92,12 @@ def _copy_base_files(store: Store, dest: Path):
 def _apply_patches(store: Store, dest: Path):
     patch_files = sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name)
     for patch in patch_files:
-        git_apply(dest, patch)
+        try:
+            git_apply(dest, patch)
+        except subprocess.CalledProcessError as e:
+            click.echo(f"Failed to apply patch {patch.name}", err=True)
+            click.echo(f"Try running dfu rebase to modify the patches", err=True)
+            click.echo(e.output, err=True)
+
         git_add(dest, ['.'])
         git_commit(dest, f"Patch {patch.name}")
