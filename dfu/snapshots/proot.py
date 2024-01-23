@@ -4,7 +4,7 @@ from dfu.config import Config
 from dfu.snapshots.snapper import Snapper
 
 
-def proot(args: list[str], config: Config, snapshot: MappingProxyType[str, int]) -> list[str]:
+def proot(args: list[str], config: Config, snapshot: MappingProxyType[str, int], cwd: str | None = None) -> list[str]:
     mount_order = [x for x in config.btrfs.snapper_configs if x in snapshot]
     if len(mount_order) == 0:
         raise ValueError('No snapshots to mount')
@@ -26,5 +26,8 @@ def proot(args: list[str], config: Config, snapshot: MappingProxyType[str, int])
         proot_args.extend(['-b', f'{source_dir}:{dest_dir}'])
 
     proot_args.extend(['-b', '/dev', '-b', '/proc'])
+
+    if cwd:
+        proot_args.extend(['-w', cwd])
 
     return proot_args + args
