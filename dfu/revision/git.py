@@ -151,6 +151,7 @@ DEFAULT_GITIGNORE = """\
 /placeholders/**/*.pyo
 /placeholders/**/.bin
 /placeholders/**/*.cache
+/placeholders/**/.viminfo
 
 # Dfu files
 /placeholders/**/.dfu
