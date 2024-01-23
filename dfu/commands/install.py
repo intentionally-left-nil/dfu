@@ -78,7 +78,7 @@ def _copy_base_files(store: Store, dest: Path):
             base_files.add(Path(*source_path.parts[2:]))
 
     for base_file in base_files:
-        target = dest / base_file
+        target = dest / 'files' / base_file
         target.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
         try:
             copy2(Path('/') / base_file, target)
