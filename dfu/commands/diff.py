@@ -189,7 +189,8 @@ def create_base_branch(store: Store):
     click.echo(f"Creating base branch {branch_name}...", err=True)
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
     copy_files(store, snapshot_index=store.state.diff.from_index)
-    git_add(store.state.package_dir, ['files'])
+    if (store.state.package_dir / 'files').exists():
+        git_add(store.state.package_dir, ['files'])
     store.state = store.state.update(diff=store.state.diff.update(created_base_branch=True))
 
 
@@ -203,7 +204,8 @@ def create_target_branch(store: Store):
     click.echo(f"Creating target branch {branch_name}...", err=True)
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
     copy_files(store, snapshot_index=store.state.diff.to_index)
-    git_add(store.state.package_dir, ['files'])
+    if (store.state.package_dir / 'files').exists():
+        git_add(store.state.package_dir, ['files'])
     store.state = store.state.update(diff=store.state.diff.update(created_target_branch=True))
 
 
