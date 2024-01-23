@@ -79,10 +79,10 @@ def _copy_base_files(store: Store, dest: Path):
             base_files.add(Path('/', *source_path.parts[2:]))
 
     for base_file in base_files:
-        dest = dest / base_file
-        dest.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
+        target = dest / base_file
+        target.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
         try:
-            copy2(Path('/') / base_file, dest)
+            copy2(Path('/') / base_file, target)
         except PermissionError:
             subprocess.run(
                 ["sudo", "cp", "-p", (Path('/') / base_file).resolve(), dest.resolve()], check=True, capture_output=True
