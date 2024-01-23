@@ -76,7 +76,7 @@ def _copy_base_files(store: Store, dest: Path):
             if len(source_path.parts) < 3 or source_path.parts[1] != "files":
                 raise ValueError(f"Unexpected source file path: {source_path}")
 
-            base_files.add(Path('/', *source_path.parts[2:]))
+            base_files.add(Path(*source_path.parts[2:]))
 
     for base_file in base_files:
         target = dest / base_file
