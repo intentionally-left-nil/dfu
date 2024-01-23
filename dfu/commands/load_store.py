@@ -5,6 +5,7 @@ from dfu.api.entrypoint import Entrypoint
 from dfu.api.state import State
 from dfu.api.store import Store
 from dfu.commands.load_config import load_config
+from dfu.package.dfu_diff import DfuDiff
 from dfu.package.package_config import PackageConfig, find_package_config
 
 
@@ -18,7 +19,11 @@ def find_package_dir(path: Path = Path.cwd()) -> Path:
 def load_store() -> Store:
     package_dir = find_package_dir()
     package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
-    state = State(config=load_config(), package_dir=package_dir, package_config=package_config)
+    if (package_dir / ".dfu" / "diff.json").exists():
+        diff = DfuDiff.from_file(package_dir / ".dfu" / "diff.json")
+    else:
+        diff = None
+    state = State(config=load_config(), package_dir=package_dir, package_config=package_config, diff=diff)
     store = Store(state)
     for entry_point in entry_points().select(group='dfu.plugin'):
         fn: Entrypoint = entry_point.load()
