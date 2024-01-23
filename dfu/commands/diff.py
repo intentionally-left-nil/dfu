@@ -26,6 +26,9 @@ def begin_diff(store: Store, *, from_index: int, to_index: int):
     if store.state.diff is not None:
         raise ValueError("A diff is already in progress. Run `dfu diff --continue` to continue the diff.")
 
+    if store.state.install is not None:
+        raise ValueError("An installation is in progress. Run `dfu install --abort` to abort the installation.")
+
     from_index = normalize_snapshot_index(store.state.package_config, from_index)
     to_index = normalize_snapshot_index(store.state.package_config, to_index)
     diff = DfuDiff(from_index=from_index, to_index=to_index)
@@ -44,6 +47,8 @@ def abort_diff(store: Store):
 def continue_diff(store: Store):
     if store.state.diff is None:
         raise ValueError("Cannot continue a diff if there is no diff in progress")
+    if store.state.install is not None:
+        raise ValueError("An installation is in progress. Run `dfu install --abort` to abort the installation.")
     if not store.state.diff.created_placeholders:
         click.echo("Creating placeholder files...", err=True)
         create_changed_placeholders(store)
