@@ -1,3 +1,4 @@
+from dfu.commands.chroot import chroot_shell
 from dfu.commands.create_config import create_config
 from dfu.commands.create_package import create_package
 from dfu.commands.create_snapshot import create_snapshot

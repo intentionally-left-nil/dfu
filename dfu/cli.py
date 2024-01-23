@@ -10,6 +10,7 @@ from dfu.commands import (
     abort_install,
     begin_diff,
     begin_install,
+    chroot_shell,
     continue_diff,
     continue_install,
     create_config,
@@ -80,6 +81,12 @@ def install(abort: bool | None, continue_: bool | None):
         continue_install(store)
     else:
         begin_install(store)
+
+
+@main.command()
+@click.option('--id', 'id_', type=int, help='The snapshot id to chroot into', default=-1)
+def chroot(id_: int):
+    chroot_shell(load_store(), id_)
 
 
 @click.group
