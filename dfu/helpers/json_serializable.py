@@ -21,6 +21,8 @@ class JsonSerializableMixin:
         if 'b' not in mode:
             mode += 'b'
         data = msgspec.json.encode(self, enc_hook=self.enc_hook)
+        # Pretty-print the JSON
+        data = msgspec.json.format(data, indent=2)
         with open(path, mode) as f:
             f.write(data)
 

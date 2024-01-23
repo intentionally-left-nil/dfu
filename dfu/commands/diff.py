@@ -9,9 +9,8 @@ import click
 
 from dfu.api.plugin import Event
 from dfu.api.store import Store
-from dfu.config import Config
+from dfu.helpers.normalize_snapshot_index import normalize_snapshot_index
 from dfu.package.dfu_diff import DfuDiff
-from dfu.package.package_config import PackageConfig
 from dfu.revision.git import (
     git_add,
     git_check_ignore,
@@ -27,8 +26,8 @@ def begin_diff(store: Store, *, from_index: int, to_index: int):
     if store.state.diff is not None:
         raise ValueError("A diff is already in progress. Run `dfu diff --continue` to continue the diff.")
 
-    from_index = _normalize_snapshot_index(store.state.package_config, from_index)
-    to_index = _normalize_snapshot_index(store.state.package_config, to_index)
+    from_index = normalize_snapshot_index(store.state.package_config, from_index)
+    to_index = normalize_snapshot_index(store.state.package_config, to_index)
     diff = DfuDiff(from_index=from_index, to_index=to_index)
     store.state = store.state.update(diff=diff)
     continue_diff(store)
@@ -163,7 +162,8 @@ def copy_files(store: Store, *, snapshot_index):
     _rmtree(store.state.package_dir, 'files')
     for snapper_name, snapshot_id in store.state.package_config.snapshots[snapshot_index].items():
         snapper = Snapper(snapper_name)
-        ls_dir = store.state.package_dir / 'placeholders' / _strip_placeholders(snapper.get_mountpoint())
+        mountpoint = snapper.get_mountpoint()
+        ls_dir = store.state.package_dir / 'placeholders' / _strip_placeholders(mountpoint)
         try:
             files_to_copy = [_strip_placeholders(f) for f in git_ls_files(ls_dir)]
         except FileNotFoundError:
@@ -171,7 +171,8 @@ def copy_files(store: Store, *, snapshot_index):
             continue
         snapshot_dir = snapper.get_snapshot_path(snapshot_id)
         for file in files_to_copy:
-            src = snapshot_dir / file
+            sub_path = (Path('/') / file).relative_to(mountpoint)
+            src = snapshot_dir / sub_path
             dest = store.state.package_dir / 'files' / file
             dest.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
 
@@ -189,7 +190,8 @@ def create_base_branch(store: Store):
     click.echo(f"Creating base branch {branch_name}...", err=True)
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
     copy_files(store, snapshot_index=store.state.diff.from_index)
-    git_add(store.state.package_dir, ['files'])
+    if (store.state.package_dir / 'files').exists():
+        git_add(store.state.package_dir, ['files'])
     store.state = store.state.update(diff=store.state.diff.update(created_base_branch=True))
 
 
@@ -203,7 +205,8 @@ def create_target_branch(store: Store):
     click.echo(f"Creating target branch {branch_name}...", err=True)
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
     copy_files(store, snapshot_index=store.state.diff.to_index)
-    git_add(store.state.package_dir, ['files'])
+    if (store.state.package_dir / 'files').exists():
+        git_add(store.state.package_dir, ['files'])
     store.state = store.state.update(diff=store.state.diff.update(created_target_branch=True))
 
 
@@ -230,11 +233,3 @@ def _branch_name(diff: DfuDiff, branch_type: Literal['base', 'target']) -> str:
 
 def _patch_name(diff: DfuDiff):
     return f"{diff.from_index:03}_to_{diff.to_index:03}.patch"
-
-
-def _normalize_snapshot_index(package_config: PackageConfig, index: int) -> int:
-    if index < 0:
-        index += len(package_config.snapshots)
-    if index < 0 or index >= len(package_config.snapshots):
-        raise ValueError(f"index {index} is out of bounds")
-    return index

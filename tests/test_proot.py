@@ -38,3 +38,29 @@ def test_proot_wraps_with_correct_args(config: Config):
             "hello",
             "world",
         ]
+
+
+def test_proot_with_cwd(config: Config):
+    with patch.object(Snapper, 'get_mountpoint', new=lambda self: Path(f"/{self.snapper_name}")):
+        args = proot(
+            ["hello", "world"], config=config, snapshot=MappingProxyType({"root": 1, "home": 2, "log": 3}), cwd="/home"
+        )
+
+        assert args == [
+            "sudo",
+            "proot",
+            "-r",
+            "/root/.snapshots/1/snapshot",
+            "-b",
+            "/home/.snapshots/2/snapshot:/home",
+            "-b",
+            "/log/.snapshots/3/snapshot:/log",
+            "-b",
+            "/dev",
+            "-b",
+            "/proc",
+            "-w",
+            "/home",
+            "hello",
+            "world",
+        ]

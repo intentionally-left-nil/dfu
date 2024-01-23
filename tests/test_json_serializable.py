@@ -37,6 +37,15 @@ def test_from_json_missing_fields():
 def test_write(tmp_path: Path):
     dog = Dog(name="Ash", age=3)
     dog.write(tmp_path / "dog.json")
+    assert (
+        (tmp_path / "dog.json").read_text()
+        == '''\
+{
+  "name": "Ash",
+  "age": 3,
+  "breed": null
+}'''
+    )
     assert json.loads((tmp_path / "dog.json").read_text()) == {"name": "Ash", "age": 3, "breed": None}
 
 
