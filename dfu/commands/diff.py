@@ -163,7 +163,8 @@ def copy_files(store: Store, *, snapshot_index):
     _rmtree(store.state.package_dir, 'files')
     for snapper_name, snapshot_id in store.state.package_config.snapshots[snapshot_index].items():
         snapper = Snapper(snapper_name)
-        ls_dir = store.state.package_dir / 'placeholders' / _strip_placeholders(snapper.get_mountpoint())
+        mountpoint = snapper.get_mountpoint()
+        ls_dir = store.state.package_dir / 'placeholders' / _strip_placeholders(mountpoint)
         try:
             files_to_copy = [_strip_placeholders(f) for f in git_ls_files(ls_dir)]
         except FileNotFoundError:
@@ -171,7 +172,8 @@ def copy_files(store: Store, *, snapshot_index):
             continue
         snapshot_dir = snapper.get_snapshot_path(snapshot_id)
         for file in files_to_copy:
-            src = snapshot_dir / file
+            sub_path = (Path('/') / file).relative_to(mountpoint)
+            src = snapshot_dir / sub_path
             dest = store.state.package_dir / 'files' / file
             dest.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
 
@@ -189,7 +191,8 @@ def create_base_branch(store: Store):
     click.echo(f"Creating base branch {branch_name}...", err=True)
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
     copy_files(store, snapshot_index=store.state.diff.from_index)
-    git_add(store.state.package_dir, ['files'])
+    if (store.state.package_dir / 'files').exists():
+        git_add(store.state.package_dir, ['files'])
     store.state = store.state.update(diff=store.state.diff.update(created_base_branch=True))
 
 
@@ -203,7 +206,8 @@ def create_target_branch(store: Store):
     click.echo(f"Creating target branch {branch_name}...", err=True)
     git_checkout(store.state.package_dir, branch_name, exist_ok=False)
     copy_files(store, snapshot_index=store.state.diff.to_index)
-    git_add(store.state.package_dir, ['files'])
+    if (store.state.package_dir / 'files').exists():
+        git_add(store.state.package_dir, ['files'])
     store.state = store.state.update(diff=store.state.diff.update(created_target_branch=True))
 
 

@@ -143,13 +143,17 @@ DEFAULT_GITIGNORE = """\
 # Paths where data changes, but is not user data
 /placeholders/var
 /placeholders/tmp
+/placeholders/**/baloo
 
 # File extensions we never care about
 /placeholders/**/*.so
 /placeholders/**/*.pyc
 /placeholders/**/*.pyo
 /placeholders/**/.bin
+/placeholders/**/*.cache
+/placeholders/**/.viminfo
 
-# Cache files and folders
-/placeholders/**/.cache
+# Dfu files
+/placeholders/**/.dfu
+/placeholders/**/dfu_config.json
 """
