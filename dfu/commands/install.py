@@ -88,7 +88,7 @@ def _copy_install_files(store: Store):
 def _clone_permissions(src: Path, dest: Path):
     stat = os.stat(src)
     os.chmod(dest, stat.st_mode)
-    os.chown(dest, uid=stat.st_uid, gid=stat.st_gid)
+    subprocess.run(["sudo", "chown", f"{stat.st_uid}:{stat.st_gid}", dest], check=True, capture_output=True)
 
 
 def _copy_base_files(store: Store, dest: Path):
