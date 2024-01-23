@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 from shutil import copy2, rmtree
@@ -53,6 +54,11 @@ def continue_install(store: Store):
             ),
             err=True,
         )
+        return
+
+    if not store.state.install.copied_files:
+        _copy_install_files(store)
+        store.state = store.state.update(install=store.state.install.update(copied_files=True))
     click.echo("Cleaning up...", err=True)
     abort_install(store)
 
@@ -61,6 +67,28 @@ def abort_install(store: Store):
     if store.state.install is not None and store.state.install.dry_run_dir:
         rmtree(store.state.install.dry_run_dir, ignore_errors=True)
     store.state = store.state.update(install=None)
+
+
+def _copy_install_files(store: Store):
+    assert store.state.install and store.state.install.dry_run_dir
+    src = Path(store.state.install.dry_run_dir) / "files"
+    for file in src.glob('**/*'):
+        if file.is_file():
+            target = Path('/') / file.relative_to(src)
+            if target.exists():
+                _clone_permissions(target, file)
+            try:
+                subprocess.run(["cp", "-P", "-p", file.resolve(), target.resolve()], check=True, capture_output=True)
+            except PermissionError:
+                subprocess.run(
+                    ["sudo", "cp", "-P", "-p", file.resolve(), target.resolve()], check=True, capture_output=True
+                )
+
+
+def _clone_permissions(src: Path, dest: Path):
+    stat = os.stat(src)
+    os.chmod(dest, stat.st_mode)
+    os.chown(dest, uid=stat.st_uid, gid=stat.st_gid)
 
 
 def _copy_base_files(store: Store, dest: Path):
