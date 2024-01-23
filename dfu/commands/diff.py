@@ -172,7 +172,8 @@ def copy_files(store: Store, *, snapshot_index):
             continue
         snapshot_dir = snapper.get_snapshot_path(snapshot_id)
         for file in files_to_copy:
-            src = snapshot_dir / Path(file).relative_to(mountpoint)
+            sub_path = (Path('/') / file).relative_to(mountpoint)
+            src = snapshot_dir / sub_path
             dest = store.state.package_dir / 'files' / file
             dest.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
 
