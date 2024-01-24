@@ -70,6 +70,8 @@ def _copy_base_files(store: Store, dest: Path):
     for patch in patch_files:
         files: list[PatchedFile] = PatchSet(patch.read_text(), metadata_only=True)
         for file in files:
+            if not file.target_file:
+                continue
             source_path = Path(file.target_file)
 
             if len(source_path.parts) < 3 or source_path.parts[1] != "files":
