@@ -5,16 +5,16 @@ from platformdirs import PlatformDirs
 
 
 def git_init(package_dir: Path):
-    subprocess.run(['git', 'init'], cwd=package_dir, check=True)
+    subprocess.run(['git', 'init'], cwd=package_dir, check=True, capture_output=True)
 
 
 def git_add(package_dir: Path, paths: list[str | Path]):
     cmd = ['git', 'add'] + paths
-    subprocess.run(cmd, cwd=package_dir, check=True)
+    subprocess.run(cmd, cwd=package_dir, check=True, capture_output=True)
 
 
 def git_commit(package_dir: Path, message: str):
-    subprocess.run(['git', 'commit', '-m', message], cwd=package_dir, check=True)
+    subprocess.run(['git', 'commit', '-m', message], cwd=package_dir, check=True, capture_output=True)
 
 
 def git_checkout(package_dir: Path, branch: str, exist_ok: bool = False):
@@ -28,7 +28,7 @@ def git_checkout(package_dir: Path, branch: str, exist_ok: bool = False):
 
 
 def git_reset_branch(package_dir: Path, target_branch: str):
-    subprocess.run(['git', 'reset', '--hard', target_branch], cwd=package_dir, check=True)
+    subprocess.run(['git', 'reset', '--hard', target_branch], cwd=package_dir, check=True, capture_output=True)
 
 
 def git_check_ignore(package_dir: Path, paths: list[str]) -> list[str]:
@@ -122,7 +122,7 @@ def git_stash_pop(package_dir: Path):
 
 
 def git_delete_branch(package_dir: Path, branch: str):
-    subprocess.run(['git', 'branch', '-D', branch], cwd=package_dir, check=True)
+    subprocess.run(['git', 'branch', '-D', branch], cwd=package_dir, check=True, capture_output=True)
 
 
 def ensure_template_gitignore() -> Path:
