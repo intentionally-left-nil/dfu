@@ -79,10 +79,12 @@ def _copy_install_files(store: Store):
                 _clone_permissions(target, file)
             try:
                 subprocess.run(["cp", "-P", "-p", file.resolve(), target.resolve()], check=True, capture_output=True)
+                click.echo(f"Updated  {target}", err=True)
             except PermissionError:
                 subprocess.run(
                     ["sudo", "cp", "-P", "-p", file.resolve(), target.resolve()], check=True, capture_output=True
                 )
+                click.echo(f"Updated  {target}", err=True)
 
 
 def _clone_permissions(src: Path, dest: Path):
