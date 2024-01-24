@@ -4,15 +4,17 @@ from pathlib import Path
 
 import click
 
-from dfu.api import Event
 from dfu.commands import (
     abort_diff,
     abort_install,
+    abort_uninstall,
     begin_diff,
     begin_install,
+    begin_uninstall,
     chroot_shell,
     continue_diff,
     continue_install,
+    continue_uninstall,
     create_config,
     create_package,
     create_snapshot,
@@ -70,7 +72,7 @@ def diff(abort: bool | None, continue_: bool | None, from_: int, to: int):
 
 @main.command()
 @click.option('--abort', is_flag=True, help='Abort the operation', default=None)
-@click.option('--continue', 'continue_', is_flag=True, help='Continue the rebase operation', default=None)
+@click.option('--continue', 'continue_', is_flag=True, help='Continue the install operation', default=None)
 def install(abort: bool | None, continue_: bool | None):
     if abort and continue_:
         raise ValueError("Cannot specify both --abort and --continue")
@@ -81,6 +83,21 @@ def install(abort: bool | None, continue_: bool | None):
         continue_install(store)
     else:
         begin_install(store)
+
+
+@main.command()
+@click.option('--abort', is_flag=True, help='Abort the operation', default=None)
+@click.option('--continue', 'continue_', is_flag=True, help='Continue the uninstall operation', default=None)
+def uninstall(abort: bool | None, continue_: bool | None):
+    if abort and continue_:
+        raise ValueError("Cannot specify both --abort and --continue")
+    store = load_store()
+    if abort:
+        abort_uninstall(store)
+    elif continue_:
+        continue_uninstall(store)
+    else:
+        begin_uninstall(store)
 
 
 @main.command()

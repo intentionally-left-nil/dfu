@@ -148,3 +148,30 @@ def test_remove_and_install_a_dependency(store: Store):
         store.dispatch(Event.INSTALL_DEPENDENCIES)
         mock_run.assert_any_call(['sudo', 'pacman', '-S', '--needed', 'package1', 'package2'], check=True)
         mock_run.assert_any_call(['sudo', 'pacman', '-R', 'package3', 'package4'], check=True)
+
+
+def test_uninstall_zero_dependencies(store: Store):
+    with patch('subprocess.run') as mock_run:
+        store.dispatch(Event.UNINSTALL_DEPENDENCIES)
+        mock_run.assert_not_called()
+
+
+def test_uninstall_dependencies(store: Store):
+    store.state = store.state.update(
+        package_config=store.state.package_config.update(programs_added=('package1', 'package2'))
+    )
+    with patch('subprocess.run') as mock_run:
+        store.dispatch(Event.UNINSTALL_DEPENDENCIES)
+        mock_run.assert_called_once_with(['sudo', 'pacman', '-R', 'package1', 'package2'], check=True)
+
+
+def test_uninstall_and_readd_a_dependency(store: Store):
+    store.state = store.state.update(
+        package_config=store.state.package_config.update(
+            programs_added=('package1', 'package2'), programs_removed=('package3', 'package4')
+        )
+    )
+    with patch('subprocess.run') as mock_run:
+        store.dispatch(Event.UNINSTALL_DEPENDENCIES)
+        mock_run.assert_any_call(['sudo', 'pacman', '-R', 'package1', 'package2'], check=True)
+        mock_run.assert_any_call(['sudo', 'pacman', '-S', '--needed', 'package3', 'package4'], check=True)

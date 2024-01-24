@@ -1,4 +1,3 @@
-import os
 import subprocess
 from pathlib import Path
 from shutil import copy2, rmtree
@@ -7,32 +6,26 @@ from textwrap import dedent
 
 import click
 from unidiff import PatchedFile, PatchSet
-from unidiff.constants import DEV_NULL
 
 from dfu.api import Event, Store
 from dfu.helpers.copy_files import copy_dry_run_files
-from dfu.package.install import Install
+from dfu.package.uninstall import Uninstall
 from dfu.revision.git import git_add, git_apply, git_commit, git_init
 
 
-def begin_install(store: Store):
-    if store.state.install is not None:
-        raise ValueError('Installation is already in progress. Run dfu install --continue to continue installation.')
+def begin_uninstall(store: Store):
+    if store.state.uninstall is not None:
+        raise ValueError('Uninstallation is already in progress. Run dfu uninstall --continue to continue removal.')
 
-    store.state = store.state.update(install=Install())
-    continue_install(store)
+    store.state = store.state.update(uninstall=Uninstall())
+    continue_uninstall(store)
 
 
-def continue_install(store: Store):
-    if store.state.install is None:
-        raise ValueError('There is no in-progress installation. Run dfu install to begin installation.')
+def continue_uninstall(store: Store):
+    if store.state.uninstall is None:
+        raise ValueError('There is no in-progress uninstallation. Run dfu uninstall to begin.')
 
-    if not store.state.install.installed_dependencies:
-        store.dispatch(Event.INSTALL_DEPENDENCIES)
-        store.state = store.state.update(install=store.state.install.update(installed_dependencies=True))
-        assert store.state.install
-
-    if not store.state.install.dry_run_dir:
+    if not store.state.uninstall.dry_run_dir:
         dry_run_dir = Path(mkdtemp(prefix="dfu_dry_run_"))
         try:
             git_init(dry_run_dir)
@@ -43,42 +36,47 @@ def continue_install(store: Store):
         except Exception:
             rmtree(dry_run_dir, ignore_errors=True)
             raise
-
-        store.state = store.state.update(install=store.state.install.update(dry_run_dir=str(dry_run_dir)))
+        store.state = store.state.update(uninstall=store.state.uninstall.update(dry_run_dir=str(dry_run_dir)))
         click.echo(
             dedent(
                 f"""\
                 Completed a dry run of the patches here: {dry_run_dir}
                 Make any necessary changes to the files in that directory.
-                Once you're satisfied, run dfu install --continue to apply the patches to the system
-                If everything looks good, run dfu install --continue to continue installation""",
+                Once you're satisfied, run dfu uninstall --continue to apply the patches to the system
+                If everything looks good, run dfu uninstall --continue to continue removal""",
             ),
             err=True,
         )
         return
 
-    if not store.state.install.copied_files:
-        copy_dry_run_files(Path(store.state.install.dry_run_dir))
-        store.state = store.state.update(install=store.state.install.update(copied_files=True))
+    if not store.state.uninstall.copied_files:
+        copy_dry_run_files(Path(store.state.uninstall.dry_run_dir))
+        store.state = store.state.update(uninstall=store.state.uninstall.update(copied_files=True))
+        assert store.state.uninstall
+
+    if not store.state.uninstall.removed_dependencies:
+        store.dispatch(Event.UNINSTALL_DEPENDENCIES)
+        store.state = store.state.update(uninstall=store.state.uninstall.update(removed_dependencies=True))
+
     click.echo("Cleaning up...", err=True)
-    abort_install(store)
+    abort_uninstall(store)
 
 
-def abort_install(store: Store):
-    if store.state.install is not None and store.state.install.dry_run_dir:
-        rmtree(store.state.install.dry_run_dir, ignore_errors=True)
-    store.state = store.state.update(install=None)
+def abort_uninstall(store: Store):
+    if store.state.uninstall is not None and store.state.uninstall.dry_run_dir:
+        rmtree(store.state.uninstall.dry_run_dir, ignore_errors=True)
+    store.state = store.state.update(uninstall=None)
 
 
 def _copy_base_files(store: Store, dest: Path):
-    patch_files = sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name)
+    patch_files = reversed(sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name))
     base_files: set[Path] = set()
     for patch in patch_files:
         files: list[PatchedFile] = PatchSet(patch.read_text(), metadata_only=True)
         for file in files:
-            source_path = Path(file.source_file)
-            if source_path == Path(DEV_NULL) or source_path.parts[1:] == Path(DEV_NULL).parts[1:]:
+            if not file.target_file:
                 continue
+            source_path = Path(file.target_file)
 
             if len(source_path.parts) < 3 or source_path.parts[1] != "files":
                 raise ValueError(f"Unexpected source file path: {source_path}")
@@ -97,10 +95,10 @@ def _copy_base_files(store: Store, dest: Path):
 
 
 def _apply_patches(store: Store, dest: Path):
-    patch_files = sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name)
+    patch_files = reversed(sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name))
     for patch in patch_files:
         try:
-            git_apply(dest, patch)
+            git_apply(dest, patch, reverse=True)
         except subprocess.CalledProcessError as e:
             click.echo(f"Failed to apply patch {patch.name}", err=True)
             click.echo(f"Try running dfu rebase to modify the patches", err=True)

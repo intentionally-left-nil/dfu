@@ -7,6 +7,7 @@ from dfu.config import Config
 from dfu.package.dfu_diff import DfuDiff
 from dfu.package.install import Install
 from dfu.package.package_config import PackageConfig
+from dfu.package.uninstall import Uninstall
 from dfu.plugins.autosave import AutosavePlugin
 
 
@@ -52,6 +53,20 @@ def test_delete_install(store: Store):
     assert (store.state.package_dir / '.dfu' / 'install.json').exists()
     store.state = store.state.update(install=None)
     assert not (store.state.package_dir / '.dfu' / 'install.json').exists()
+
+
+def test_update_uninstall(store: Store):
+    uninstall = Uninstall(removed_dependencies=True)
+    store.state = store.state.update(uninstall=uninstall)
+    assert Uninstall.from_file(store.state.package_dir / '.dfu' / 'uninstall.json') == uninstall
+
+
+def test_delete_uninstall(store: Store):
+    uninstall = Uninstall(removed_dependencies=True)
+    store.state = store.state.update(uninstall=uninstall)
+    assert (store.state.package_dir / '.dfu' / 'uninstall.json').exists()
+    store.state = store.state.update(uninstall=None)
+    assert not (store.state.package_dir / '.dfu' / 'uninstall.json').exists()
 
 
 def test_handle_no_ops(store: Store):

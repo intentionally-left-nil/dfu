@@ -8,6 +8,7 @@ from dfu.commands.load_config import load_config
 from dfu.package.dfu_diff import DfuDiff
 from dfu.package.install import Install
 from dfu.package.package_config import PackageConfig, find_package_config
+from dfu.package.uninstall import Uninstall
 
 
 def find_package_dir(path: Path = Path.cwd()) -> Path:
@@ -27,8 +28,16 @@ def load_store() -> Store:
     install_path = package_dir / ".dfu" / "install.json"
     install = Install.from_file(install_path) if install_path.exists() else None
 
+    uninstall_path = package_dir / ".dfu" / "uninstall.json"
+    uninstall = Uninstall.from_file(uninstall_path) if uninstall_path.exists() else None
+
     state = State(
-        config=load_config(), package_dir=package_dir, package_config=package_config, diff=diff, install=install
+        config=load_config(),
+        package_dir=package_dir,
+        package_config=package_config,
+        diff=diff,
+        install=install,
+        uninstall=uninstall,
     )
     store = Store(state)
     for entry_point in entry_points().select(group='dfu.plugin'):

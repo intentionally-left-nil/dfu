@@ -22,6 +22,8 @@ class PacmanPlugin(DfuPlugin):
                 self._update_installed_packages()
             case Event.INSTALL_DEPENDENCIES:
                 self._install_dependencies()
+            case Event.UNINSTALL_DEPENDENCIES:
+                self._uninstall_dependencies()
 
     def _update_installed_packages(self):
         assert self.store.state.diff
@@ -63,6 +65,18 @@ class PacmanPlugin(DfuPlugin):
                 f"Installing dependencies: {', '.join(self.store.state.package_config.programs_added)}", err=True
             )
             args = ['sudo', 'pacman', '-S', '--needed', *self.store.state.package_config.programs_added]
+            subprocess.run(args, check=True)
+
+    def _uninstall_dependencies(self):
+        if self.store.state.package_config.programs_added:
+            click.echo(f"Removing dependencies: {', '.join(self.store.state.package_config.programs_added)}", err=True)
+            args = ['sudo', 'pacman', '-R', *self.store.state.package_config.programs_added]
+            subprocess.run(args, check=True)
+        if self.store.state.package_config.programs_removed:
+            click.echo(
+                f"Installing dependencies: {', '.join(self.store.state.package_config.programs_removed)}", err=True
+            )
+            args = ['sudo', 'pacman', '-S', '--needed', *self.store.state.package_config.programs_removed]
             subprocess.run(args, check=True)
 
 
