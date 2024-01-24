@@ -15,7 +15,7 @@ class UpdateArgs(TypedDict, total=False):
     package_config: PackageConfig
     diff: DfuDiff | None
     install: Install | None
-    uninstall: Install | None
+    uninstall: Uninstall | None
 
 
 @dataclass(frozen=True)

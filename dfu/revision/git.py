@@ -105,8 +105,12 @@ def git_diff(package_dir: Path, base: str, target: str) -> str:
     ).stdout
 
 
-def git_apply(package_dir: Path, patch: Path):
-    subprocess.run(['git', 'apply', patch], cwd=package_dir, check=True, capture_output=True)
+def git_apply(package_dir: Path, patch: Path, reverse: bool = False):
+    args: list[str] = ['git', 'apply']
+    if reverse:
+        args.append('--reverse')
+    args.append(str(patch.resolve()))
+    subprocess.run(args, cwd=package_dir, check=True, capture_output=True)
 
 
 def git_stash(package_dir: Path):

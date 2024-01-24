@@ -329,3 +329,17 @@ def test_git_apply(tmp_path: Path):
     (tmp_path / 'changes.patch').write_text(diff)
     git_apply(tmp_path, (tmp_path / 'changes.patch'))
     assert (tmp_path / 'file.txt').read_text() == 'hello'
+
+
+def test_git_apply_reverse(tmp_path: Path):
+    (tmp_path / '.gitignore').touch()
+    git_add(tmp_path, ['.gitignore'])
+    git_commit(tmp_path, 'Initial commit')
+    git_checkout(tmp_path, 'new_branch')
+    (tmp_path / 'file.txt').write_text('hello')
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Created file.txt')
+    diff = git_diff(tmp_path, git_default_branch(tmp_path), 'new_branch')
+    (tmp_path / 'changes.patch').write_text(diff)
+    git_apply(tmp_path, (tmp_path / 'changes.patch'), reverse=True)
+    assert not (tmp_path / 'file.txt').exists()
