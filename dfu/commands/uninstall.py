@@ -63,7 +63,9 @@ def continue_uninstall(store: Store):
 
 
 def abort_uninstall(store: Store):
-    pass
+    if store.state.uninstall is not None and store.state.uninstall.dry_run_dir:
+        rmtree(store.state.uninstall.dry_run_dir, ignore_errors=True)
+    store.state = store.state.update(uninstall=None)
 
 
 def _copy_base_files(store: Store, dest: Path):
