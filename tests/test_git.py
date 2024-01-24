@@ -26,10 +26,8 @@ from dfu.revision.git import (
 
 
 @pytest.fixture(autouse=True)
-def setup_git(tmp_path: Path):
-    git_init(tmp_path)
-    subprocess.run(['git', 'config', 'user.name', 'myself'], cwd=tmp_path, check=True)
-    subprocess.run(['git', 'config', 'user.email', 'me@example.com'], cwd=tmp_path, check=True)
+def auto_init(tmp_path: Path, setup_git):
+    pass
 
 
 def test_git_init(tmp_path: Path):
