@@ -23,7 +23,7 @@ def begin_uninstall(store: Store):
 
 def continue_uninstall(store: Store):
     if store.state.uninstall is None:
-        raise ValueError('There is no in-progress uninstallation. Run dfu uninstall to begin installation.')
+        raise ValueError('There is no in-progress uninstallation. Run dfu uninstall to begin.')
 
     if not store.state.uninstall.dry_run_dir:
         dry_run_dir = Path(mkdtemp(prefix="dfu_dry_run_"))
@@ -42,8 +42,8 @@ def continue_uninstall(store: Store):
                 f"""\
                 Completed a dry run of the patches here: {dry_run_dir}
                 Make any necessary changes to the files in that directory.
-                Once you're satisfied, run dfu install --continue to apply the patches to the system
-                If everything looks good, run dfu install --continue to continue installation""",
+                Once you're satisfied, run dfu uninstall --continue to apply the patches to the system
+                If everything looks good, run dfu uninstall --continue to continue removal""",
             ),
             err=True,
         )
@@ -57,7 +57,9 @@ def continue_uninstall(store: Store):
     if not store.state.uninstall.removed_dependencies:
         store.dispatch(Event.UNINSTALL_DEPENDENCIES)
         store.state = store.state.update(uninstall=store.state.uninstall.update(removed_dependencies=True))
-        assert store.state.uninstall
+
+    click.echo("Cleaning up...", err=True)
+    abort_uninstall(store)
 
 
 def abort_uninstall(store: Store):
