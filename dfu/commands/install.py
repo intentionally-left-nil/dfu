@@ -76,19 +76,18 @@ def _copy_install_files(store: Store):
         if file.is_file():
             target = Path('/') / file.relative_to(src)
             if target.exists():
-                _clone_permissions(target, file)
+                stat = os.stat(src)
+                subprocess.run(
+                    ["sudo", "chown", f"{stat.st_uid}:{stat.st_gid}", src.resolve()], check=True, capture_output=True
+                )
             try:
                 subprocess.run(["cp", "-P", "-p", file.resolve(), target.resolve()], check=True, capture_output=True)
+                click.echo(f"Updated  {target}", err=True)
             except PermissionError:
                 subprocess.run(
                     ["sudo", "cp", "-P", "-p", file.resolve(), target.resolve()], check=True, capture_output=True
                 )
-
-
-def _clone_permissions(src: Path, dest: Path):
-    stat = os.stat(src)
-    os.chmod(dest, stat.st_mode)
-    subprocess.run(["sudo", "chown", f"{stat.st_uid}:{stat.st_gid}", dest], check=True, capture_output=True)
+                click.echo(f"Updated  {target}", err=True)
 
 
 def _copy_base_files(store: Store, dest: Path):
