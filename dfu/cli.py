@@ -123,11 +123,13 @@ def config_init(snapper_config: list[str], file: str | None):
     create_config(file=Path(file), snapper_configs=tuple(snapper_config))
 
 
+@main.command()
 @click.option('--location', type=click.Choice(['placeholder', 'diff_files', 'install_files', 'uninstall_files']))
 def shell(location: Literal['placeholder', 'diff_files', 'install_files', 'uninstall_files'] | None):
     launch_shell(load_store(), location)
 
 
+@main.command()
 @click.option('--id', 'id_', type=int, help='The snapshot id to chroot into', default=-1)
 def snapshot_shell(id_: int):
     launch_snapshot_shell(load_store(), id_)
