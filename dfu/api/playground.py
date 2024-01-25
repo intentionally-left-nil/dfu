@@ -1,9 +1,11 @@
+import platform
 import subprocess
 from pathlib import Path
 from shutil import copy2, rmtree
 from tempfile import mkdtemp
 from typing import Iterable
 
+import click
 from unidiff import PatchedFile, PatchSet
 from unidiff.constants import DEV_NULL
 
@@ -48,6 +50,42 @@ class Playground:
                     check=True,
                     capture_output=True,
                 )
+
+    def copy_files_to_filesystem(self, dest: Path = Path('/')):
+        root_dir = self.location / 'files'
+        for file in root_dir.rglob('*'):
+            if file.is_dir():
+                continue
+            relative_path = file.relative_to(root_dir)
+            target = (dest / relative_path).resolve()
+
+            mode = oct(file.stat(follow_symlinks=False).st_mode & 0o777)[2:]  # Strip out the leading 0o
+
+            args = ["sudo", "install"]
+            if target.exists():
+                target_stat = target.stat(follow_symlinks=False)
+                args.extend(["-o", str(target_stat.st_uid), "-g", str(target_stat.st_gid)])
+
+            if platform.system() == "Darwin":
+                # We have to create the directory first as a separate call, using the -d flag
+                create_dir_args = args[:]
+
+                create_dir_args.extend(["-m", "755", "-d", str(file.parent.resolve()), str(target.parent.resolve())])
+                subprocess.run(
+                    create_dir_args,
+                    check=True,
+                    capture_output=True,
+                )
+            else:
+                args.append("-D")
+
+            args.extend(["-m", mode, str(file.resolve()), str(target)])
+            subprocess.run(
+                args,
+                check=True,
+                capture_output=True,
+            )
+            click.echo(f"Updated {target}", err=True)
 
     def cleanup(self):
         rmtree(self.location, ignore_errors=True)

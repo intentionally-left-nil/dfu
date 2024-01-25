@@ -22,6 +22,19 @@ def playground() -> Generator[Playground, None, None]:
     playground.cleanup()
 
 
+@pytest.fixture
+def mock_install():
+    original_subprocess_run = subprocess.run
+
+    def side_effect(args, **kwargs):
+        assert args[0] == "sudo"
+        return original_subprocess_run(args[1:], **kwargs)
+
+    with patch('subprocess.run') as mock_run:
+        mock_run.side_effect = side_effect
+        yield mock_run
+
+
 def test_list_files_in_patch_missing_file(playground: Playground):
     with pytest.raises(FileNotFoundError):
         playground.list_files_in_patch(playground.location / "missing.patch")
@@ -227,3 +240,75 @@ def test_copy_protected_file(mock_run: MagicMock, tmp_path: Path, playground: Pl
         capture_output=True,
     )
     assert mock_run.call_count == 1
+
+
+def test_copy_files_to_filesystem_no_files(tmp_path: Path, playground: Playground, mock_install):
+    assert not (playground.location / 'files').exists()
+    playground.copy_files_to_filesystem(dest=tmp_path)
+    assert [p for p in tmp_path.glob('**/*')] == []
+
+
+def test_copy_files_to_filesystem_only_directories(tmp_path: Path, playground, mock_install):
+    (playground.location / 'files' / 'many' / 'nested' / 'dirs').mkdir(parents=True, exist_ok=True)
+    playground.copy_files_to_filesystem(dest=tmp_path)
+    assert [p for p in tmp_path.glob('**/*')] == []
+
+
+def test_copy_files_to_filesystem_one_file(tmp_path: Path, playground: Playground, mock_install):
+    file = playground.location / 'files' / 'file.txt'
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text('file')
+    existing = tmp_path / 'existing.txt'
+    existing.write_text('existing')
+    playground.copy_files_to_filesystem(dest=tmp_path)
+    assert {p for p in tmp_path.glob('**/*')} == {
+        Path(tmp_path / 'file.txt').resolve(),
+        Path(tmp_path / 'existing.txt').resolve(),
+    }
+    assert (tmp_path / 'file.txt').read_text() == 'file'
+    assert existing.read_text() == 'existing'
+
+
+def test_copy_files_to_filesystem_creates_directories(tmp_path: Path, playground: Playground, mock_install):
+    # Create the test file
+    file = playground.location / 'files' / 'etc' / 'nested' / 'file.txt'
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text('file')
+    file.chmod(0o777)
+
+    # Set up the filesystem to have some existing files, but not nested
+    (tmp_path / 'etc' / 'other').mkdir(parents=True, exist_ok=True)
+    (tmp_path / 'etc' / 'etc.txt').write_text('etc')
+    (tmp_path / 'etc' / 'other' / 'other.txt').write_text('other')
+
+    playground.copy_files_to_filesystem(dest=tmp_path)
+    assert [p for p in tmp_path.glob('**/*') if p.is_file()] == [
+        Path(tmp_path / 'etc' / 'etc.txt').resolve(),
+        Path(tmp_path / 'etc' / 'other' / 'other.txt').resolve(),
+        Path(tmp_path / 'etc' / 'nested' / 'file.txt').resolve(),
+    ]
+
+    actual = tmp_path / 'etc' / 'nested' / 'file.txt'
+    assert actual.stat().st_mode & 0o777 == 0o777
+    assert actual.read_text() == 'file'
+
+
+def test_overwrites_existing_file(tmp_path: Path, playground: Playground, mock_install):
+    file = playground.location / 'files' / 'etc' / 'nested' / 'file.txt'
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text('file')
+    file.chmod(0o777)
+
+    existing = tmp_path / 'etc' / 'nested' / 'file.txt'
+    existing.parent.mkdir(parents=True, exist_ok=True)
+    existing.write_text('existing')
+    existing.chmod(0o644)
+    assert (existing.stat().st_mode & 0o777) == 0o644
+
+    playground.copy_files_to_filesystem(dest=tmp_path)
+    assert [p for p in tmp_path.glob('**/*') if p.is_file()] == [
+        Path(tmp_path / 'etc' / 'nested' / 'file.txt').resolve(),
+    ]
+
+    assert existing.stat().st_mode & 0o777 == 0o777
+    assert existing.read_text() == 'file'
