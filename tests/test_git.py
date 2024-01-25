@@ -271,8 +271,65 @@ def test_git_apply(tmp_path: Path):
     assert not (tmp_path / 'file.txt').exists()
 
     (tmp_path / 'changes.patch').write_text(diff)
-    git_apply(tmp_path, (tmp_path / 'changes.patch'))
+    assert git_apply(tmp_path, (tmp_path / 'changes.patch')) == True
     assert (tmp_path / 'file.txt').read_text() == 'hello'
+
+
+def test_git_apply_with_conflict(tmp_path: Path):
+    (tmp_path / '.gitignore').touch()
+    git_add(tmp_path, ['.gitignore'])
+    git_commit(tmp_path, 'Initial commit')
+    file = tmp_path / 'file.txt'
+    file.write_text('hello')
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Created file.txt')
+    diff = git_diff(tmp_path, "HEAD~1", "HEAD")
+    subprocess.run(['git', 'reset', '--hard', 'HEAD~1'], cwd=tmp_path, check=True, capture_output=True)
+
+    file.write_text('goodbye')
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Changed file.txt to goodbye')
+
+    (tmp_path / 'changes.patch').write_text(diff)
+    assert git_apply(tmp_path, (tmp_path / 'changes.patch')) == False
+
+    print(file.read_text())
+    assert (
+        file.read_text()
+        == '''\
+<<<<<<< ours
+goodbye
+EQUALS
+hello
+>>>>>>> theirs
+'''.replace(
+            "EQUALS", "=" * 7  # Replaced to prevent text editors from thinking there's a merge conflict
+        )
+    )
+
+
+def test_git_apply_with_unstaged_changes(tmp_path: Path):
+    (tmp_path / '.gitignore').touch()
+    git_add(tmp_path, ['.gitignore'])
+    git_commit(tmp_path, 'Initial commit')
+    file = tmp_path / 'file.txt'
+    file.write_text('hello')
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Created file.txt')
+    diff = git_diff(tmp_path, "HEAD~1", "HEAD")
+    subprocess.run(['git', 'reset', '--hard', 'HEAD~1'], cwd=tmp_path, check=True, capture_output=True)
+
+    file.write_text('goodbye')
+
+    (tmp_path / 'changes.patch').write_text(diff)
+    assert git_apply(tmp_path, (tmp_path / 'changes.patch')) == False
+
+
+def test_git_apply_unknown_error(tmp_path: Path):
+    patch = tmp_path / "changes.patch"
+    patch.write_text("THIS IS NOT A PATCH FILE")
+    with pytest.raises(subprocess.CalledProcessError):
+        git_apply(tmp_path, patch)
 
 
 def test_git_apply_reverse(tmp_path: Path):

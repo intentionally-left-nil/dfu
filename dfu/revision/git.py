@@ -1,3 +1,4 @@
+import re
 import subprocess
 from pathlib import Path
 
@@ -86,12 +87,24 @@ def git_are_files_staged(git_dir: Path):
             raise subprocess.CalledProcessError(return_code, ['git', 'diff', '--cached', '--quiet'])
 
 
-def git_apply(git_dir: Path, patch: Path, reverse: bool = False):
-    args: list[str] = ['git', 'apply']
+def git_apply(git_dir: Path, patch: Path, reverse: bool = False) -> bool:
+    args: list[str] = ['git', 'apply', '--3way']
     if reverse:
         args.append('--reverse')
     args.append(str(patch.resolve()))
-    subprocess.run(args, cwd=git_dir, check=True, capture_output=True)
+    try:
+        # Since we're reading the output, set LC_ALL=C to ensure it's in English
+        # TODO: If we ever end up displaying this to the user, then we should figure out another method
+        # since this error won't be localized
+        subprocess.run(args, cwd=git_dir, check=True, text=True, capture_output=True, env={'LC_ALL': 'C'})
+        return True
+    except subprocess.CalledProcessError as e:
+        if e.returncode == 1:
+            stderr: str = e.stderr
+            if not re.match(r'^error:', stderr, flags=re.MULTILINE):
+                # The failure was a merge conflict
+                return False
+        raise e
 
 
 def git_stash(git_dir: Path):
