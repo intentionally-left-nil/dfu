@@ -100,12 +100,6 @@ def uninstall(abort: bool | None, continue_: bool | None):
         begin_uninstall(store)
 
 
-@main.command()
-@click.option('--id', 'id_', type=int, help='The snapshot id to chroot into', default=-1)
-def chroot(id_: int):
-    chroot_shell(load_store(), id_)
-
-
 @click.group
 def config():
     pass
@@ -128,6 +122,18 @@ def config_init(snapper_config: list[str], file: str | None):
 
 
 main.add_command(config)
+
+
+@click.group
+def shell():
+    pass
+
+
+@shell.command(name="snapshot")
+@click.option('--id', 'id_', type=int, help='The snapshot id to chroot into', default=-1)
+def shell_snapshot(id_: int):
+    chroot_shell(load_store(), id_)
+    pass
 
 
 if __name__ == "__main__":
