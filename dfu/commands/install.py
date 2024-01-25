@@ -83,14 +83,17 @@ def _copy_base_files(store: Store, playground: Playground):
 
 def _apply_patches(store: Store, dest: Path):
     patch_files = sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name)
+    status = True
     for patch in patch_files:
         try:
-            git_apply(dest, patch)
+            status = git_apply(dest, patch) and status
         except subprocess.CalledProcessError as e:
             click.echo(f"Failed to apply patch {patch.name}", err=True)
-            click.echo(f"Try running dfu rebase to modify the patches", err=True)
             click.echo(e.output, err=True)
 
         git_add(dest, ['.'])
         if git_are_files_staged(dest):
             git_commit(dest, f"Patch {patch.name}")
+
+    if not status:
+        click.echo("There were merge conflicts applying the patches. Run dfu shell to address them", err=True)
