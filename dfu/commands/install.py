@@ -1,16 +1,11 @@
-import os
 import subprocess
 from pathlib import Path
-from shutil import copy2, rmtree
-from tempfile import mkdtemp
+from shutil import rmtree
 from textwrap import dedent
 
 import click
-from unidiff import PatchedFile, PatchSet
-from unidiff.constants import DEV_NULL
 
-from dfu.api import Event, Store
-from dfu.helpers.copy_files import copy_dry_run_files
+from dfu.api import Event, Playground, Store
 from dfu.package.install import Install
 from dfu.revision.git import git_add, git_apply, git_commit, git_init
 
@@ -33,22 +28,22 @@ def continue_install(store: Store):
         assert store.state.install
 
     if not store.state.install.dry_run_dir:
-        dry_run_dir = Path(mkdtemp(prefix="dfu_dry_run_"))
+        playground = Playground(prefix="dfu_dry_run_")
         try:
-            git_init(dry_run_dir)
-            _copy_base_files(store, dry_run_dir)
-            git_add(dry_run_dir, ['.'])
-            git_commit(dry_run_dir, "Initial files")
-            _apply_patches(store, dry_run_dir)
+            git_init(playground.location)
+            _copy_base_files(store, playground)
+            git_add(playground.location, ['.'])
+            git_commit(playground.location, "Initial files")
+            _apply_patches(store, playground.location)
         except Exception:
-            rmtree(dry_run_dir, ignore_errors=True)
+            playground.cleanup()
             raise
 
-        store.state = store.state.update(install=store.state.install.update(dry_run_dir=str(dry_run_dir)))
+        store.state = store.state.update(install=store.state.install.update(dry_run_dir=str(playground.location)))
         click.echo(
             dedent(
                 f"""\
-                Completed a dry run of the patches here: {dry_run_dir}
+                Completed a dry run of the patches here: {playground.location}
                 Make any necessary changes to the files in that directory.
                 Once you're satisfied, run dfu install --continue to apply the patches to the system
                 If everything looks good, run dfu install --continue to continue installation""",
@@ -58,7 +53,8 @@ def continue_install(store: Store):
         return
 
     if not store.state.install.copied_files:
-        copy_dry_run_files(Path(store.state.install.dry_run_dir))
+        playground = Playground(location=Path(store.state.install.dry_run_dir))
+        playground.copy_files_to_filesystem()
         store.state = store.state.update(install=store.state.install.update(copied_files=True))
     click.echo("Cleaning up...", err=True)
     abort_install(store)
@@ -70,30 +66,13 @@ def abort_install(store: Store):
     store.state = store.state.update(install=None)
 
 
-def _copy_base_files(store: Store, dest: Path):
+def _copy_base_files(store: Store, playground: Playground):
     patch_files = sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name)
-    base_files: set[Path] = set()
+    files_to_copy: set[Path] = set()
     for patch in patch_files:
-        files: list[PatchedFile] = PatchSet(patch.read_text(), metadata_only=True)
-        for file in files:
-            source_path = Path(file.source_file)
-            if source_path == Path(DEV_NULL) or source_path.parts[1:] == Path(DEV_NULL).parts[1:]:
-                continue
+        files_to_copy.update(playground.list_files_in_patch(patch))
 
-            if len(source_path.parts) < 3 or source_path.parts[1] != "files":
-                raise ValueError(f"Unexpected source file path: {source_path}")
-
-            base_files.add(Path(*source_path.parts[2:]))
-
-    for base_file in base_files:
-        target = dest / 'files' / base_file
-        target.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
-        try:
-            copy2(Path('/') / base_file, target)
-        except PermissionError:
-            subprocess.run(
-                ["sudo", "cp", "-p", (Path('/') / base_file).resolve(), dest.resolve()], check=True, capture_output=True
-            )
+    playground.copy_files_from_filesystem(files_to_copy)
 
 
 def _apply_patches(store: Store, dest: Path):
