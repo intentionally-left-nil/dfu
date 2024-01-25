@@ -143,25 +143,25 @@ DEFAULT_GITIGNORE = """\
 # Files created by dfu, which should not be committed
 /.dfu
 # Paths where programs are installed into
-/placeholders/usr/bin
-/placeholders/usr/lib
-/placeholders/usr/share
-/placeholders/usr/include
+/files/usr/bin
+/files/usr/lib
+/files/usr/share
+/files/usr/include
 
 # Paths where data changes, but is not user data
-/placeholders/var
-/placeholders/tmp
-/placeholders/**/baloo
+/files/var
+/files/tmp
+/files/**/baloo
 
 # File extensions we never care about
-/placeholders/**/*.so
-/placeholders/**/*.pyc
-/placeholders/**/*.pyo
-/placeholders/**/.bin
-/placeholders/**/*.cache
-/placeholders/**/.viminfo
+/files/**/*.so
+/files/**/*.pyc
+/files/**/*.pyo
+/files/**/.bin
+/files/**/*.cache
+/files/**/.viminfo
 
 # Dfu files
-/placeholders/**/.dfu
-/placeholders/**/dfu_config.json
+/files/**/.dfu
+/files/**/dfu_config.json
 """

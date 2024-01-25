@@ -7,7 +7,7 @@ from dfu.helpers.json_serializable import JsonSerializableMixin
 class UpdateArgs(TypedDict, total=False):
     from_index: int
     to_index: int
-    created_placeholders: bool
+    placeholder_dir: str | None
     created_base_branch: bool
     created_target_branch: bool
     updated_installed_programs: bool
@@ -18,6 +18,7 @@ class UpdateArgs(TypedDict, total=False):
 class DfuDiff(JsonSerializableMixin):
     from_index: int
     to_index: int
+    placeholder_dir: str | None = None
     created_placeholders: bool = False
     created_base_branch: bool = False
     created_target_branch: bool = False

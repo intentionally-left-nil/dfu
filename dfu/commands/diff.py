@@ -1,22 +1,25 @@
 import re
 import subprocess
 from pathlib import Path
-from shutil import rmtree
+from shutil import copy2, rmtree
 from textwrap import dedent
 from typing import Literal
 
 import click
 
-from dfu.api.plugin import Event
+from dfu.api import Event, Playground, Store
 from dfu.api.store import Store
 from dfu.helpers.normalize_snapshot_index import normalize_snapshot_index
 from dfu.package.dfu_diff import DfuDiff
 from dfu.revision.git import (
+    DEFAULT_GITIGNORE,
     git_add,
     git_check_ignore,
     git_checkout,
+    git_commit,
     git_default_branch,
     git_diff,
+    git_init,
     git_ls_files,
 )
 from dfu.snapshots.snapper import Snapper
@@ -50,19 +53,24 @@ def continue_diff(store: Store):
     if store.state.install is not None:
         raise ValueError("An installation is in progress. Run `dfu install --abort` to abort the installation.")
     if not store.state.diff.created_placeholders:
-        click.echo("Creating placeholder files...", err=True)
-        create_changed_placeholders(store)
-        store.state = store.state.update(diff=store.state.diff.update(created_placeholders=True))
-        click.echo(
-            dedent(
-                """\
-                Placeholder files have been created. Run `git ls-files --others placeholders` to see them.
-                If there are extra files, delete them. Do not git commit anything in placeholders.
-                Once completed, run `dfu diff --continue`."""
-            ),
-            err=True,
-        )
-        return
+        playground = Playground(prefix="dfu_placeholders_")
+        try:
+            click.echo("Creating placeholder files...", err=True)
+            create_changed_placeholders(store, playground)
+            store.state = store.state.update(diff=store.state.diff.update(placeholder_dir=str(playground.location)))
+            click.echo(
+                dedent(
+                    """\
+                    Placeholder files have been created. Run `git ls-files --others files` to see them.
+                    If there are extra files, delete them.
+                    Once completed, run `dfu diff --continue`."""
+                ),
+                err=True,
+            )
+            return
+        except Exception:
+            playground.cleanup()
+            raise
 
     if not store.state.diff.created_base_branch:
         create_base_branch(store)
@@ -110,16 +118,22 @@ def continue_diff(store: Store):
     abort_diff(store)
 
 
-def create_changed_placeholders(store: Store):
+def create_changed_placeholders(store: Store, playground: Playground):
     assert store.state.diff
     # This method has been performance optimized in several places. Take care when modifying the file for both correctness and speed
     pre_snapshot = store.state.package_config.snapshots[store.state.diff.from_index]
     post_snapshot = store.state.package_config.snapshots[store.state.diff.to_index]
 
-    _rmtree(store.state.package_dir, 'placeholders')
-    placeholder_dir = store.state.package_dir / 'placeholders'
+    git_init(playground.location)
+    gitignore = store.state.package_dir / '.gitignore'
+    if gitignore.exists():
+        copy2(gitignore, playground.location / '.gitignore')
+    else:
+        gitignore.write_text(DEFAULT_GITIGNORE)
 
-    placeholder_dir.mkdir(mode=0o755, parents=True, exist_ok=True)
+    git_add(playground.location, ['.gitignore'])
+    git_commit(playground.location, "Add gitignore")
+
     for snapper_name, pre_id in pre_snapshot.items():
         post_id = post_snapshot[snapper_name]
         snapper = Snapper(snapper_name)
@@ -130,7 +144,7 @@ def create_changed_placeholders(store: Store):
         # As far as git is concerned, the path should be placeholders/<path>, so we will set that once here
         # And then the code to actually write the file joins it with package_dir later
         for delta in deltas:
-            delta.path = f"placeholders/{delta.path.lstrip('/')}"
+            delta.path = f"files/{delta.path.lstrip('/')}"
 
         # Create a set of all the ignored files. Earlier attempts tried using a list and checking the last element, but the ordering wasn't exact
         ignored_paths = set(git_check_ignore(store.state.package_dir, [delta.path for delta in deltas]))
@@ -138,6 +152,7 @@ def create_changed_placeholders(store: Store):
             if delta.path in ignored_paths:
                 # Performance speedup: Don't write files that are ignored by git
                 continue
+            path = playground.location / 'files' / delta.path
             path = store.state.package_dir / delta.path
             try:
                 # Performance speedup: Try calling mkdir once, to create all of the parent directories
