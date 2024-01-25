@@ -50,12 +50,12 @@ def continue_install(store: Store):
 
     playground = Playground(location=Path(store.state.install.dry_run_dir))
     if store.state.install.patches_to_apply:
-        remaining = playground.apply_patches([Path(p) for p in store.state.install.patches_to_apply])
+        (succeeded, remaining) = playground.apply_patches([Path(p) for p in store.state.install.patches_to_apply])
         store.state = store.state.update(
             install=store.state.install.update(patches_to_apply=[str(p) for p in remaining])
         )
 
-        if remaining:
+        if remaining or not succeeded:
             click.echo(
                 dedent(
                     """\

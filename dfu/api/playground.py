@@ -62,8 +62,9 @@ class Playground:
                     capture_output=True,
                 )
 
-    def apply_patches(self, patches: list[Path], *, reverse: bool = False) -> list[Path]:
+    def apply_patches(self, patches: list[Path], *, reverse: bool = False) -> tuple[bool, list[Path]]:
         remaining_stack = list(reversed(patches))
+        merged_cleanly = True
 
         for patch in patches:
             bundle_file = patch.with_suffix('.pack')
@@ -97,7 +98,7 @@ class Playground:
             else:
                 break
 
-        return list(reversed(remaining_stack))
+        return merged_cleanly, list(reversed(remaining_stack))
 
     def copy_files_to_filesystem(self, dest: Path = Path('/')):
         root_dir = self.location / 'files'

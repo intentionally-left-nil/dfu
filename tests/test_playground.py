@@ -1,12 +1,13 @@
 import subprocess
 from pathlib import Path
+from shutil import copy
 from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from dfu.api.playground import Playground
-from dfu.revision.git import git_add, git_commit, git_diff
+from dfu.revision.git import git_add, git_bundle, git_commit, git_diff, git_init
 
 
 @pytest.fixture
@@ -300,3 +301,135 @@ def test_overwrites_existing_file(tmp_path: Path, playground: Playground, mock_i
 
     assert existing.stat().st_mode & 0o777 == 0o777
     assert existing.read_text() == 'file'
+
+
+def test_apply_patches_no_patches(tmp_path: Path, playground: Playground):
+    assert playground.apply_patches([]) == (True, [])
+
+
+@pytest.fixture
+def patch_playground():
+    playground = Playground(prefix="unit_test_patch_playground")
+    git_init(playground.location)
+    subprocess.run(['git', 'config', 'user.name', 'myself'], cwd=playground.location, check=True)
+    subprocess.run(['git', 'config', 'user.email', 'me@example.com'], cwd=playground.location, check=True)
+    (playground.location / '.gitignore').touch()
+    git_add(playground.location, ['.gitignore'])
+    git_commit(playground.location, 'Initial commit')
+
+    yield playground
+    playground.cleanup()
+
+
+@pytest.fixture
+def file_patch(patch_playground: Playground, tmp_path) -> Path:
+    file = patch_playground.location / 'files' / 'file.txt'
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text('file')
+    git_add(patch_playground.location, ['files'])
+    git_commit(patch_playground.location, 'Added file')
+    patch_file = tmp_path / "file.patch"
+    patch_file.write_text(git_diff(patch_playground.location, "HEAD~1", "HEAD"))
+    bundle_file = tmp_path / "file.pack"
+    git_bundle(patch_playground.location, bundle_file)
+    return patch_file
+
+
+@pytest.fixture
+def file2_patch(patch_playground: Playground, tmp_path) -> Path:
+    file = patch_playground.location / 'files' / 'file2.txt'
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text('file2')
+    git_add(patch_playground.location, ['files'])
+    git_commit(patch_playground.location, 'Added file2')
+    patch_file = tmp_path / "file2.patch"
+    patch_file.write_text(git_diff(patch_playground.location, "HEAD~1", "HEAD"))
+    bundle_file = tmp_path / "file2.pack"
+    git_bundle(patch_playground.location, bundle_file)
+    return patch_file
+
+
+def test_apply_patches_cleanly(playground: Playground, file_patch: Path, file2_patch: Path):
+    git_init(playground.location)
+    assert playground.apply_patches([file_patch, file2_patch]) == (True, [])
+    assert (playground.location / 'files' / 'file.txt').read_text() == 'file'
+    assert (playground.location / 'files' / 'file2.txt').read_text() == 'file2'
+
+
+FILE_MERGE_CONFLICT = """\
+<<<<<<< ours
+this is a conflict
+EQUALS
+file
+>>>>>>> theirs
+""".replace(
+    "EQUALS", "=" * 7
+)
+
+
+def test_apply_patches_merge_conflict(playground: Playground, file_patch: Path):
+    git_init(playground.location)
+    file = playground.location / 'files' / 'file.txt'
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text('this is a conflict')
+    git_add(playground.location, ['files'])
+    git_commit(playground.location, 'Added file')
+    assert playground.apply_patches([file_patch]) == (False, [])
+    assert file.read_text() == FILE_MERGE_CONFLICT
+
+
+def test_apply_patches_merge_conflict_on_first(playground: Playground, file_patch: Path, file2_patch: Path):
+    git_init(playground.location)
+    file = playground.location / 'files' / 'file.txt'
+    file2 = playground.location / 'files' / 'file2.txt'
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text('this is a conflict')
+    git_add(playground.location, ['files'])
+    git_commit(playground.location, 'Added file')
+    assert playground.apply_patches([file_patch, file2_patch]) == (False, [file2_patch])
+    assert file.read_text() == FILE_MERGE_CONFLICT
+    file.write_text('file, resolved')
+    git_add(playground.location, ['files'])
+    git_commit(playground.location, 'Resolved conflict')
+
+    assert playground.apply_patches([file2_patch]) == (True, [])
+    assert file2.read_text() == 'file2'
+
+
+def test_apply_patches_other_error(tmp_path: Path, playground: Playground, file_patch: Path):
+    git_init(playground.location)
+    backup_patch = tmp_path / "backup.patch"
+    copy(file_patch, backup_patch)
+
+    file_patch.write_text("THIS IS NOT A PATCH")
+    with pytest.raises(subprocess.CalledProcessError):
+        playground.apply_patches([file_patch])
+
+    copy(backup_patch, file_patch)
+    assert playground.apply_patches([file_patch]) == (True, [])
+
+
+def test_apply_patches_git_remote_failes(playground: Playground, file_patch: Path):
+    with pytest.raises(subprocess.CalledProcessError):
+        playground.apply_patches([file_patch])
+
+
+def test_git_apply_without_bundle(playground: Playground, file_patch: Path):
+    git_init(playground.location)
+    file_patch.with_suffix('.pack').unlink()
+
+    assert playground.apply_patches([file_patch]) == (True, [])
+    assert (playground.location / 'files' / 'file.txt').read_text() == 'file'
+
+
+def test_git_apply_merge_conflict_without_bundle(playground: Playground, file_patch: Path):
+    git_init(playground.location)
+    file_patch.with_suffix('.pack').unlink()
+    file = playground.location / 'files' / 'file.txt'
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text('this is a conflict')
+    git_add(playground.location, ['files'])
+    git_commit(playground.location, 'Created file')
+
+    assert playground.apply_patches([file_patch]) == (False, [])
+    assert (playground.location / 'files' / 'file.txt').read_text() == FILE_MERGE_CONFLICT
