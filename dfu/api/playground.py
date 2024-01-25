@@ -3,7 +3,6 @@ import subprocess
 from pathlib import Path
 from shutil import copy2, rmtree
 from tempfile import mkdtemp
-from typing import Iterable
 
 import click
 from unidiff import PatchedFile, PatchSet
@@ -47,7 +46,7 @@ class Playground:
                 files.add(Path('/', *source_path.parts[2:]))
         return files
 
-    def copy_files_from_filesystem(self, paths: Iterable[Path]):
+    def copy_files_from_filesystem(self, paths: list[Path] | set[Path]):
         for path in paths:
             if path.is_dir():
                 continue
@@ -63,8 +62,9 @@ class Playground:
                     capture_output=True,
                 )
 
-    def apply_patches(self, patches: Iterable[Path], *, reverse: bool = False) -> bool:
-        merged_cleanly = True
+    def apply_patches(self, patches: list[Path], *, reverse: bool = False) -> list[Path]:
+        remaining_stack = list(reversed(patches))
+
         for patch in patches:
             bundle_file = patch.with_suffix('.pack')
             if bundle_file.exists():
@@ -73,18 +73,23 @@ class Playground:
                 git_fetch(self.location, remote_name)
             else:
                 click.echo("No bundle file found for patch {patch.name}. Continuing without it", err=True)
+
             try:
-                merged_cleanly = git_apply(self.location, patch, reverse=reverse) and merged_cleanly
+                merged_cleanly = git_apply(self.location, patch, reverse=reverse)
             except subprocess.CalledProcessError as e:
                 click.echo(f"Failed to apply patch {patch.name}", err=True)
                 click.echo(e.output, err=True)
+                raise e
 
             if merged_cleanly:
+                remaining_stack.pop()
                 git_add(self.location, ['.'])
                 if git_are_files_staged(self.location):
                     git_commit(self.location, f"Patch {patch.name}")
+            else:
+                break
 
-        return merged_cleanly
+        return list(reversed(remaining_stack))
 
     def copy_files_to_filesystem(self, dest: Path = Path('/')):
         root_dir = self.location / 'files'
