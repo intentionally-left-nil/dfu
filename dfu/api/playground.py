@@ -89,8 +89,8 @@ class Playground:
                 click.echo(e.output, err=True)
                 raise e
 
+            remaining_stack.pop()  # Even if there's a merge conflict, remove it so we don't try to apply it again
             if merged_cleanly:
-                remaining_stack.pop()
                 git_add(self.location, ['.'])
                 if git_are_files_staged(self.location):
                     git_commit(self.location, f"Patch {patch.name}")
