@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+from typing import Literal
 
 import click
 
@@ -11,7 +12,6 @@ from dfu.commands import (
     begin_diff,
     begin_install,
     begin_uninstall,
-    chroot_shell,
     continue_diff,
     continue_install,
     continue_uninstall,
@@ -19,6 +19,8 @@ from dfu.commands import (
     create_package,
     create_snapshot,
     get_config_paths,
+    launch_shell,
+    launch_snapshot_shell,
     load_store,
 )
 from dfu.snapshots.snapper import Snapper
@@ -100,12 +102,6 @@ def uninstall(abort: bool | None, continue_: bool | None):
         begin_uninstall(store)
 
 
-@main.command()
-@click.option('--id', 'id_', type=int, help='The snapshot id to chroot into', default=-1)
-def chroot(id_: int):
-    chroot_shell(load_store(), id_)
-
-
 @click.group
 def config():
     pass
@@ -127,8 +123,19 @@ def config_init(snapper_config: list[str], file: str | None):
     create_config(file=Path(file), snapper_configs=tuple(snapper_config))
 
 
-main.add_command(config)
+@main.command()
+@click.option('--location', type=click.Choice(['placeholder', 'diff_files', 'install_files', 'uninstall_files']))
+def shell(location: Literal['placeholder', 'diff_files', 'install_files', 'uninstall_files'] | None):
+    launch_shell(load_store(), location)
 
+
+@main.command()
+@click.option('--id', 'id_', type=int, help='The snapshot id to chroot into', default=-1)
+def snapshot_shell(id_: int):
+    launch_snapshot_shell(load_store(), id_)
+
+
+main.add_command(config)
 
 if __name__ == "__main__":
     if os.geteuid() == 0:

@@ -69,12 +69,13 @@ def continue_diff(store: Store):
         store.state = store.state.update(diff=store.state.diff.update(created_placeholders=True))
         click.echo(
             dedent(
-                f"""\
-                Placeholder files have been created here:
-                {placeholder_playground.location}
-                Run `git ls-files --others files` to see them.
-                If there are extra files, delete them.
-                Once completed, run `dfu diff --continue`."""
+                """\
+                Placeholder files have been created.
+                Run dfu shell to inspect the contents.
+                For example you could use git ls-files --others
+                to see a list of all the modified files
+                You can either remove files, or add them to the .gitignore
+                Once completed, run dfu diff --continue."""
             ),
             err=True,
         )
@@ -94,12 +95,9 @@ def continue_diff(store: Store):
         store.state = store.state.update(diff=store.state.diff.update(copied_pre_files=True))
         click.echo(
             dedent(
-                f"""\
-                Initial files have been created here:
-                {playground.location}
-                Run git diff --staged to see the state from the first snapshot.
-                When you're happy with the original state, git commit the changes.
-                Then, run `dfu diff --continue`."""
+                """\
+                Initial files have been created here. Run dfu shell to inspect the changes.
+                Once you're happy with the initial state, run git commit, and then dfu diff --continue"""
             ),
             err=True,
         )
@@ -111,12 +109,10 @@ def continue_diff(store: Store):
         store.state = store.state.update(diff=store.state.diff.update(copied_post_files=True))
         click.echo(
             dedent(
-                f"""\
-                Final files have been created here:
-                {playground.location}
-                Run git diff --staged to see the state from the second snapshot.
-                When you're happy with the final state, git commit the changes. This last commit will be the computed diff
-                Afterwards, run dfu diff --continue"""
+                """\
+                Changes have been made to the diff directory. Run dfu shell to inspect the changes.
+                When satisfied, run git commit, and then dfu diff --continue
+                """
             ),
             err=True,
         )

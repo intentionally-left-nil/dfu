@@ -11,6 +11,7 @@ from dfu.revision.git import (
     copy_template_gitignore,
     git_add,
     git_apply,
+    git_are_files_staged,
     git_check_ignore,
     git_commit,
     git_diff,
@@ -221,6 +222,22 @@ index 0000000..bfe53d7
 \\ No newline at end of file
 '''
     )
+
+
+def test_git_no_files_are_staged(tmp_path: Path):
+    assert git_are_files_staged(tmp_path) == False
+
+
+def test_git_files_are_staged(tmp_path: Path):
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
+    assert git_are_files_staged(tmp_path) == True
+
+
+def test_git_files_are_staged_error(tmp_path: Path):
+    rmtree(tmp_path / ".git")
+    with pytest.raises(subprocess.CalledProcessError):
+        git_are_files_staged(tmp_path)
 
 
 def test_git_stash(tmp_path: Path):

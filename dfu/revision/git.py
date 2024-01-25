@@ -4,31 +4,31 @@ from pathlib import Path
 from platformdirs import PlatformDirs
 
 
-def git_init(package_dir: Path):
-    subprocess.run(['git', 'init'], cwd=package_dir, check=True, capture_output=True)
+def git_init(git_dir: Path):
+    subprocess.run(['git', 'init'], cwd=git_dir, check=True, capture_output=True)
 
 
-def git_add(package_dir: Path, paths: list[str | Path]):
+def git_add(git_dir: Path, paths: list[str | Path]):
     cmd = ['git', 'add'] + paths
-    subprocess.run(cmd, cwd=package_dir, check=True, capture_output=True)
+    subprocess.run(cmd, cwd=git_dir, check=True, capture_output=True)
 
 
-def git_commit(package_dir: Path, message: str):
-    subprocess.run(['git', 'commit', '-m', message], cwd=package_dir, check=True, capture_output=True)
+def git_commit(git_dir: Path, message: str):
+    subprocess.run(['git', 'commit', '-m', message], cwd=git_dir, check=True, capture_output=True)
 
 
-def git_num_commits(package_dir: Path) -> int:
+def git_num_commits(git_dir: Path) -> int:
     try:
         return int(
             subprocess.run(
-                ['git', 'rev-list', '--count', 'HEAD'], cwd=package_dir, text=True, capture_output=True, check=True
+                ['git', 'rev-list', '--count', 'HEAD'], cwd=git_dir, text=True, capture_output=True, check=True
             ).stdout.strip()
         )
     except subprocess.CalledProcessError as e:
         try:
             if (
                 subprocess.run(
-                    ['git', 'rev-list', '--all'], cwd=package_dir, text=True, capture_output=True, check=True
+                    ['git', 'rev-list', '--all'], cwd=git_dir, text=True, capture_output=True, check=True
                 ).stdout.strip()
                 == ''
             ):
@@ -38,10 +38,10 @@ def git_num_commits(package_dir: Path) -> int:
         raise e
 
 
-def git_check_ignore(package_dir: Path, paths: list[str]) -> list[str]:
+def git_check_ignore(git_dir: Path, paths: list[str]) -> list[str]:
     stdin = '\n'.join(paths)
     cmd = ['git', 'check-ignore', '--stdin']
-    result = subprocess.run(cmd, cwd=package_dir, input=stdin, text=True, capture_output=True)
+    result = subprocess.run(cmd, cwd=git_dir, input=stdin, text=True, capture_output=True)
     if result.returncode == 128:
         # Per the docs, only a status code of 128 indicates actual failure: https://git-scm.com/docs/git-check-ignore#_exit_status
         raise subprocess.CalledProcessError(result.returncode, cmd, output=result.stdout, stderr=result.stderr)
@@ -62,33 +62,44 @@ def git_ls_files(cwd: Path) -> list[str]:
     return tracked_files.stdout.splitlines() + untracked_files.stdout.splitlines()
 
 
-def git_diff(package_dir: Path, base: str, target: str, subdirectory: str | None = None) -> str:
+def git_diff(git_dir: Path, base: str, target: str, subdirectory: str | None = None) -> str:
     args = ['git', 'diff', '--patch', f'{base}..{target}']
     if subdirectory:
         args.extend(['--', subdirectory])
     return subprocess.run(
         args,
-        cwd=package_dir,
+        cwd=git_dir,
         text=True,
         capture_output=True,
         check=True,
     ).stdout
 
 
-def git_apply(package_dir: Path, patch: Path, reverse: bool = False):
+def git_are_files_staged(git_dir: Path):
+    return_code = subprocess.run(['git', 'diff', '--cached', '--quiet'], cwd=git_dir, capture_output=True).returncode
+    match return_code:
+        case 0:
+            return False
+        case 1:
+            return True
+        case _:
+            raise subprocess.CalledProcessError(return_code, ['git', 'diff', '--cached', '--quiet'])
+
+
+def git_apply(git_dir: Path, patch: Path, reverse: bool = False):
     args: list[str] = ['git', 'apply']
     if reverse:
         args.append('--reverse')
     args.append(str(patch.resolve()))
-    subprocess.run(args, cwd=package_dir, check=True, capture_output=True)
+    subprocess.run(args, cwd=git_dir, check=True, capture_output=True)
 
 
-def git_stash(package_dir: Path):
-    subprocess.run(['git', 'stash', 'save'], cwd=package_dir, check=True, capture_output=True)
+def git_stash(git_dir: Path):
+    subprocess.run(['git', 'stash', 'save'], cwd=git_dir, check=True, capture_output=True)
 
 
-def git_stash_pop(package_dir: Path):
-    subprocess.run(['git', 'stash', 'pop'], cwd=package_dir, check=True, capture_output=True)
+def git_stash_pop(git_dir: Path):
+    subprocess.run(['git', 'stash', 'pop'], cwd=git_dir, check=True, capture_output=True)
 
 
 def ensure_template_gitignore() -> Path:
@@ -98,8 +109,8 @@ def ensure_template_gitignore() -> Path:
     return template_gitignore
 
 
-def copy_template_gitignore(package_dir: Path):
-    package_gitignore = package_dir / '.gitignore'
+def copy_template_gitignore(git_dir: Path):
+    package_gitignore = git_dir / '.gitignore'
     template_gitignore = ensure_template_gitignore()
     if not package_gitignore.exists() and template_gitignore.is_file():
         package_gitignore.write_text(template_gitignore.read_text())

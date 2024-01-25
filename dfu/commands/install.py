@@ -7,7 +7,13 @@ import click
 
 from dfu.api import Event, Playground, Store
 from dfu.package.install import Install
-from dfu.revision.git import git_add, git_apply, git_commit, git_init
+from dfu.revision.git import (
+    git_add,
+    git_apply,
+    git_are_files_staged,
+    git_commit,
+    git_init,
+)
 
 
 def begin_install(store: Store):
@@ -33,7 +39,8 @@ def continue_install(store: Store):
             git_init(playground.location)
             _copy_base_files(store, playground)
             git_add(playground.location, ['.'])
-            git_commit(playground.location, "Initial files")
+            if git_are_files_staged(playground.location):
+                git_commit(playground.location, "Initial files")
             _apply_patches(store, playground.location)
         except Exception:
             playground.cleanup()
@@ -42,11 +49,10 @@ def continue_install(store: Store):
         store.state = store.state.update(install=store.state.install.update(dry_run_dir=str(playground.location)))
         click.echo(
             dedent(
-                f"""\
-                Completed a dry run of the patches here: {playground.location}
-                Make any necessary changes to the files in that directory.
-                Once you're satisfied, run dfu install --continue to apply the patches to the system
-                If everything looks good, run dfu install --continue to continue installation""",
+                """\
+                A dry run of the file changes are ready for your approval.
+                Run dfu shell to view the changes, and make any necessary modifications.
+                Once satisfied, run dfu install --continue"""
             ),
             err=True,
         )
@@ -86,4 +92,5 @@ def _apply_patches(store: Store, dest: Path):
             click.echo(e.output, err=True)
 
         git_add(dest, ['.'])
-        git_commit(dest, f"Patch {patch.name}")
+        if git_are_files_staged(dest):
+            git_commit(dest, f"Patch {patch.name}")
