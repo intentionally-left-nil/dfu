@@ -1,9 +1,7 @@
-import re
 import subprocess
 from pathlib import Path
-from shutil import copy2, rmtree
+from shutil import copy2
 from textwrap import dedent
-from typing import Literal
 
 import click
 
@@ -14,6 +12,7 @@ from dfu.package.dfu_diff import DfuDiff
 from dfu.revision.git import (
     copy_template_gitignore,
     git_add,
+    git_bundle,
     git_check_ignore,
     git_commit,
     git_diff,
@@ -125,6 +124,7 @@ def continue_diff(store: Store):
             patch_file = (
                 store.state.package_dir / f"{store.state.diff.from_index:03}_to_{store.state.diff.to_index:03}.patch"
             )
+            git_bundle(playground.location, patch_file.with_suffix(".pack"))
             patch_file.write_text(git_diff(playground.location, "HEAD~1", "HEAD", subdirectory="files"))
             click.echo(f"Created {patch_file.name}", err=True)
         store.state = store.state.update(diff=store.state.diff.update(created_patch_file=True))

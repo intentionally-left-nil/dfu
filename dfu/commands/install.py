@@ -7,13 +7,7 @@ import click
 
 from dfu.api import Event, Playground, Store
 from dfu.package.install import Install
-from dfu.revision.git import (
-    git_add,
-    git_apply,
-    git_are_files_staged,
-    git_commit,
-    git_init,
-)
+from dfu.revision.git import git_add, git_are_files_staged, git_commit, git_init
 
 
 def begin_install(store: Store):
@@ -41,25 +35,47 @@ def continue_install(store: Store):
             git_add(playground.location, ['.'])
             if git_are_files_staged(playground.location):
                 git_commit(playground.location, "Initial files")
-            _apply_patches(store, playground.location)
+
         except Exception:
             playground.cleanup()
             raise
 
-        store.state = store.state.update(install=store.state.install.update(dry_run_dir=str(playground.location)))
-        click.echo(
-            dedent(
-                """\
-                A dry run of the file changes are ready for your approval.
-                Run dfu shell to view the changes, and make any necessary modifications.
-                Once satisfied, run dfu install --continue"""
-            ),
-            err=True,
+        patch_files = sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name)
+        store.state = store.state.update(
+            install=store.state.install.update(
+                dry_run_dir=str(playground.location), patches_to_apply=[str(p) for p in patch_files]
+            )
         )
+        assert store.state.install and store.state.install.dry_run_dir
+
+    playground = Playground(location=Path(store.state.install.dry_run_dir))
+    if store.state.install.patches_to_apply:
+        (succeeded, remaining) = playground.apply_patches([Path(p) for p in store.state.install.patches_to_apply])
+        store.state = store.state.update(
+            install=store.state.install.update(patches_to_apply=[str(p) for p in remaining])
+        )
+
+        if remaining or not succeeded:
+            click.echo(
+                dedent(
+                    """\
+                    There was a merge conflict applying the patches. Run dfu shell, and resolve the conflicts.
+                    Once completed, commit the changes, and then run dfu install --continue"""
+                )
+            )
+        else:
+            click.echo(
+                dedent(
+                    """\
+                    A dry run of the file changes are ready for your approval.
+                    Run dfu shell to view the changes, and make any necessary modifications.
+                    Once satisfied, run dfu install --continue"""
+                ),
+                err=True,
+            )
         return
 
     if not store.state.install.copied_files:
-        playground = Playground(location=Path(store.state.install.dry_run_dir))
         playground.copy_files_to_filesystem()
         store.state = store.state.update(install=store.state.install.update(copied_files=True))
     click.echo("Cleaning up...", err=True)
@@ -79,18 +95,3 @@ def _copy_base_files(store: Store, playground: Playground):
         files_to_copy.update(playground.list_files_in_patch(patch))
 
     playground.copy_files_from_filesystem(files_to_copy)
-
-
-def _apply_patches(store: Store, dest: Path):
-    patch_files = sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name)
-    for patch in patch_files:
-        try:
-            git_apply(dest, patch)
-        except subprocess.CalledProcessError as e:
-            click.echo(f"Failed to apply patch {patch.name}", err=True)
-            click.echo(f"Try running dfu rebase to modify the patches", err=True)
-            click.echo(e.output, err=True)
-
-        git_add(dest, ['.'])
-        if git_are_files_staged(dest):
-            git_commit(dest, f"Patch {patch.name}")

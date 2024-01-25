@@ -10,11 +10,15 @@ from dfu.revision.git import (
     DEFAULT_GITIGNORE,
     copy_template_gitignore,
     git_add,
+    git_add_remote,
     git_apply,
     git_are_files_staged,
+    git_bundle,
     git_check_ignore,
     git_commit,
     git_diff,
+    git_fetch,
+    git_init,
     git_ls_files,
     git_num_commits,
     git_stash,
@@ -271,8 +275,65 @@ def test_git_apply(tmp_path: Path):
     assert not (tmp_path / 'file.txt').exists()
 
     (tmp_path / 'changes.patch').write_text(diff)
-    git_apply(tmp_path, (tmp_path / 'changes.patch'))
+    assert git_apply(tmp_path, (tmp_path / 'changes.patch')) == True
     assert (tmp_path / 'file.txt').read_text() == 'hello'
+
+
+def test_git_apply_with_conflict(tmp_path: Path):
+    (tmp_path / '.gitignore').touch()
+    git_add(tmp_path, ['.gitignore'])
+    git_commit(tmp_path, 'Initial commit')
+    file = tmp_path / 'file.txt'
+    file.write_text('hello')
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Created file.txt')
+    diff = git_diff(tmp_path, "HEAD~1", "HEAD")
+    subprocess.run(['git', 'reset', '--hard', 'HEAD~1'], cwd=tmp_path, check=True, capture_output=True)
+
+    file.write_text('goodbye')
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Changed file.txt to goodbye')
+
+    (tmp_path / 'changes.patch').write_text(diff)
+    assert git_apply(tmp_path, (tmp_path / 'changes.patch')) == False
+
+    print(file.read_text())
+    assert (
+        file.read_text()
+        == '''\
+<<<<<<< ours
+goodbye
+EQUALS
+hello
+>>>>>>> theirs
+'''.replace(
+            "EQUALS", "=" * 7  # Replaced to prevent text editors from thinking there's a merge conflict
+        )
+    )
+
+
+def test_git_apply_with_unstaged_changes(tmp_path: Path):
+    (tmp_path / '.gitignore').touch()
+    git_add(tmp_path, ['.gitignore'])
+    git_commit(tmp_path, 'Initial commit')
+    file = tmp_path / 'file.txt'
+    file.write_text('hello')
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Created file.txt')
+    diff = git_diff(tmp_path, "HEAD~1", "HEAD")
+    subprocess.run(['git', 'reset', '--hard', 'HEAD~1'], cwd=tmp_path, check=True, capture_output=True)
+
+    file.write_text('goodbye')
+
+    (tmp_path / 'changes.patch').write_text(diff)
+    assert git_apply(tmp_path, (tmp_path / 'changes.patch')) == False
+
+
+def test_git_apply_unknown_error(tmp_path: Path):
+    patch = tmp_path / "changes.patch"
+    patch.write_text("THIS IS NOT A PATCH FILE")
+    with pytest.raises(subprocess.CalledProcessError):
+        git_apply(tmp_path, patch)
 
 
 def test_git_apply_reverse(tmp_path: Path):
@@ -287,3 +348,27 @@ def test_git_apply_reverse(tmp_path: Path):
     (tmp_path / 'changes.patch').write_text(diff)
     git_apply(tmp_path, (tmp_path / 'changes.patch'), reverse=True)
     assert not (tmp_path / 'file.txt').exists()
+
+
+def test_git_bundle(tmp_path: Path):
+    rmtree(tmp_path / '.git')
+    src = tmp_path / 'src'
+    src.mkdir()
+    git_init(src)
+    subprocess.run(['git', 'config', 'user.name', 'myself'], cwd=src, check=True)
+    subprocess.run(['git', 'config', 'user.email', 'me@example.com'], cwd=src, check=True)
+    (src / '.gitignore').touch()
+    git_add(src, ['.gitignore'])
+    git_commit(src, 'Initial commit')
+    (src / '.gitignore').write_text('# hello')
+    sha = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=src, check=True, capture_output=True).stdout.strip()
+
+    dest = tmp_path / 'dest'
+    dest.mkdir()
+    git_init(dest)
+    assert subprocess.run(['git', 'show', sha], cwd=dest, capture_output=True).returncode != 0
+    bundle = src / 'bundle.pack'
+    git_bundle(src, bundle)
+    git_add_remote(dest, 'bundle', str(bundle.resolve()))
+    git_fetch(dest, 'bundle')
+    assert subprocess.run(['git', 'show', sha], cwd=dest, capture_output=True).returncode == 0
