@@ -96,7 +96,7 @@ def continue_diff(store: Store):
                 f"""\
                 Initial files have been created here:
                 {playground.location}
-                Run git dif --staged to see the state from the first snapshot.
+                Run git diff --staged to see the state from the first snapshot.
                 When you're happy with the original state, git commit the changes.
                 Then, run `dfu diff --continue`."""
             ),
@@ -223,6 +223,7 @@ def _copy_files(store: Store, *, snapshot_index: int):
 def _initialize_playground(store: Store, playground: Playground):
     git_init(playground.location)
     package_gitignore = store.state.package_dir / '.gitignore'
+    (playground.location / "files").mkdir(mode=0o755, parents=True, exist_ok=True)
     if package_gitignore.exists():
         copy2(package_gitignore, playground.location / '.gitignore')
     else:
