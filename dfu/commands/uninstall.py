@@ -50,7 +50,7 @@ def continue_uninstall(store: Store):
                 dedent(
                     """\
                     There was a merge conflict applying the patches. Run dfu shell, and resolve the conflicts.
-                    Once completed, commit the changes, and then run dfu install --continue"""
+                    Once completed, commit the changes, and then run dfu uninstall --continue"""
                 )
             )
         else:
@@ -59,7 +59,7 @@ def continue_uninstall(store: Store):
                     """\
                     A dry run of the file changes are ready for your approval.
                     Run dfu shell to view the changes, and make any necessary modifications.
-                    Once satisfied, run dfu install --continue"""
+                    Once satisfied, run dfu uninstall --continue"""
                 ),
                 err=True,
             )
