@@ -19,6 +19,7 @@ from dfu.revision.git import (
     git_diff,
     git_init,
     git_ls_files,
+    git_num_commits,
 )
 from dfu.snapshots.snapper import Snapper
 
@@ -122,13 +123,16 @@ def continue_diff(store: Store):
         return
 
     if not store.state.diff.created_patch_file:
-        patch_file = (
-            store.state.package_dir / f"{store.state.diff.from_index:03}_to_{store.state.diff.to_index:03}.patch"
-        )
-        patch_file.write_text(git_diff(playground.location, "HEAD~1", "HEAD", subdirectory="files"))
+        if git_num_commits(playground.location) < 2:
+            click.echo("No changes detected", err=True)
+        else:
+            patch_file = (
+                store.state.package_dir / f"{store.state.diff.from_index:03}_to_{store.state.diff.to_index:03}.patch"
+            )
+            patch_file.write_text(git_diff(playground.location, "HEAD~1", "HEAD", subdirectory="files"))
+            click.echo(f"Created {patch_file.name}", err=True)
         store.state = store.state.update(diff=store.state.diff.update(created_patch_file=True))
         assert store.state.diff
-        click.echo(f"Created {patch_file.name}", err=True)
 
     if not store.state.diff.updated_installed_programs:
         click.echo("Detecting which programs were installed and removed...", err=True)

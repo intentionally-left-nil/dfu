@@ -6,13 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from dfu.api.playground import Playground
-from dfu.revision.git import (
-    git_add,
-    git_checkout,
-    git_commit,
-    git_default_branch,
-    git_diff,
-)
+from dfu.revision.git import git_add, git_commit, git_diff
 
 
 @pytest.fixture
@@ -50,13 +44,12 @@ def test_list_files_new_file(tmp_path: Path, playground: Playground, setup_git):
     (tmp_path / '.gitignore').touch()
     git_add(tmp_path, ['.gitignore'])
     git_commit(tmp_path, 'Initial commit')
-    git_checkout(tmp_path, 'new_branch')
     (tmp_path / 'files' / 'nested').mkdir(parents=True, exist_ok=True)
     (tmp_path / 'files' / 'nested' / 'nested.txt').write_text('hello\nnested')
     (tmp_path / 'files' / 'file.txt').write_text('hello\nworld')
     git_add(tmp_path, ['.'])
     git_commit(tmp_path, 'Created files')
-    diff = git_diff(tmp_path, git_default_branch(tmp_path), 'new_branch')
+    diff = git_diff(tmp_path, "HEAD~1", "HEAD")
 
     patch = tmp_path / "changes.patch"
     patch.write_text(diff)
@@ -70,11 +63,10 @@ def test_list_files_modified_file(tmp_path: Path, playground: Playground, setup_
     test_file.write_text('hello\nworld')
     git_add(tmp_path, ['.'])
     git_commit(tmp_path, 'Initial commit')
-    git_checkout(tmp_path, 'new_branch')
     test_file.write_text('hello\nworld\nnew line')
     git_add(tmp_path, ['.'])
     git_commit(tmp_path, 'Modified file')
-    diff = git_diff(tmp_path, git_default_branch(tmp_path), 'new_branch')
+    diff = git_diff(tmp_path, "HEAD~1", "HEAD")
 
     patch = tmp_path / "changes.patch"
     patch.write_text(diff)
@@ -88,11 +80,10 @@ def test_list_files_delete_file(tmp_path: Path, playground: Playground, setup_gi
     test_file.write_text('hello\nworld')
     git_add(tmp_path, ['.'])
     git_commit(tmp_path, 'Initial commit')
-    git_checkout(tmp_path, 'new_branch')
     test_file.unlink()
     git_add(tmp_path, ['.'])
     git_commit(tmp_path, 'Deleted file')
-    diff = git_diff(tmp_path, git_default_branch(tmp_path), 'new_branch')
+    diff = git_diff(tmp_path, "HEAD~1", "HEAD")
 
     patch = tmp_path / "changes.patch"
     patch.write_text(diff)
@@ -104,13 +95,12 @@ def test_list_files_unknown_file(tmp_path: Path, playground: Playground, setup_g
     (tmp_path / '.gitignore').touch()
     git_add(tmp_path, ['.gitignore'])
     git_commit(tmp_path, 'Initial commit')
-    git_checkout(tmp_path, 'new_branch')
     (tmp_path / 'not_files' / 'nested').mkdir(parents=True, exist_ok=True)
     (tmp_path / 'not_files' / 'nested' / 'nested.txt').write_text('hello\nnested')
     (tmp_path / 'not_files' / 'file.txt').write_text('hello\nworld')
     git_add(tmp_path, ['.'])
     git_commit(tmp_path, 'Created files')
-    diff = git_diff(tmp_path, git_default_branch(tmp_path), 'new_branch')
+    diff = git_diff(tmp_path, "HEAD~1", "HEAD")
 
     patch = tmp_path / "changes.patch"
     patch.write_text(diff)
@@ -123,14 +113,13 @@ def test_list_files_create_symlink(tmp_path: Path, playground: Playground, setup
     (tmp_path / '.gitignore').touch()
     git_add(tmp_path, ['.gitignore'])
     git_commit(tmp_path, 'Initial commit')
-    git_checkout(tmp_path, 'new_branch')
     (tmp_path / 'files' / 'nested').mkdir(parents=True, exist_ok=True)
     (tmp_path / 'files' / 'nested' / 'file.txt').write_text('hello\nworld')
     (tmp_path / 'files' / 'link.txt').symlink_to('./nested/file.txt')
     (tmp_path / 'files' / 'link_directory').symlink_to('./nested')
     git_add(tmp_path, ['.'])
     git_commit(tmp_path, 'Created files')
-    diff = git_diff(tmp_path, git_default_branch(tmp_path), 'new_branch')
+    diff = git_diff(tmp_path, "HEAD~1", "HEAD")
 
     patch = tmp_path / "changes.patch"
     patch.write_text(diff)
@@ -149,7 +138,6 @@ def test_list_files_multiple_actions(tmp_path: Path, playground: Playground, set
     deleted_file.write_text('delete me')
     git_add(tmp_path, ['.'])
     git_commit(tmp_path, 'Initial commit')
-    git_checkout(tmp_path, 'new_branch')
     (tmp_path / 'files' / 'nested' / 'nested.txt').write_text('hello\nnested')
     (tmp_path / 'files' / 'file.txt').write_text('hello\nworld')
     (tmp_path / 'files' / 'file.txt').write_text('hello\nworld\nnew line')
@@ -161,7 +149,7 @@ def test_list_files_multiple_actions(tmp_path: Path, playground: Playground, set
     deleted_file.unlink()
     git_add(tmp_path, ['.'])
     git_commit(tmp_path, 'Modified files')
-    diff = git_diff(tmp_path, git_default_branch(tmp_path), 'new_branch')
+    diff = git_diff(tmp_path, "HEAD~1", "HEAD")
 
     patch = tmp_path / "changes.patch"
     patch.write_text(diff)
