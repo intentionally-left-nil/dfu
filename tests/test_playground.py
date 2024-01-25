@@ -1,6 +1,6 @@
 import subprocess
 from pathlib import Path
-from shutil import copy
+from shutil import copy, rmtree
 from typing import Generator
 from unittest.mock import MagicMock, patch
 
@@ -13,6 +13,9 @@ from dfu.revision.git import git_add, git_bundle, git_commit, git_diff, git_init
 @pytest.fixture
 def playground() -> Generator[Playground, None, None]:
     playground = Playground(prefix="unit_test")
+    git_init(playground.location)
+    subprocess.run(['git', 'config', 'user.name', 'myself'], cwd=playground.location, check=True)
+    subprocess.run(['git', 'config', 'user.email', 'me@example.com'], cwd=playground.location, check=True)
     yield playground
     playground.cleanup()
 
@@ -350,7 +353,6 @@ def file2_patch(patch_playground: Playground, tmp_path) -> Path:
 
 
 def test_apply_patches_cleanly(playground: Playground, file_patch: Path, file2_patch: Path):
-    git_init(playground.location)
     assert playground.apply_patches([file_patch, file2_patch]) == (True, [])
     assert (playground.location / 'files' / 'file.txt').read_text() == 'file'
     assert (playground.location / 'files' / 'file2.txt').read_text() == 'file2'
@@ -368,7 +370,6 @@ file
 
 
 def test_apply_patches_merge_conflict(playground: Playground, file_patch: Path):
-    git_init(playground.location)
     file = playground.location / 'files' / 'file.txt'
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text('this is a conflict')
@@ -379,7 +380,6 @@ def test_apply_patches_merge_conflict(playground: Playground, file_patch: Path):
 
 
 def test_apply_patches_merge_conflict_on_first(playground: Playground, file_patch: Path, file2_patch: Path):
-    git_init(playground.location)
     file = playground.location / 'files' / 'file.txt'
     file2 = playground.location / 'files' / 'file2.txt'
     file.parent.mkdir(parents=True, exist_ok=True)
@@ -397,7 +397,6 @@ def test_apply_patches_merge_conflict_on_first(playground: Playground, file_patc
 
 
 def test_apply_patches_other_error(tmp_path: Path, playground: Playground, file_patch: Path):
-    git_init(playground.location)
     backup_patch = tmp_path / "backup.patch"
     copy(file_patch, backup_patch)
 
@@ -409,13 +408,13 @@ def test_apply_patches_other_error(tmp_path: Path, playground: Playground, file_
     assert playground.apply_patches([file_patch]) == (True, [])
 
 
-def test_apply_patches_git_remote_failes(playground: Playground, file_patch: Path):
+def test_apply_patches_git_remote_fails(playground: Playground, file_patch: Path):
+    rmtree(playground.location / '.git')
     with pytest.raises(subprocess.CalledProcessError):
         playground.apply_patches([file_patch])
 
 
 def test_git_apply_without_bundle(playground: Playground, file_patch: Path):
-    git_init(playground.location)
     file_patch.with_suffix('.pack').unlink()
 
     assert playground.apply_patches([file_patch]) == (True, [])
@@ -423,7 +422,6 @@ def test_git_apply_without_bundle(playground: Playground, file_patch: Path):
 
 
 def test_git_apply_merge_conflict_without_bundle(playground: Playground, file_patch: Path):
-    git_init(playground.location)
     file_patch.with_suffix('.pack').unlink()
     file = playground.location / 'files' / 'file.txt'
     file.parent.mkdir(parents=True, exist_ok=True)
