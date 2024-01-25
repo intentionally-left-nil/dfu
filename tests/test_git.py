@@ -11,6 +11,7 @@ from dfu.revision.git import (
     copy_template_gitignore,
     git_add,
     git_apply,
+    git_are_files_staged,
     git_check_ignore,
     git_commit,
     git_diff,
@@ -18,7 +19,6 @@ from dfu.revision.git import (
     git_num_commits,
     git_stash,
     git_stash_pop,
-    git_are_files_staged,
 )
 
 
