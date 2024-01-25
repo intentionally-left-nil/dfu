@@ -7,12 +7,7 @@ import click
 
 from dfu.api import Event, Playground, Store
 from dfu.package.install import Install
-from dfu.revision.git import (
-    git_add,
-    git_are_files_staged,
-    git_commit,
-    git_init,
-)
+from dfu.revision.git import git_add, git_are_files_staged, git_commit, git_init
 
 
 def begin_install(store: Store):

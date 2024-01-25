@@ -8,7 +8,15 @@ from typing import Iterable
 import click
 from unidiff import PatchedFile, PatchSet
 from unidiff.constants import DEV_NULL
-from dfu.revision.git import git_add_remote, git_fetch, git_apply, git_add, git_are_files_staged, git_commit
+
+from dfu.revision.git import (
+    git_add,
+    git_add_remote,
+    git_apply,
+    git_are_files_staged,
+    git_commit,
+    git_fetch,
+)
 
 
 class Playground:

@@ -12,13 +12,13 @@ from dfu.package.dfu_diff import DfuDiff
 from dfu.revision.git import (
     copy_template_gitignore,
     git_add,
+    git_bundle,
     git_check_ignore,
     git_commit,
     git_diff,
     git_init,
     git_ls_files,
     git_num_commits,
-    git_bundle,
 )
 from dfu.snapshots.snapper import Snapper
 

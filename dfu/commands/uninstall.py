@@ -6,12 +6,7 @@ import click
 
 from dfu.api import Event, Playground, Store
 from dfu.package.uninstall import Uninstall
-from dfu.revision.git import (
-    git_add,
-    git_are_files_staged,
-    git_commit,
-    git_init,
-)
+from dfu.revision.git import git_add, git_are_files_staged, git_commit, git_init
 
 
 def begin_uninstall(store: Store):

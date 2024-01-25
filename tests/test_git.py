@@ -10,19 +10,19 @@ from dfu.revision.git import (
     DEFAULT_GITIGNORE,
     copy_template_gitignore,
     git_add,
+    git_add_remote,
     git_apply,
     git_are_files_staged,
+    git_bundle,
     git_check_ignore,
     git_commit,
     git_diff,
+    git_fetch,
+    git_init,
     git_ls_files,
     git_num_commits,
     git_stash,
     git_stash_pop,
-    git_bundle,
-    git_init,
-    git_add_remote,
-    git_fetch,
 )
 
 
