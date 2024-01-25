@@ -70,8 +70,8 @@ def continue_diff(store: Store):
         click.echo(
             dedent(
                 f"""\
-                Placeholder files have been created here:
-                {placeholder_playground.location}
+                Placeholder files have been created.
+                Run dfu shell placeholder to 
                 Run `git ls-files --others files` to see them.
                 If there are extra files, delete them.
                 Once completed, run `dfu diff --continue`."""

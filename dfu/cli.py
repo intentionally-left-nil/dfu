@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+from typing import Literal
 
 import click
 
@@ -18,8 +19,7 @@ from dfu.commands import (
     create_package,
     create_snapshot,
     get_config_paths,
-    launch_files_shell,
-    launch_placeholder_shell,
+    launch_shell,
     launch_snapshot_shell,
     load_store,
 )
@@ -123,29 +123,17 @@ def config_init(snapper_config: list[str], file: str | None):
     create_config(file=Path(file), snapper_configs=tuple(snapper_config))
 
 
-@click.group
-def shell():
-    pass
+@click.option('--location', type=click.Choice(['placeholder', 'diff_files', 'install_files', 'uninstall_files']))
+def shell(location: Literal['placeholder', 'diff_files', 'install_files', 'uninstall_files'] | None):
+    launch_shell(load_store(), location)
 
 
-@shell.command(name="snapshot")
 @click.option('--id', 'id_', type=int, help='The snapshot id to chroot into', default=-1)
-def shell_snapshot(id_: int):
+def snapshot_shell(id_: int):
     launch_snapshot_shell(load_store(), id_)
 
 
-@shell.command(name="placeholder")
-def shell_placeholder():
-    launch_placeholder_shell(load_store())
-
-
-@shell.command(name="files")
-def shell_files():
-    launch_files_shell(load_store())
-
-
-for group in [config, shell]:
-    main.add_command(group)
+main.add_command(config)
 
 if __name__ == "__main__":
     if os.geteuid() == 0:
