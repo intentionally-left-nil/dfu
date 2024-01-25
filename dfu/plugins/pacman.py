@@ -54,11 +54,10 @@ class PacmanPlugin(DfuPlugin):
         return set([package for package in packages if package])
 
     def _install_dependencies(self):
-        if self.store.state.package_config.programs_removed:
-            click.echo(
-                f"Removing dependencies: {', '.join(self.store.state.package_config.programs_removed)}", err=True
-            )
-            args = ['sudo', 'pacman', '-R', *self.store.state.package_config.programs_removed]
+        to_remove = [p for p in self.store.state.package_config.programs_removed if _is_package_installed(p)]
+        if to_remove:
+            click.echo(f"Removing dependencies: {', '.join(to_remove)}", err=True)
+            args = ['sudo', 'pacman', '-R', *to_remove]
             subprocess.run(args, check=True)
         if self.store.state.package_config.programs_added:
             click.echo(
@@ -68,9 +67,10 @@ class PacmanPlugin(DfuPlugin):
             subprocess.run(args, check=True)
 
     def _uninstall_dependencies(self):
-        if self.store.state.package_config.programs_added:
-            click.echo(f"Removing dependencies: {', '.join(self.store.state.package_config.programs_added)}", err=True)
-            args = ['sudo', 'pacman', '-R', *self.store.state.package_config.programs_added]
+        to_remove = [p for p in self.store.state.package_config.programs_added if _is_package_installed(p)]
+        if to_remove:
+            click.echo(f"Removing dependencies: {', '.join(to_remove)}", err=True)
+            args = ['sudo', 'pacman', '-R', *to_remove]
             subprocess.run(args, check=True)
         if self.store.state.package_config.programs_removed:
             click.echo(
@@ -78,6 +78,11 @@ class PacmanPlugin(DfuPlugin):
             )
             args = ['sudo', 'pacman', '-S', '--needed', *self.store.state.package_config.programs_removed]
             subprocess.run(args, check=True)
+
+
+def _is_package_installed(package: str) -> bool:
+    result = subprocess.run(['pacman', '-Q', package], capture_output=True, text=True)
+    return result.returncode == 0
 
 
 entrypoint: Entrypoint = lambda store: PacmanPlugin(store)
