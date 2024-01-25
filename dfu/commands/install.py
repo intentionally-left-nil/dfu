@@ -85,7 +85,7 @@ def _copy_base_files(store: Store, playground: Playground):
 
 def _apply_patches(store: Store, dest: Path):
     patch_files = sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name)
-    status = True
+    merged_cleanly = True
     for patch in patch_files:
         bundle_file = patch.with_suffix('.pack')
         if bundle_file.exists():
@@ -95,14 +95,14 @@ def _apply_patches(store: Store, dest: Path):
         else:
             click.echo("No bundle file found for patch {patch.name}. Continuing without it", err=True)
         try:
-            status = git_apply(dest, patch) and status
+            merged_cleanly = git_apply(dest, patch) and merged_cleanly
         except subprocess.CalledProcessError as e:
             click.echo(f"Failed to apply patch {patch.name}", err=True)
             click.echo(e.output, err=True)
 
-        git_add(dest, ['.'])
-        if git_are_files_staged(dest):
-            git_commit(dest, f"Patch {patch.name}")
-
-    if not status:
+        if merged_cleanly:
+            git_add(dest, ['.'])
+            if git_are_files_staged(dest):
+                git_commit(dest, f"Patch {patch.name}")
+    if not merged_cleanly:
         click.echo("There were merge conflicts applying the patches. Run dfu shell to address them", err=True)
