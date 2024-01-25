@@ -20,6 +20,8 @@ from dfu.revision.git import (
     git_init,
     git_ls_files,
     git_num_commits,
+    git_bundle,
+    git_unbundle,
 )
 from dfu.snapshots.snapper import Snapper
 
@@ -125,7 +127,12 @@ def continue_diff(store: Store):
             patch_file = (
                 store.state.package_dir / f"{store.state.diff.from_index:03}_to_{store.state.diff.to_index:03}.patch"
             )
+            bundle = playground.location / "bundle.pack"
+            git_bundle(playground.location, bundle)
+
             patch_file.write_text(git_diff(playground.location, "HEAD~1", "HEAD", subdirectory="files"))
+            git_unbundle(store.state.package_dir, bundle)
+            bundle.unlink(missing_ok=True)
             click.echo(f"Created {patch_file.name}", err=True)
         store.state = store.state.update(diff=store.state.diff.update(created_patch_file=True))
         assert store.state.diff

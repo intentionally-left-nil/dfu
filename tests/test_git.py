@@ -19,6 +19,9 @@ from dfu.revision.git import (
     git_num_commits,
     git_stash,
     git_stash_pop,
+    git_bundle,
+    git_unbundle,
+    git_init,
 )
 
 
@@ -344,3 +347,25 @@ def test_git_apply_reverse(tmp_path: Path):
     (tmp_path / 'changes.patch').write_text(diff)
     git_apply(tmp_path, (tmp_path / 'changes.patch'), reverse=True)
     assert not (tmp_path / 'file.txt').exists()
+
+
+def test_git_bundle(tmp_path: Path):
+    rmtree(tmp_path / '.git')
+    src = tmp_path / 'src'
+    src.mkdir()
+    git_init(src)
+    subprocess.run(['git', 'config', 'user.name', 'myself'], cwd=src, check=True)
+    subprocess.run(['git', 'config', 'user.email', 'me@example.com'], cwd=src, check=True)
+    (src / '.gitignore').touch()
+    git_add(src, ['.gitignore'])
+    git_commit(src, 'Initial commit')
+    (src / '.gitignore').write_text('# hello')
+    sha = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=src, check=True, capture_output=True).stdout.strip()
+
+    dest = tmp_path / 'dest'
+    dest.mkdir()
+    git_init(dest)
+    assert subprocess.run(['git', 'show', sha], cwd=dest, capture_output=True).returncode != 0
+    git_bundle(src, src / 'bundle.pack')
+    git_unbundle(dest, src / 'bundle.pack')
+    assert subprocess.run(['git', 'show', sha], cwd=dest, capture_output=True).returncode == 0

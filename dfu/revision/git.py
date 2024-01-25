@@ -115,6 +115,18 @@ def git_stash_pop(git_dir: Path):
     subprocess.run(['git', 'stash', 'pop'], cwd=git_dir, check=True, capture_output=True)
 
 
+def git_bundle(git_dir: Path, dest: Path):
+    return subprocess.run(
+        ['git', 'bundle', 'create', dest.resolve(), 'HEAD'], cwd=git_dir, text=True, check=True, capture_output=True
+    )
+
+
+def git_unbundle(git_dir, bundle: Path):
+    subprocess.run(
+        ['git', 'bundle', 'unbundle', bundle.resolve()], cwd=git_dir, text=True, check=True, capture_output=True
+    )
+
+
 def ensure_template_gitignore() -> Path:
     template_gitignore = PlatformDirs("dfu").user_data_path / ".gitignore"
     if not template_gitignore.exists():
