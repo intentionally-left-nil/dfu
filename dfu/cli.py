@@ -11,7 +11,6 @@ from dfu.commands import (
     begin_diff,
     begin_install,
     begin_uninstall,
-    chroot_shell,
     continue_diff,
     continue_install,
     continue_uninstall,
@@ -19,6 +18,9 @@ from dfu.commands import (
     create_package,
     create_snapshot,
     get_config_paths,
+    launch_files_shell,
+    launch_placeholder_shell,
+    launch_snapshot_shell,
     load_store,
 )
 from dfu.snapshots.snapper import Snapper
@@ -121,9 +123,6 @@ def config_init(snapper_config: list[str], file: str | None):
     create_config(file=Path(file), snapper_configs=tuple(snapper_config))
 
 
-main.add_command(config)
-
-
 @click.group
 def shell():
     pass
@@ -132,9 +131,21 @@ def shell():
 @shell.command(name="snapshot")
 @click.option('--id', 'id_', type=int, help='The snapshot id to chroot into', default=-1)
 def shell_snapshot(id_: int):
-    chroot_shell(load_store(), id_)
-    pass
+    launch_snapshot_shell(load_store(), id_)
 
+
+@shell.command(name="placeholder")
+def shell_placeholder():
+    launch_placeholder_shell(load_store())
+
+
+@shell.command(name="files")
+def shell_files():
+    launch_files_shell(load_store())
+
+
+for group in [config, shell]:
+    main.add_command(group)
 
 if __name__ == "__main__":
     if os.geteuid() == 0:
