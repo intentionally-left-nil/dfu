@@ -28,7 +28,7 @@ class Playground:
         patch_files: list[PatchedFile] = PatchSet(patch.read_text(), metadata_only=True)
         for file in patch_files:
             for source in (file.source_file, file.target_file):
-                source_path = Path(source)
+                source_path = Path(source or DEV_NULL)
                 if source_path == Path(DEV_NULL) or source_path.parts[1:] == Path(DEV_NULL).parts[1:]:
                     continue
 
