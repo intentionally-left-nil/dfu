@@ -134,6 +134,7 @@ def git_add_remote(git_dir: Path, name: str, remote: str):
 def ensure_template_gitignore() -> Path:
     template_gitignore = PlatformDirs("dfu").user_data_path / ".gitignore"
     if not template_gitignore.exists():
+        template_gitignore.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
         template_gitignore.write_text(DEFAULT_GITIGNORE)
     return template_gitignore
 
