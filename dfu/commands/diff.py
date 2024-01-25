@@ -60,8 +60,10 @@ def continue_diff(store: Store):
             store.state = store.state.update(diff=store.state.diff.update(placeholder_dir=str(playground.location)))
             click.echo(
                 dedent(
-                    """\
-                    Placeholder files have been created. Run `git ls-files --others files` to see them.
+                    f"""\
+                    Placeholder files have been created here:
+                    {playground.location}
+                    Run `git ls-files --others files` to see them.
                     If there are extra files, delete them.
                     Once completed, run `dfu diff --continue`."""
                 ),
@@ -153,7 +155,6 @@ def create_changed_placeholders(store: Store, playground: Playground):
                 # Performance speedup: Don't write files that are ignored by git
                 continue
             path = playground.location / 'files' / delta.path
-            path = store.state.package_dir / delta.path
             try:
                 # Performance speedup: Try calling mkdir once, to create all of the parent directories
                 path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
