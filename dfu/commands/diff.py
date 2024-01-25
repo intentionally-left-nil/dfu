@@ -41,8 +41,9 @@ def begin_diff(store: Store, *, from_index: int, to_index: int):
 
 def abort_diff(store: Store):
     click.echo("Cleaning up...", err=True)
-    _rmtree(store.state.package_dir, 'placeholders')
     _rmtree(store.state.package_dir, 'files')
+    if store.state.diff and store.state.diff.placeholder_dir:
+        rmtree(store.state.diff.placeholder_dir, ignore_errors=True)
     store.state = store.state.update(diff=None)
     git_checkout(store.state.package_dir, git_default_branch(store.state.package_dir), exist_ok=True)
 
@@ -154,7 +155,7 @@ def create_changed_placeholders(store: Store, playground: Playground):
             if delta.path in ignored_paths:
                 # Performance speedup: Don't write files that are ignored by git
                 continue
-            path = playground.location / 'files' / delta.path
+            path = playground.location / delta.path
             try:
                 # Performance speedup: Try calling mkdir once, to create all of the parent directories
                 path.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
