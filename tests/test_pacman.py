@@ -29,8 +29,8 @@ def store(config: Config) -> Store:
         diff=DfuDiff(
             from_index=0,
             to_index=1,
-            created_base_branch=True,
-            created_target_branch=True,
+            copied_pre_files=True,
+            copied_post_files=True,
             updated_installed_programs=False,
         ),
     )

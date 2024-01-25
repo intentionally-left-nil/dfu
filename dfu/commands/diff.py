@@ -15,9 +15,7 @@ from dfu.revision.git import (
     DEFAULT_GITIGNORE,
     git_add,
     git_check_ignore,
-    git_checkout,
     git_commit,
-    git_default_branch,
     git_diff,
     git_init,
     git_ls_files,
@@ -41,11 +39,11 @@ def begin_diff(store: Store, *, from_index: int, to_index: int):
 
 def abort_diff(store: Store):
     click.echo("Cleaning up...", err=True)
-    _rmtree(store.state.package_dir, 'files')
     if store.state.diff and store.state.diff.placeholder_dir:
-        rmtree(store.state.diff.placeholder_dir, ignore_errors=True)
+        Playground(location=Path(store.state.diff.placeholder_dir)).cleanup()
+    if store.state.diff and store.state.diff.working_dir:
+        Playground(location=Path(store.state.diff.working_dir)).cleanup()
     store.state = store.state.update(diff=None)
-    git_checkout(store.state.package_dir, git_default_branch(store.state.package_dir), exist_ok=True)
 
 
 def continue_diff(store: Store):
@@ -53,65 +51,83 @@ def continue_diff(store: Store):
         raise ValueError("Cannot continue a diff if there is no diff in progress")
     if store.state.install is not None:
         raise ValueError("An installation is in progress. Run `dfu install --abort` to abort the installation.")
+
+    if not store.state.diff.placeholder_dir:
+        store.state = store.state.update(
+            diff=store.state.diff.update(placeholder_dir=str(Playground(prefix="dfu_placeholder_").location))
+        )
+        assert store.state.diff and store.state.diff.placeholder_dir
+
+    placeholder_playground = Playground(location=Path(store.state.diff.placeholder_dir))
     if not store.state.diff.created_placeholders:
-        playground = Playground(prefix="dfu_placeholders_")
-        try:
-            click.echo("Creating placeholder files...", err=True)
-            create_changed_placeholders(store, playground)
-            store.state = store.state.update(diff=store.state.diff.update(placeholder_dir=str(playground.location)))
-            click.echo(
-                dedent(
-                    f"""\
-                    Placeholder files have been created here:
-                    {playground.location}
-                    Run `git ls-files --others files` to see them.
-                    If there are extra files, delete them.
-                    Once completed, run `dfu diff --continue`."""
-                ),
-                err=True,
-            )
-            return
-        except Exception:
-            playground.cleanup()
-            raise
+        click.echo("Creating placeholder files...", err=True)
 
-    if not store.state.diff.created_base_branch:
-        create_base_branch(store)
+        create_changed_placeholders(store, placeholder_playground)
+        store.state = store.state.update(diff=store.state.diff.update(created_placeholders=True))
         click.echo(
             dedent(
-                """\
-                The files/ directory is now populated with the contents at the time of the initial `dfu snap`
-                Make sure all the files here are what you wish to track. Then, commit ONLY the files/ directory to this base branch.
-                After you've git committed any changes to the base branch, run `dfu diff --continue`."""
+                f"""\
+                Placeholder files have been created here:
+                {placeholder_playground.location}
+                Run `git ls-files --others files` to see them.
+                If there are extra files, delete them.
+                Once completed, run `dfu diff --continue`."""
             ),
             err=True,
         )
         return
 
-    if not store.state.diff.created_target_branch:
-        create_target_branch(store)
+    if not store.state.diff.working_dir:
+        store.state = store.state.update(
+            diff=store.state.diff.update(working_dir=str(Playground(prefix="dfu_diff_").location))
+        )
+        assert store.state.diff and store.state.diff.working_dir
+
+    playground = Playground(location=Path(store.state.diff.working_dir))
+
+    if not store.state.diff.copied_pre_files:
+        copy_files(store, snapshot_index=store.state.diff.from_index)
+        git_add(playground.location, ['files'])
+        store.state = store.state.update(diff=store.state.diff.update(copied_pre_files=True))
         click.echo(
             dedent(
-                """\
-                The files/ directory is now populated with the contents at the time of the final `dfu snap`
-                This represents the git diff for the files that were changed between the two snapshots.
-                Double-check that the final git diff is correct. If it is, commit ONLY the files/ directory to this target branch.
-                After you've git committed any changes to the target branch, run `dfu diff --continue`."""
+                f"""\
+                Initial files have been created here:
+                {playground.location}
+                Run git dif --staged to see the state from the first snapshot.
+                When you're happy with the original state, git commit the changes.
+                Then, run `dfu diff --continue`."""
             ),
             err=True,
         )
         return
 
-    default_branch = git_default_branch(store.state.package_dir)
-    click.echo(f"Checking out the {default_branch} branch", err=True)
-    git_checkout(store.state.package_dir, default_branch, exist_ok=True)
+    if not store.state.diff.copied_post_files:
+        copy_files(store, snapshot_index=store.state.diff.from_index)
+        git_add(playground.location, ['files'])
+        store.state = store.state.update(diff=store.state.diff.update(copied_post_files=True))
+        click.echo(
+            dedent(
+                f"""\
+                Final files have been created here:
+                {playground.location}
+                Run git diff --staged to see the state from the second snapshot.
+                When you're happy with the final state, git commit the changes. This last commit will be the computed diff
+                Afterwards, run dfu diff --continue"""
+            ),
+            err=True,
+        )
+        return
 
     if not store.state.diff.created_patch_file:
-        create_patch_file(store.state.package_dir, store.state.diff)
+        patch_file = (
+            store.state.package_dir / f"{store.state.diff.from_index:03}_to_{store.state.diff.to_index:03}.patch"
+        )
+        patch_file.write_text(git_diff(playground.location, "HEAD~1", "HEAD", subdirectory="files"))
         store.state = store.state.update(diff=store.state.diff.update(created_patch_file=True))
-        click.echo("Created the changes.patch file", err=True)
+        assert store.state.diff
+        click.echo(f"Created {patch_file.name}", err=True)
 
-    assert store.state.diff
     if not store.state.diff.updated_installed_programs:
         click.echo("Detecting which programs were installed and removed...", err=True)
         store.dispatch(Event.TARGET_BRANCH_FINALIZED)
@@ -180,14 +196,20 @@ def create_changed_placeholders(store: Store, playground: Playground):
             path.write_text(f"PLACEHOLDER: {delta.action}\n")
 
 
-def copy_files(store: Store, *, snapshot_index):
-    _rmtree(store.state.package_dir, 'files')
+def copy_files(store: Store, *, snapshot_index: int):
+    assert store.state.diff and store.state.diff.working_dir and store.state.diff.placeholder_dir
+    placeholder_playground = Playground(location=Path(store.state.diff.placeholder_dir))
+    working_playground = Playground(location=Path(store.state.diff.working_dir))
     for snapper_name, snapshot_id in store.state.package_config.snapshots[snapshot_index].items():
         snapper = Snapper(snapper_name)
         mountpoint = snapper.get_mountpoint()
-        ls_dir = store.state.package_dir / 'placeholders' / _strip_placeholders(mountpoint)
+
         try:
-            files_to_copy = [_strip_placeholders(f) for f in git_ls_files(ls_dir)]
+            files_to_copy = [
+                Path(p).relative_to('files')
+                for p in git_ls_files(placeholder_playground.location / 'files' / mountpoint.relative_to(Path('/')))
+            ]
+
         except FileNotFoundError:
             # The ls_dir doesn't exist, so there are no placeholders to copy
             continue
@@ -195,63 +217,12 @@ def copy_files(store: Store, *, snapshot_index):
         for file in files_to_copy:
             sub_path = (Path('/') / file).relative_to(mountpoint)
             src = snapshot_dir / sub_path
-            dest = store.state.package_dir / 'files' / file
-            dest.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+            dest = working_playground.location / 'files' / file
 
             if subprocess.run(['sudo', 'stat', str(src)], capture_output=True).returncode == 0:
+                dest.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
                 subprocess.run(
                     ['sudo', 'cp', '--no-dereference', '--preserve=all', str(src), str(dest)],
                     capture_output=True,
                     check=True,
                 )
-
-
-def create_base_branch(store: Store):
-    assert store.state.diff
-    branch_name = _branch_name(store.state.diff, 'base')
-    click.echo(f"Creating base branch {branch_name}...", err=True)
-    git_checkout(store.state.package_dir, branch_name, exist_ok=False)
-    copy_files(store, snapshot_index=store.state.diff.from_index)
-    if (store.state.package_dir / 'files').exists():
-        git_add(store.state.package_dir, ['files'])
-    store.state = store.state.update(diff=store.state.diff.update(created_base_branch=True))
-
-
-def create_target_branch(store: Store):
-    assert store.state.diff
-    if not store.state.diff.created_base_branch:
-        raise ValueError('Cannot create target branch without a base branch')
-    git_checkout(store.state.package_dir, _branch_name(store.state.diff, 'base'), exist_ok=True)
-
-    branch_name = _branch_name(store.state.diff, 'target')
-    click.echo(f"Creating target branch {branch_name}...", err=True)
-    git_checkout(store.state.package_dir, branch_name, exist_ok=False)
-    copy_files(store, snapshot_index=store.state.diff.to_index)
-    if (store.state.package_dir / 'files').exists():
-        git_add(store.state.package_dir, ['files'])
-    store.state = store.state.update(diff=store.state.diff.update(created_target_branch=True))
-
-
-def create_patch_file(package_dir: Path, diff: DfuDiff):
-    if not diff.created_base_branch or not diff.created_target_branch:
-        raise ValueError('Cannot create a patch file without a base and target branch')
-    patch = git_diff(package_dir, _branch_name(diff, 'base'), _branch_name(diff, 'target'))
-    (package_dir / _patch_name(diff)).write_text(patch)
-
-
-def _rmtree(package_dir: Path, subdir: str):
-    placeholder_dir = package_dir / subdir
-    if placeholder_dir.exists():
-        rmtree(placeholder_dir)
-
-
-def _strip_placeholders(p: Path | str) -> str:
-    return re.sub(r'^placeholders/', '', str(p)).lstrip('/')
-
-
-def _branch_name(diff: DfuDiff, branch_type: Literal['base', 'target']) -> str:
-    return f"{diff.from_index:03}_to_{diff.to_index:03}_{branch_type}"
-
-
-def _patch_name(diff: DfuDiff):
-    return f"{diff.from_index:03}_to_{diff.to_index:03}.patch"

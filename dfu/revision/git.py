@@ -95,9 +95,12 @@ def git_current_branch(package_dir: Path) -> str:
     ).stdout.strip()
 
 
-def git_diff(package_dir: Path, base: str, target: str) -> str:
+def git_diff(package_dir: Path, base: str, target: str, subdirectory: str | None = None) -> str:
+    args = ['git', 'diff', '--patch', f'{base}..{target}']
+    if subdirectory:
+        args.extend(['--', subdirectory])
     return subprocess.run(
-        ['git', 'diff', '--patch', f'{base}..{target}'],
+        args,
         cwd=package_dir,
         text=True,
         capture_output=True,
