@@ -7,7 +7,7 @@ import click
 
 from dfu.api import Event, Playground, Store
 from dfu.package.uninstall import Uninstall
-from dfu.revision.git import git_add, git_apply, git_commit, git_init
+from dfu.revision.git import git_add, git_apply, git_commit, git_init, git_are_files_staged
 
 
 def begin_uninstall(store: Store):
@@ -28,7 +28,8 @@ def continue_uninstall(store: Store):
             git_init(playground.location)
             _copy_base_files(store, playground)
             git_add(playground.location, ['.'])
-            git_commit(playground.location, "Initial files")
+            if git_are_files_staged(playground.location):
+                git_commit(playground.location, "Initial files")
             _apply_patches(store, playground.location)
         except Exception:
             playground.cleanup()
@@ -85,4 +86,5 @@ def _apply_patches(store: Store, dest: Path):
             click.echo(e.output, err=True)
 
         git_add(dest, ['.'])
-        git_commit(dest, f"Patch {patch.name}")
+        if git_are_files_staged(dest):
+            git_commit(dest, f"Patch {patch.name}")

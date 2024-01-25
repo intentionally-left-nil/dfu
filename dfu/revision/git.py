@@ -75,6 +75,19 @@ def git_diff(package_dir: Path, base: str, target: str, subdirectory: str | None
     ).stdout
 
 
+def git_are_files_staged(package_dir: Path):
+    return_code = subprocess.run(
+        ['git', 'diff', '--cached', '--quiet'], cwd=package_dir, capture_output=True
+    ).returncode
+    match return_code:
+        case 0:
+            return False
+        case 1:
+            return True
+        case _:
+            raise subprocess.CalledProcessError(return_code, ['git', 'diff', '--cached', '--quiet'])
+
+
 def git_apply(package_dir: Path, patch: Path, reverse: bool = False):
     args: list[str] = ['git', 'apply']
     if reverse:
