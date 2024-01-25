@@ -12,7 +12,7 @@ from dfu.api.store import Store
 from dfu.helpers.normalize_snapshot_index import normalize_snapshot_index
 from dfu.package.dfu_diff import DfuDiff
 from dfu.revision.git import (
-    DEFAULT_GITIGNORE,
+    copy_template_gitignore,
     git_add,
     git_check_ignore,
     git_commit,
@@ -221,11 +221,11 @@ def _copy_files(store: Store, *, snapshot_index: int):
 
 def _initialize_playground(store: Store, playground: Playground):
     git_init(playground.location)
-    gitignore = store.state.package_dir / '.gitignore'
-    if gitignore.exists():
-        copy2(gitignore, playground.location / '.gitignore')
+    package_gitignore = store.state.package_dir / '.gitignore'
+    if package_gitignore.exists():
+        copy2(package_gitignore, playground.location / '.gitignore')
     else:
-        gitignore.write_text(DEFAULT_GITIGNORE)
+        copy_template_gitignore(playground.location)
 
     git_add(playground.location, ['.gitignore'])
     git_commit(playground.location, "Add gitignore")
