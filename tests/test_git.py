@@ -1,5 +1,6 @@
 import subprocess
 from pathlib import Path
+from shutil import rmtree
 from unittest.mock import PropertyMock, patch
 
 import pytest
@@ -11,15 +12,10 @@ from dfu.revision.git import (
     git_add,
     git_apply,
     git_check_ignore,
-    git_checkout,
     git_commit,
-    git_current_branch,
-    git_default_branch,
-    git_delete_branch,
     git_diff,
-    git_init,
     git_ls_files,
-    git_reset_branch,
+    git_num_commits,
     git_stash,
     git_stash_pop,
 )
@@ -61,6 +57,34 @@ def test_git_commit(tmp_path: Path):
     assert result.stdout.splitlines()[1:] == ["file.txt"]
 
 
+def test_git_num_commits_zero_commits(tmp_path: Path):
+    assert git_num_commits(tmp_path) == 0
+
+
+def test_git_num_commits_not_a_git_folder(tmp_path: Path):
+    rmtree(tmp_path / '.git')
+    with pytest.raises(subprocess.CalledProcessError):
+        git_num_commits(tmp_path)
+
+
+def test_git_num_commits_one_commit(tmp_path: Path):
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Initial commit')
+    assert git_num_commits(tmp_path) == 1
+
+
+def test_git_num_commits_two_commits(tmp_path: Path):
+    (tmp_path / 'file.txt').touch()
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Initial commit')
+    (tmp_path / 'file.txt').write_text('hello')
+    git_add(tmp_path, ['file.txt'])
+    git_commit(tmp_path, 'Second commit')
+
+    assert git_num_commits(tmp_path) == 2
+
+
 def test_copy_template_gitignore(tmp_path: Path):
     template_dir = tmp_path / "template"
     template_dir.mkdir()
@@ -96,15 +120,15 @@ def test_git_ignore(tmp_path: Path):
     ignored = git_check_ignore(
         tmp_path,
         [
-            "placeholders/allowed.txt",
-            "placeholders/also_allowed.txt",
-            "placeholders/usr/share/not_allowed.so",
-            "placeholders/usr/include/also_not_allowed",
+            "files/allowed.txt",
+            "files/also_allowed.txt",
+            "files/usr/share/not_allowed.so",
+            "files/usr/include/also_not_allowed",
         ],
     )
     assert ignored == [
-        "placeholders/usr/share/not_allowed.so",
-        "placeholders/usr/include/also_not_allowed",
+        "files/usr/share/not_allowed.so",
+        "files/usr/include/also_not_allowed",
     ]
 
 
@@ -113,8 +137,8 @@ def test_git_ignore_no_files_ignored(tmp_path: Path):
     ignored = git_check_ignore(
         tmp_path,
         [
-            "placeholders/allowed.txt",
-            "placeholders/also_allowed.txt",
+            "files/allowed.txt",
+            "files/also_allowed.txt",
         ],
     )
     assert ignored == []
@@ -147,114 +171,21 @@ def test_git_ls_files(tmp_path: Path):
 
 def test_git_ls_files_in_subdirectory(tmp_path: Path):
     (tmp_path / 'file.txt').touch()
-    placeholders = tmp_path / 'placeholders'
-    placeholders.mkdir()
-    (placeholders / 'test.txt').touch()
-    assert git_ls_files(placeholders) == ['placeholders/test.txt']
-
-
-def test_git_checkout_new_branch(tmp_path: Path):
-    git_init(tmp_path)
-    (tmp_path / 'file.txt').touch()
-    git_add(tmp_path, ['file.txt'])
-    git_commit(tmp_path, 'Initial commit')
-    git_checkout(tmp_path, 'new_branch')
-    assert (
-        subprocess.run(
-            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=tmp_path, check=True, text=True, capture_output=True
-        ).stdout
-        == "new_branch\n"
-    )
-
-
-def test_git_checkout_branch_already_exists(tmp_path: Path):
-    git_init(tmp_path)
-    (tmp_path / 'file.txt').touch()
-    git_add(tmp_path, ['file.txt'])
-    git_commit(tmp_path, 'Initial commit')
-    git_checkout(tmp_path, 'new_branch')
-    with pytest.raises(subprocess.CalledProcessError):
-        git_checkout(tmp_path, 'new_branch', exist_ok=False)
-
-
-def test_git_checkout_existing_branch(tmp_path: Path):
-    git_init(tmp_path)
-    (tmp_path / 'file.txt').touch()
-    git_add(tmp_path, ['file.txt'])
-    git_commit(tmp_path, 'Initial commit')
-    git_checkout(tmp_path, 'new_branch')
-    git_checkout(tmp_path, 'new_branch_2')
-    assert (
-        subprocess.run(
-            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=tmp_path, check=True, text=True, capture_output=True
-        ).stdout
-        == "new_branch_2\n"
-    )
-    git_checkout(tmp_path, 'new_branch', exist_ok=True)
-    assert (
-        subprocess.run(
-            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], cwd=tmp_path, check=True, text=True, capture_output=True
-        ).stdout
-        == "new_branch\n"
-    )
-
-
-def test_git_default_branch_no_commits(tmp_path: Path):
-    current_branch = subprocess.run(
-        ['git', 'branch', '--show-current'], cwd=tmp_path, check=True, text=True, capture_output=True
-    ).stdout.strip()
-    assert git_default_branch(tmp_path) == current_branch
-
-
-def test_git_default_branch_with_one_commit(tmp_path: Path):
-    current_branch = subprocess.run(
-        ['git', 'branch', '--show-current'], cwd=tmp_path, check=True, text=True, capture_output=True
-    ).stdout.strip()
-    (tmp_path / 'file.txt').touch()
-    git_add(tmp_path, ['file.txt'])
-    git_commit(tmp_path, 'Initial commit')
-    assert git_default_branch(tmp_path) == current_branch
-
-
-def test_git_default_branch_missing(tmp_path: Path):
-    (tmp_path / 'file.txt').touch()
-    git_add(tmp_path, ['file.txt'])
-    git_commit(tmp_path, 'Initial commit')
-    current_branch = subprocess.run(
-        ['git', 'branch', '--show-current'], cwd=tmp_path, check=True, text=True, capture_output=True
-    ).stdout.strip()
-    git_checkout(tmp_path, 'other_branch')
-    git_delete_branch(tmp_path, current_branch)
-    with pytest.raises(ValueError, match="Could not find the default branch"):
-        git_default_branch(tmp_path)
-
-
-def test_git_reset_branch(tmp_path: Path):
-    (tmp_path / 'file.txt').touch()
-    git_add(tmp_path, ['file.txt'])
-    git_commit(tmp_path, 'Initial commit')
-    current_branch = subprocess.run(
-        ['git', 'branch', '--show-current'], cwd=tmp_path, check=True, text=True, capture_output=True
-    ).stdout.strip()
-    git_checkout(tmp_path, 'other_branch')
-    (tmp_path / 'file2.txt').touch()
-    git_add(tmp_path, ['file2.txt'])
-    git_commit(tmp_path, 'other_branch')
-    git_reset_branch(tmp_path, current_branch)
-    assert (tmp_path / 'file.txt').exists() and not (tmp_path / 'file2.txt').exists()
+    files = tmp_path / 'files'
+    files.mkdir()
+    (files / 'test.txt').touch()
+    assert git_ls_files(files) == ['files/test.txt']
 
 
 def test_git_diff(tmp_path: Path):
-    git_checkout(tmp_path, 'base')
     (tmp_path / 'file.txt').touch()
     git_add(tmp_path, ['file.txt'])
     git_commit(tmp_path, 'Initial commit')
-    git_checkout(tmp_path, 'target')
     (tmp_path / 'file.txt').write_text('hello')
     git_add(tmp_path, ['file.txt'])
     git_commit(tmp_path, 'hello')
     assert (
-        git_diff(tmp_path, 'base', 'target')
+        git_diff(tmp_path, "HEAD~1", "HEAD")
         == '''\
 diff --git a/file.txt b/file.txt
 index e69de29..b6fc4c6 100644
@@ -267,21 +198,28 @@ index e69de29..b6fc4c6 100644
     )
 
 
-def test_delete_branch(tmp_path: Path):
-    git_checkout(tmp_path, 'base')
+def test_git_diff_with_subdirectory(tmp_path: Path):
     (tmp_path / 'file.txt').touch()
     git_add(tmp_path, ['file.txt'])
     git_commit(tmp_path, 'Initial commit')
-    git_checkout(tmp_path, 'target')
     (tmp_path / 'file.txt').write_text('hello')
-    git_add(tmp_path, ['file.txt'])
-    git_commit(tmp_path, 'hello')
-    git_delete_branch(tmp_path, 'base')
+    nested = tmp_path / "nested" / "nested.txt"
+    nested.parent.mkdir(parents=True)
+    nested.write_text("nested")
+    git_add(tmp_path, ['.'])
+    git_commit(tmp_path, 'second commit')
     assert (
-        subprocess.run(
-            ['git', 'branch', '--list', 'base'], cwd=tmp_path, check=True, text=True, capture_output=True
-        ).stdout
-        == ''
+        git_diff(tmp_path, "HEAD~1", "HEAD", subdirectory="nested")
+        == '''\
+diff --git a/nested/nested.txt b/nested/nested.txt
+new file mode 100644
+index 0000000..bfe53d7
+--- /dev/null
++++ b/nested/nested.txt
+@@ -0,0 +1 @@
++nested
+\\ No newline at end of file
+'''
     )
 
 
@@ -303,24 +241,15 @@ def test_git_stash(tmp_path: Path):
     assert (tmp_path / 'file.txt').exists()
 
 
-def test_git_current_branch(tmp_path: Path):
-    (tmp_path / '.gitignore').touch()
-    git_add(tmp_path, ['.gitignore'])
-    git_commit(tmp_path, 'Initial commit')
-    git_checkout(tmp_path, 'new_branch')
-    assert git_current_branch(tmp_path) == 'new_branch'
-
-
 def test_git_apply(tmp_path: Path):
     (tmp_path / '.gitignore').touch()
     git_add(tmp_path, ['.gitignore'])
     git_commit(tmp_path, 'Initial commit')
-    git_checkout(tmp_path, 'new_branch')
     (tmp_path / 'file.txt').write_text('hello')
     git_add(tmp_path, ['file.txt'])
     git_commit(tmp_path, 'Created file.txt')
-    diff = git_diff(tmp_path, git_default_branch(tmp_path), 'new_branch')
-    git_checkout(tmp_path, git_default_branch(tmp_path), exist_ok=True)
+    diff = git_diff(tmp_path, "HEAD~1", "HEAD")
+    subprocess.run(['git', 'reset', '--hard', 'HEAD~1'], cwd=tmp_path, check=True, capture_output=True)
 
     assert not (tmp_path / 'file.txt').exists()
 
@@ -333,11 +262,11 @@ def test_git_apply_reverse(tmp_path: Path):
     (tmp_path / '.gitignore').touch()
     git_add(tmp_path, ['.gitignore'])
     git_commit(tmp_path, 'Initial commit')
-    git_checkout(tmp_path, 'new_branch')
     (tmp_path / 'file.txt').write_text('hello')
     git_add(tmp_path, ['file.txt'])
     git_commit(tmp_path, 'Created file.txt')
-    diff = git_diff(tmp_path, git_default_branch(tmp_path), 'new_branch')
+    diff = git_diff(tmp_path, "HEAD~1", "HEAD")
+
     (tmp_path / 'changes.patch').write_text(diff)
     git_apply(tmp_path, (tmp_path / 'changes.patch'), reverse=True)
     assert not (tmp_path / 'file.txt').exists()

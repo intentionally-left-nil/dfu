@@ -17,18 +17,25 @@ def git_commit(package_dir: Path, message: str):
     subprocess.run(['git', 'commit', '-m', message], cwd=package_dir, check=True, capture_output=True)
 
 
-def git_checkout(package_dir: Path, branch: str, exist_ok: bool = False):
+def git_num_commits(package_dir: Path) -> int:
     try:
-        subprocess.run(['git', 'checkout', '-b', branch], cwd=package_dir, check=True, capture_output=True)
+        return int(
+            subprocess.run(
+                ['git', 'rev-list', '--count', 'HEAD'], cwd=package_dir, text=True, capture_output=True, check=True
+            ).stdout.strip()
+        )
     except subprocess.CalledProcessError as e:
-        if exist_ok:
-            subprocess.run(['git', 'checkout', branch], cwd=package_dir, check=True, capture_output=True)
-        else:
-            raise e
-
-
-def git_reset_branch(package_dir: Path, target_branch: str):
-    subprocess.run(['git', 'reset', '--hard', target_branch], cwd=package_dir, check=True, capture_output=True)
+        try:
+            if (
+                subprocess.run(
+                    ['git', 'rev-list', '--all'], cwd=package_dir, text=True, capture_output=True, check=True
+                ).stdout.strip()
+                == ''
+            ):
+                return 0
+        except Exception:
+            pass  # Prefer the original exception
+        raise e
 
 
 def git_check_ignore(package_dir: Path, paths: list[str]) -> list[str]:
@@ -55,49 +62,12 @@ def git_ls_files(cwd: Path) -> list[str]:
     return tracked_files.stdout.splitlines() + untracked_files.stdout.splitlines()
 
 
-def git_default_branch(package_dir: Path) -> str:
-    default_branches = ['main', 'master']
-    try:
-        result = subprocess.run(
-            ['git', 'config', '--get', 'init.defaultBranch'],
-            cwd=package_dir,
-            text=True,
-            capture_output=True,
-            check=True,
-        )
-        default_branches = [result.stdout.strip()]
-    except subprocess.CalledProcessError:
-        # No default branch config option is set, try main and master
-        default_branches = ['main', 'master']
-
-    local_branches = set(
-        subprocess.run(
-            ['git', 'for-each-ref', '--format=%(refname:short)', 'refs/heads/'],
-            cwd=package_dir,
-            text=True,
-            capture_output=True,
-            check=True,
-        ).stdout.splitlines()
-    )
-
-    if len(local_branches) == 0:
-        # This can happen if there isn't an initial commit yet (sigh)
-        local_branches = set([git_current_branch(package_dir)])
-    for branch in default_branches:
-        if branch in local_branches:
-            return branch
-    raise ValueError("Could not find the default branch")
-
-
-def git_current_branch(package_dir: Path) -> str:
+def git_diff(package_dir: Path, base: str, target: str, subdirectory: str | None = None) -> str:
+    args = ['git', 'diff', '--patch', f'{base}..{target}']
+    if subdirectory:
+        args.extend(['--', subdirectory])
     return subprocess.run(
-        ['git', 'branch', '--show-current'], cwd=package_dir, text=True, capture_output=True, check=True
-    ).stdout.strip()
-
-
-def git_diff(package_dir: Path, base: str, target: str) -> str:
-    return subprocess.run(
-        ['git', 'diff', '--patch', f'{base}..{target}'],
+        args,
         cwd=package_dir,
         text=True,
         capture_output=True,
@@ -121,10 +91,6 @@ def git_stash_pop(package_dir: Path):
     subprocess.run(['git', 'stash', 'pop'], cwd=package_dir, check=True, capture_output=True)
 
 
-def git_delete_branch(package_dir: Path, branch: str):
-    subprocess.run(['git', 'branch', '-D', branch], cwd=package_dir, check=True, capture_output=True)
-
-
 def ensure_template_gitignore() -> Path:
     template_gitignore = PlatformDirs("dfu").user_data_path / ".gitignore"
     if not template_gitignore.exists():
@@ -143,25 +109,25 @@ DEFAULT_GITIGNORE = """\
 # Files created by dfu, which should not be committed
 /.dfu
 # Paths where programs are installed into
-/placeholders/usr/bin
-/placeholders/usr/lib
-/placeholders/usr/share
-/placeholders/usr/include
+/files/usr/bin
+/files/usr/lib
+/files/usr/share
+/files/usr/include
 
 # Paths where data changes, but is not user data
-/placeholders/var
-/placeholders/tmp
-/placeholders/**/baloo
+/files/var
+/files/tmp
+/files/**/baloo
 
 # File extensions we never care about
-/placeholders/**/*.so
-/placeholders/**/*.pyc
-/placeholders/**/*.pyo
-/placeholders/**/.bin
-/placeholders/**/*.cache
-/placeholders/**/.viminfo
+/files/**/*.so
+/files/**/*.pyc
+/files/**/*.pyo
+/files/**/.bin
+/files/**/*.cache
+/files/**/.viminfo
 
 # Dfu files
-/placeholders/**/.dfu
-/placeholders/**/dfu_config.json
+/files/**/.dfu
+/files/**/dfu_config.json
 """
