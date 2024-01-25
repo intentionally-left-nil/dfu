@@ -82,6 +82,7 @@ class Playground:
                 click.echo("No bundle file found for patch {patch.name}. Continuing without it", err=True)
 
             try:
+                click.echo(f"Applying patch {patch.name}", err=True)
                 merged_cleanly = git_apply(self.location, patch, reverse=reverse)
             except subprocess.CalledProcessError as e:
                 click.echo(f"Failed to apply patch {patch.name}", err=True)
