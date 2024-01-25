@@ -41,7 +41,9 @@ def continue_uninstall(store: Store):
         assert store.state.uninstall and store.state.uninstall.dry_run_dir
     playground = Playground(location=Path(store.state.uninstall.dry_run_dir))
     if store.state.uninstall.patches_to_apply:
-        (succeeded, remaining) = playground.apply_patches([Path(p) for p in store.state.uninstall.patches_to_apply])
+        (succeeded, remaining) = playground.apply_patches(
+            [Path(p) for p in store.state.uninstall.patches_to_apply], reverse=True
+        )
         store.state = store.state.update(
             uninstall=store.state.uninstall.update(patches_to_apply=[str(p) for p in remaining])
         )
