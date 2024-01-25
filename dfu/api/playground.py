@@ -8,6 +8,7 @@ from typing import Iterable
 import click
 from unidiff import PatchedFile, PatchSet
 from unidiff.constants import DEV_NULL
+from dfu.revision.git import git_add_remote, git_fetch, git_apply, git_add, git_are_files_staged, git_commit
 
 
 class Playground:
@@ -53,6 +54,29 @@ class Playground:
                     check=True,
                     capture_output=True,
                 )
+
+    def apply_patches(self, patches: Iterable[Path], *, reverse: bool = False) -> bool:
+        merged_cleanly = True
+        for patch in patches:
+            bundle_file = patch.with_suffix('.pack')
+            if bundle_file.exists():
+                remote_name = bundle_file.stem
+                git_add_remote(self.location, remote_name, str(bundle_file.resolve()))
+                git_fetch(self.location, remote_name)
+            else:
+                click.echo("No bundle file found for patch {patch.name}. Continuing without it", err=True)
+            try:
+                merged_cleanly = git_apply(self.location, patch, reverse=reverse) and merged_cleanly
+            except subprocess.CalledProcessError as e:
+                click.echo(f"Failed to apply patch {patch.name}", err=True)
+                click.echo(e.output, err=True)
+
+            if merged_cleanly:
+                git_add(self.location, ['.'])
+                if git_are_files_staged(self.location):
+                    git_commit(self.location, f"Patch {patch.name}")
+
+        return merged_cleanly
 
     def copy_files_to_filesystem(self, dest: Path = Path('/')):
         root_dir = self.location / 'files'

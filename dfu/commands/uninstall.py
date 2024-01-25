@@ -1,4 +1,3 @@
-import subprocess
 from pathlib import Path
 from shutil import rmtree
 from textwrap import dedent
@@ -9,7 +8,6 @@ from dfu.api import Event, Playground, Store
 from dfu.package.uninstall import Uninstall
 from dfu.revision.git import (
     git_add,
-    git_apply,
     git_are_files_staged,
     git_commit,
     git_init,
@@ -36,7 +34,9 @@ def continue_uninstall(store: Store):
             git_add(playground.location, ['.'])
             if git_are_files_staged(playground.location):
                 git_commit(playground.location, "Initial files")
-            _apply_patches(store, playground.location)
+            patch_files = reversed(sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name))
+            if not playground.apply_patches(patch_files, reverse=True):
+                click.echo("There were merge conflicts applying the patches. Run dfu shell to address them", err=True)
         except Exception:
             playground.cleanup()
             raise
@@ -79,20 +79,3 @@ def _copy_base_files(store: Store, playground: Playground):
         files_to_copy.update(playground.list_files_in_patch(patch))
 
     playground.copy_files_from_filesystem(files_to_copy)
-
-
-def _apply_patches(store: Store, dest: Path):
-    patch_files = reversed(sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name))
-    status = True
-    for patch in patch_files:
-        try:
-            status = git_apply(dest, patch, reverse=True) and status
-        except subprocess.CalledProcessError as e:
-            click.echo(f"Failed to apply patch {patch.name}", err=True)
-            click.echo(e.output, err=True)
-
-        git_add(dest, ['.'])
-        if git_are_files_staged(dest):
-            git_commit(dest, f"Patch {patch.name}")
-    if not status:
-        click.echo("There were merge conflicts applying the patches. Run dfu shell to address them", err=True)

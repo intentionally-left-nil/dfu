@@ -9,12 +9,9 @@ from dfu.api import Event, Playground, Store
 from dfu.package.install import Install
 from dfu.revision.git import (
     git_add,
-    git_apply,
     git_are_files_staged,
     git_commit,
     git_init,
-    git_add_remote,
-    git_fetch,
 )
 
 
@@ -43,7 +40,10 @@ def continue_install(store: Store):
             git_add(playground.location, ['.'])
             if git_are_files_staged(playground.location):
                 git_commit(playground.location, "Initial files")
-            _apply_patches(store, playground.location)
+            patch_files = sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name)
+            if not playground.apply_patches(patch_files):
+                click.echo("There were merge conflicts applying the patches. Run dfu shell to address them", err=True)
+
         except Exception:
             playground.cleanup()
             raise
@@ -81,28 +81,3 @@ def _copy_base_files(store: Store, playground: Playground):
         files_to_copy.update(playground.list_files_in_patch(patch))
 
     playground.copy_files_from_filesystem(files_to_copy)
-
-
-def _apply_patches(store: Store, dest: Path):
-    patch_files = sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name)
-    merged_cleanly = True
-    for patch in patch_files:
-        bundle_file = patch.with_suffix('.pack')
-        if bundle_file.exists():
-            remote_name = bundle_file.stem
-            git_add_remote(dest, remote_name, str(bundle_file.resolve()))
-            git_fetch(dest, remote_name)
-        else:
-            click.echo("No bundle file found for patch {patch.name}. Continuing without it", err=True)
-        try:
-            merged_cleanly = git_apply(dest, patch) and merged_cleanly
-        except subprocess.CalledProcessError as e:
-            click.echo(f"Failed to apply patch {patch.name}", err=True)
-            click.echo(e.output, err=True)
-
-        if merged_cleanly:
-            git_add(dest, ['.'])
-            if git_are_files_staged(dest):
-                git_commit(dest, f"Patch {patch.name}")
-    if not merged_cleanly:
-        click.echo("There were merge conflicts applying the patches. Run dfu shell to address them", err=True)
