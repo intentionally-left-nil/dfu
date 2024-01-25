@@ -13,6 +13,8 @@ from dfu.revision.git import (
     git_are_files_staged,
     git_commit,
     git_init,
+    git_add_remote,
+    git_fetch,
 )
 
 
@@ -88,13 +90,8 @@ def _apply_patches(store: Store, dest: Path):
         bundle_file = patch.with_suffix('.pack')
         if bundle_file.exists():
             remote_name = bundle_file.stem
-            subprocess.run(
-                ["git", "remote", "add", remote_name, bundle_file.resolve()],
-                cwd=dest,
-                check=True,
-                capture_output=True,
-            )
-            subprocess.run(["git", "pull", remote_name])
+            git_add_remote(dest, remote_name, str(bundle_file.resolve()))
+            git_fetch(dest, remote_name)
         else:
             click.echo("No bundle file found for patch {patch.name}. Continuing without it", err=True)
         try:

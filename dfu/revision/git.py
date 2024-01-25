@@ -117,13 +117,17 @@ def git_stash_pop(git_dir: Path):
 
 def git_bundle(git_dir: Path, dest: Path):
     return subprocess.run(
-        ['git', 'bundle', 'create', dest.resolve(), 'HEAD'], cwd=git_dir, text=True, check=True, capture_output=True
+        ['git', 'bundle', 'create', dest.resolve(), "--all"], cwd=git_dir, text=True, check=True, capture_output=True
     )
 
 
-def git_unbundle(git_dir, bundle: Path):
-    subprocess.run(
-        ['git', 'bundle', 'unbundle', bundle.resolve()], cwd=git_dir, text=True, check=True, capture_output=True
+def git_fetch(git_dir: Path, remote: str):
+    return subprocess.run(['git', 'fetch', remote], cwd=git_dir, text=True, check=True, capture_output=True)
+
+
+def git_add_remote(git_dir: Path, name: str, remote: str):
+    return subprocess.run(
+        ['git', 'remote', 'add', name, remote], cwd=git_dir, text=True, check=True, capture_output=True
     )
 
 

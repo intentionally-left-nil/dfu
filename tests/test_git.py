@@ -20,8 +20,9 @@ from dfu.revision.git import (
     git_stash,
     git_stash_pop,
     git_bundle,
-    git_unbundle,
     git_init,
+    git_add_remote,
+    git_fetch,
 )
 
 
@@ -366,6 +367,8 @@ def test_git_bundle(tmp_path: Path):
     dest.mkdir()
     git_init(dest)
     assert subprocess.run(['git', 'show', sha], cwd=dest, capture_output=True).returncode != 0
-    git_bundle(src, src / 'bundle.pack')
-    git_unbundle(dest, src / 'bundle.pack')
+    bundle = src / 'bundle.pack'
+    git_bundle(src, bundle)
+    git_add_remote(dest, 'bundle', str(bundle.resolve()))
+    git_fetch(dest, 'bundle')
     assert subprocess.run(['git', 'show', sha], cwd=dest, capture_output=True).returncode == 0
