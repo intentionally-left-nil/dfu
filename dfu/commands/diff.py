@@ -105,7 +105,7 @@ def continue_diff(store: Store):
         return
 
     if not store.state.diff.copied_post_files:
-        _copy_files(store, snapshot_index=store.state.diff.from_index)
+        _copy_files(store, snapshot_index=store.state.diff.to_index)
         git_add(playground.location, ['files'])
         store.state = store.state.update(diff=store.state.diff.update(copied_post_files=True))
         click.echo(
