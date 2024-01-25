@@ -13,8 +13,11 @@ from unidiff.constants import DEV_NULL
 class Playground:
     location: Path
 
-    def __init__(self, prefix: str = 'dfu'):
-        self.location = Path(mkdtemp(prefix=prefix)).resolve()
+    def __init__(self, location: Path | None = None, prefix: str = 'dfu'):
+        if location is None:
+            location = Path(mkdtemp(prefix=prefix))
+
+        self.location = location.resolve()
 
     def list_files_in_patch(
         self,
