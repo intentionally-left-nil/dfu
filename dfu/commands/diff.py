@@ -59,10 +59,11 @@ def continue_diff(store: Store):
         assert store.state.diff and store.state.diff.placeholder_dir
 
     placeholder_playground = Playground(location=Path(store.state.diff.placeholder_dir))
+    _initialize_playground(store, placeholder_playground)
     if not store.state.diff.created_placeholders:
         click.echo("Creating placeholder files...", err=True)
 
-        create_changed_placeholders(store, placeholder_playground)
+        _create_changed_placeholders(store, placeholder_playground)
         store.state = store.state.update(diff=store.state.diff.update(created_placeholders=True))
         click.echo(
             dedent(
@@ -78,15 +79,15 @@ def continue_diff(store: Store):
         return
 
     if not store.state.diff.working_dir:
-        store.state = store.state.update(
-            diff=store.state.diff.update(working_dir=str(Playground(prefix="dfu_diff_").location))
-        )
+        playground = Playground(prefix="dfu_diff_")
+        _initialize_playground(store, playground)
+        store.state = store.state.update(diff=store.state.diff.update(working_dir=str(playground.location)))
         assert store.state.diff and store.state.diff.working_dir
 
     playground = Playground(location=Path(store.state.diff.working_dir))
 
     if not store.state.diff.copied_pre_files:
-        copy_files(store, snapshot_index=store.state.diff.from_index)
+        _copy_files(store, snapshot_index=store.state.diff.from_index)
         git_add(playground.location, ['files'])
         store.state = store.state.update(diff=store.state.diff.update(copied_pre_files=True))
         click.echo(
@@ -103,7 +104,7 @@ def continue_diff(store: Store):
         return
 
     if not store.state.diff.copied_post_files:
-        copy_files(store, snapshot_index=store.state.diff.from_index)
+        _copy_files(store, snapshot_index=store.state.diff.from_index)
         git_add(playground.location, ['files'])
         store.state = store.state.update(diff=store.state.diff.update(copied_post_files=True))
         click.echo(
@@ -137,21 +138,11 @@ def continue_diff(store: Store):
     abort_diff(store)
 
 
-def create_changed_placeholders(store: Store, playground: Playground):
+def _create_changed_placeholders(store: Store, playground: Playground):
     assert store.state.diff
     # This method has been performance optimized in several places. Take care when modifying the file for both correctness and speed
     pre_snapshot = store.state.package_config.snapshots[store.state.diff.from_index]
     post_snapshot = store.state.package_config.snapshots[store.state.diff.to_index]
-
-    git_init(playground.location)
-    gitignore = store.state.package_dir / '.gitignore'
-    if gitignore.exists():
-        copy2(gitignore, playground.location / '.gitignore')
-    else:
-        gitignore.write_text(DEFAULT_GITIGNORE)
-
-    git_add(playground.location, ['.gitignore'])
-    git_commit(playground.location, "Add gitignore")
 
     for snapper_name, pre_id in pre_snapshot.items():
         post_id = post_snapshot[snapper_name]
@@ -196,7 +187,7 @@ def create_changed_placeholders(store: Store, playground: Playground):
             path.write_text(f"PLACEHOLDER: {delta.action}\n")
 
 
-def copy_files(store: Store, *, snapshot_index: int):
+def _copy_files(store: Store, *, snapshot_index: int):
     assert store.state.diff and store.state.diff.working_dir and store.state.diff.placeholder_dir
     placeholder_playground = Playground(location=Path(store.state.diff.placeholder_dir))
     working_playground = Playground(location=Path(store.state.diff.working_dir))
@@ -226,3 +217,15 @@ def copy_files(store: Store, *, snapshot_index: int):
                     capture_output=True,
                     check=True,
                 )
+
+
+def _initialize_playground(store: Store, playground: Playground):
+    git_init(playground.location)
+    gitignore = store.state.package_dir / '.gitignore'
+    if gitignore.exists():
+        copy2(gitignore, playground.location / '.gitignore')
+    else:
+        gitignore.write_text(DEFAULT_GITIGNORE)
+
+    git_add(playground.location, ['.gitignore'])
+    git_commit(playground.location, "Add gitignore")
