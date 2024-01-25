@@ -53,13 +53,14 @@ def continue_diff(store: Store):
         raise ValueError("An installation is in progress. Run `dfu install --abort` to abort the installation.")
 
     if not store.state.diff.placeholder_dir:
+        placeholder_playground = Playground(prefix="dfu_placeholder_")
+        _initialize_playground(store, placeholder_playground)
         store.state = store.state.update(
-            diff=store.state.diff.update(placeholder_dir=str(Playground(prefix="dfu_placeholder_").location))
+            diff=store.state.diff.update(placeholder_dir=str(placeholder_playground.location))
         )
         assert store.state.diff and store.state.diff.placeholder_dir
 
     placeholder_playground = Playground(location=Path(store.state.diff.placeholder_dir))
-    _initialize_playground(store, placeholder_playground)
     if not store.state.diff.created_placeholders:
         click.echo("Creating placeholder files...", err=True)
 
