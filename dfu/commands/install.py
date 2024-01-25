@@ -85,6 +85,18 @@ def _apply_patches(store: Store, dest: Path):
     patch_files = sorted(store.state.package_dir.glob('*.patch'), key=lambda p: p.name)
     status = True
     for patch in patch_files:
+        bundle_file = patch.with_suffix('.pack')
+        if bundle_file.exists():
+            remote_name = bundle_file.stem
+            subprocess.run(
+                ["git", "remote", "add", remote_name, bundle_file.resolve()],
+                cwd=dest,
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(["git", "pull", remote_name])
+        else:
+            click.echo("No bundle file found for patch {patch.name}. Continuing without it", err=True)
         try:
             status = git_apply(dest, patch) and status
         except subprocess.CalledProcessError as e:
