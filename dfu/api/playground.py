@@ -69,7 +69,14 @@ class Playground:
             bundle_file = patch.with_suffix('.pack')
             if bundle_file.exists():
                 remote_name = bundle_file.stem
-                git_add_remote(self.location, remote_name, str(bundle_file.resolve()))
+                try:
+                    git_add_remote(self.location, remote_name, str(bundle_file.resolve()))
+                except subprocess.CalledProcessError as e:
+                    # If the remote already exists (because we were resolving a merge conflict),
+                    # then just ignore the error
+                    if e.returncode != 3:
+                        raise e
+
                 git_fetch(self.location, remote_name)
             else:
                 click.echo("No bundle file found for patch {patch.name}. Continuing without it", err=True)
