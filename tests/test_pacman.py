@@ -66,8 +66,6 @@ def mock_proot(store: Store, before: str, after: str) -> Generator[None, None, N
     before_args = proot(['pacman', '-Qqe'], config=store.state.config, snapshot=store.state.package_config.snapshots[0])
     after_args = proot(['pacman', '-Qqe'], config=store.state.config, snapshot=store.state.package_config.snapshots[1])
 
-    installed_packages = set()
-
     def side_effect(*args, **kwargs):
         if args[0] == before_args:
             return Mock(returncode=0, stdout=before)
