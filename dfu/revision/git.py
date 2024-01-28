@@ -1,6 +1,7 @@
 import re
 import subprocess
 from pathlib import Path
+from typing import Iterable
 
 from platformdirs import PlatformDirs
 
@@ -39,7 +40,7 @@ def git_num_commits(git_dir: Path) -> int:
         raise e
 
 
-def git_check_ignore(git_dir: Path, paths: list[str]) -> list[str]:
+def git_check_ignore(git_dir: Path, paths: Iterable[str]) -> list[str]:
     stdin = '\n'.join(paths)
     cmd = ['git', 'check-ignore', '--stdin']
     result = subprocess.run(cmd, cwd=git_dir, input=stdin, text=True, capture_output=True)

@@ -22,6 +22,7 @@ from dfu.commands import (
     launch_shell,
     launch_snapshot_shell,
     load_store,
+    ls_files,
 )
 from dfu.snapshots.snapper import Snapper
 
@@ -70,6 +71,14 @@ def diff(abort: bool | None, continue_: bool | None, from_: int, to: int):
         continue_diff(store)
     else:
         begin_diff(store, from_index=from_, to_index=to)
+
+
+@main.command(name="ls-files")
+@click.option("-i", "--ignored", is_flag=True, help="Show only ignored files", default=False)
+@click.option('--from', 'from_', type=int, default=0, help='Snapshot index to compute the before state')
+@click.option('--to', type=int, default=-1, help='Snapshot index to compute the end state')
+def ls_files_command(ignored: bool, from_: int, to: int):
+    ls_files(load_store(), from_index=from_, to_index=to, only_ignored=ignored)
 
 
 @main.command()
