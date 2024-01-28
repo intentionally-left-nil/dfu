@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from dfu.api import State, Store
 from dfu.config import Config
 from dfu.package.package_config import PackageConfig
 from dfu.revision.git import git_init
@@ -23,6 +24,17 @@ def package_config() -> PackageConfig:
     return PackageConfig(
         name="test", description="my cool description", programs_added=("test1", "test2"), version="0.0.2"
     )
+
+
+@pytest.fixture
+def store(config: Config, package_config: PackageConfig) -> Store:
+    state = State(
+        config=config,
+        package_dir=Path("test"),
+        package_config=package_config,
+    )
+    store = Store(state)
+    return store
 
 
 @pytest.fixture
