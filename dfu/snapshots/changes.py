@@ -51,5 +51,6 @@ done
         cwd="/",
     )
     # Important: use the null character as the delimiter (and read -d '') since that can't appear in a filename
-    result = subprocess.run(args, capture_output=True, text=True, input="\0".join(paths))
+    # Also important: Send a trailing newline so that the last file is read
+    result = subprocess.run(args, capture_output=True, text=True, input="\0".join(paths) + "\0")
     return [p for p in result.stdout.splitlines()]
