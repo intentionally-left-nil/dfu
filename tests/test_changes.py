@@ -9,7 +9,7 @@ import pytest
 
 from dfu.api import Store
 from dfu.revision.git import DEFAULT_GITIGNORE
-from dfu.snapshots.changes import files_modified, is_file
+from dfu.snapshots.changes import files_modified, filter_files
 from dfu.snapshots.proot import proot
 from dfu.snapshots.snapper import Snapper
 from dfu.snapshots.snapper_diff import FileChangeAction, SnapperDiff
@@ -42,15 +42,15 @@ def mock_get_delta(responses: dict[str, list[str]]):
 
 
 @pytest.fixture
-def mock_is_file():
+def mock_filter_files():
     def side_effect(store: Store, snapshot: MappingProxyType[str, int], paths: list[str]) -> list[str]:
         return paths
 
-    with patch('dfu.snapshots.changes.is_file', side_effect=side_effect) as mock_is_file:
-        yield mock_is_file
+    with patch('dfu.snapshots.changes.filter_files', side_effect=side_effect) as mbock_filter_files:
+        yield mock_filter_files
 
 
-def test_files_modified_no_snapshots(store: Store, mock_is_file):
+def test_files_modified_no_snapshots(store: Store, mock_filter_files):
     store.state = store.state.update(
         package_config=store.state.package_config.update(snapshots=(MappingProxyType({}),))
     )
@@ -58,27 +58,27 @@ def test_files_modified_no_snapshots(store: Store, mock_is_file):
         assert files_modified(store, from_index=0, to_index=0, only_ignored=False) == {}
 
 
-def test_files_modified_no_changes(store: Store, mock_is_file):
+def test_files_modified_no_changes(store: Store, mock_filter_files):
     with mock_get_delta({"root": []}):
-        assert files_modified(store, from_index=0, to_index=0, only_ignored=False) == {"root": set()}
+        assert files_modified(store, from_index=0, to_index=0, only_ignored=False) == {"root": []}
 
 
-def test_files_modified_nothing_ignored(store: Store, mock_is_file):
+def test_files_modified_nothing_ignored(store: Store, mock_filter_files):
     with mock_get_delta({"root": ["/etc/test.conf", "/etc/test2.conf"]}):
         assert files_modified(store, from_index=0, to_index=1, only_ignored=False) == {
-            "root": set(["/etc/test.conf", "/etc/test2.conf"])
+            "root": ["/etc/test.conf", "/etc/test2.conf"]
         }
 
 
-def test_files_modified_all_files_are_ignored(store: Store, mock_is_file):
+def test_files_modified_all_files_are_ignored(store: Store, mock_filter_files):
     with mock_get_delta({"root": ["/usr/bin/bash", "/usr/bin/zsh"]}):
-        assert files_modified(store, from_index=0, to_index=1, only_ignored=False) == {"root": set()}
+        assert files_modified(store, from_index=0, to_index=1, only_ignored=False) == {"root": []}
 
 
-def test_files_modified_only_show_ignored(store: Store, mock_is_file):
+def test_files_modified_only_show_ignored(store: Store, mock_filter_files):
     with mock_get_delta({"root": ["/usr/bin/bash", "/usr/bin/zsh", "/etc/test.conf"]}):
         assert files_modified(store, from_index=0, to_index=1, only_ignored=True) == {
-            "root": set(["/usr/bin/bash", "/usr/bin/zsh"])
+            "root": ["/usr/bin/bash", "/usr/bin/zsh"]
         }
 
 
@@ -103,22 +103,7 @@ def mock_subprocess_run(tmp_path: Path, mock_proot):
         yield mock_subprocess_run
 
 
-@pytest.mark.parametrize(
-    ['path', 'expected'],
-    [
-        # Note that due to the way the mocking works, all the paths have to be relative
-        # The prod code uses proot to properly chroot and doesn't have this restriction
-        ("file.txt", True),
-        ("etc/file2.txt", True),
-        ("very/nested/file3.txt", True),
-        ("very/nested/symlink", True),
-        ("very_symlink", True),
-        ("missing.txt", False),
-        ("etc", False),
-        ("very/nested", False),
-    ],
-)
-def test_is_file(path: str, expected: bool, tmp_path: Path, store: Store, mock_subprocess_run):
+def test_filter_files(tmp_path: Path, store: Store, mock_subprocess_run):
     files: list[Path] = [
         (tmp_path / "file.txt"),
         (tmp_path / 'etc' / 'file2.txt'),
@@ -135,4 +120,21 @@ def test_is_file(path: str, expected: bool, tmp_path: Path, store: Store, mock_s
     directory_symlink = tmp_path / 'very_symlink'
     directory_symlink.symlink_to(tmp_path / 'very')
 
-    assert is_file(store, MappingProxyType({"root": 1}), path) == expected
+    paths = [
+        "file.txt",
+        "etc/file2.txt",
+        "very/nested/file3.txt",
+        "very/nested/symlink",
+        "very_symlink",
+        "missing.txt",
+        "etc",
+        "very/nested",
+    ]
+
+    assert filter_files(store, MappingProxyType({"root": 1}), paths) == [
+        "file.txt",
+        "etc/file2.txt",
+        "very/nested/file3.txt",
+        "very/nested/symlink",
+        "very_symlink",
+    ]
