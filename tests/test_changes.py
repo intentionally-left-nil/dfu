@@ -42,15 +42,15 @@ def mock_get_delta(responses: dict[str, list[str]]):
 
 
 @pytest.fixture
-def mock_is_file():
+def mock_filter_files():
     def side_effect(store: Store, snapshot: MappingProxyType[str, int], paths: list[str]) -> list[str]:
         return paths
 
-    with patch('dfu.snapshots.changes.is_file', side_effect=side_effect) as mock_is_file:
-        yield mock_is_file
+    with patch('dfu.snapshots.changes.filter_files', side_effect=side_effect) as mbock_filter_files:
+        yield mock_filter_files
 
 
-def test_files_modified_no_snapshots(store: Store, mock_is_file):
+def test_files_modified_no_snapshots(store: Store, mock_filter_files):
     store.state = store.state.update(
         package_config=store.state.package_config.update(snapshots=(MappingProxyType({}),))
     )
@@ -58,27 +58,27 @@ def test_files_modified_no_snapshots(store: Store, mock_is_file):
         assert files_modified(store, from_index=0, to_index=0, only_ignored=False) == {}
 
 
-def test_files_modified_no_changes(store: Store, mock_is_file):
+def test_files_modified_no_changes(store: Store, mock_filter_files):
     with mock_get_delta({"root": []}):
-        assert files_modified(store, from_index=0, to_index=0, only_ignored=False) == {"root": set()}
+        assert files_modified(store, from_index=0, to_index=0, only_ignored=False) == {"root": []}
 
 
-def test_files_modified_nothing_ignored(store: Store, mock_is_file):
+def test_files_modified_nothing_ignored(store: Store, mock_filter_files):
     with mock_get_delta({"root": ["/etc/test.conf", "/etc/test2.conf"]}):
         assert files_modified(store, from_index=0, to_index=1, only_ignored=False) == {
-            "root": set(["/etc/test.conf", "/etc/test2.conf"])
+            "root": ["/etc/test.conf", "/etc/test2.conf"]
         }
 
 
-def test_files_modified_all_files_are_ignored(store: Store, mock_is_file):
+def test_files_modified_all_files_are_ignored(store: Store, mock_filter_files):
     with mock_get_delta({"root": ["/usr/bin/bash", "/usr/bin/zsh"]}):
-        assert files_modified(store, from_index=0, to_index=1, only_ignored=False) == {"root": set()}
+        assert files_modified(store, from_index=0, to_index=1, only_ignored=False) == {"root": []}
 
 
-def test_files_modified_only_show_ignored(store: Store, mock_is_file):
+def test_files_modified_only_show_ignored(store: Store, mock_filter_files):
     with mock_get_delta({"root": ["/usr/bin/bash", "/usr/bin/zsh", "/etc/test.conf"]}):
         assert files_modified(store, from_index=0, to_index=1, only_ignored=True) == {
-            "root": set(["/usr/bin/bash", "/usr/bin/zsh"])
+            "root": ["/usr/bin/bash", "/usr/bin/zsh"]
         }
 
 
