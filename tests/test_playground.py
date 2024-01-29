@@ -33,6 +33,15 @@ def mock_install():
         yield mock_run
 
 
+def test_temporary():
+    location: Path
+    with Playground.temporary(prefix="unit_test") as playground:
+        location = playground.location
+        assert playground.location.exists()
+        assert playground.location.is_dir()
+    assert not location.exists()
+
+
 def test_list_files_in_patch_missing_file(playground: Playground):
     with pytest.raises(FileNotFoundError):
         playground.list_files_in_patch(playground.location / "missing.patch")

@@ -25,9 +25,9 @@ class Store:
     def unsubscribe(self, callback: Callback):
         self._callbacks.remove(callback)
 
-    def dispatch(self, event: Event):
+    def dispatch(self, event: Event, **kwargs):
         for plugin in self.plugins:
-            plugin.handle(event)
+            plugin.handle(event, **kwargs)
 
     @property
     def state(self):

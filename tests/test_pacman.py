@@ -8,7 +8,6 @@ import pytest
 
 from dfu.api import Event, State, Store
 from dfu.config import Config
-from dfu.package.dfu_diff import DfuDiff
 from dfu.package.package_config import PackageConfig
 from dfu.plugins.pacman import PacmanPlugin
 from dfu.snapshots.proot import proot
@@ -26,13 +25,6 @@ def store(config: Config) -> Store:
             programs_added=tuple(),
             snapshots=(MappingProxyType({"root": 1, "home": 1}), MappingProxyType({"root": 2, "home": 2})),
             version="0.0.2",
-        ),
-        diff=DfuDiff(
-            from_index=0,
-            to_index=1,
-            copied_pre_files=True,
-            copied_post_files=True,
-            updated_installed_programs=False,
         ),
     )
     store = Store(state)
@@ -83,7 +75,7 @@ def test_one_package_added(store: Store):
     before = 'package1\npackage2\npackage3\n'
     after = 'package1\nnew_package\npackage2\npackage3\n'
     with mock_proot(store, before, after):
-        store.dispatch(Event.TARGET_BRANCH_FINALIZED)
+        store.dispatch(Event.UPDATE_INSTALLED_DEPENDENCIES, from_index=0, to_index=1)
     assert store.state.package_config.programs_added == ('new_package',)
 
 
@@ -97,7 +89,7 @@ package2
     leading_and_trailing_whitespace    
 '''
     with mock_proot(store, '', after):
-        store.dispatch(Event.TARGET_BRANCH_FINALIZED)
+        store.dispatch(Event.UPDATE_INSTALLED_DEPENDENCIES, from_index=0, to_index=1)
     assert store.state.package_config.programs_added == (
         'leading_and_trailing_whitespace',
         'leading_whitespace',
@@ -111,7 +103,7 @@ def test_no_packages_added(store: Store):
     before = 'package1\npackage2\npackage3\n'
     after = 'package1\npackage2\npackage3\n'
     with mock_proot(store, before, after):
-        store.dispatch(Event.TARGET_BRANCH_FINALIZED)
+        store.dispatch(Event.UPDATE_INSTALLED_DEPENDENCIES, from_index=0, to_index=1)
     assert store.state.package_config.programs_added == tuple()
 
 
@@ -119,7 +111,7 @@ def test_packages_added_and_removed(store: Store):
     before = 'package1\npackage2\npackage3\n'
     after = 'package1\npackage3\npackage4\n'
     with mock_proot(store, before, after):
-        store.dispatch(Event.TARGET_BRANCH_FINALIZED)
+        store.dispatch(Event.UPDATE_INSTALLED_DEPENDENCIES, from_index=0, to_index=1)
     assert store.state.package_config.programs_added == ('package4',)
     assert store.state.package_config.programs_removed == ('package2',)
 
@@ -133,7 +125,7 @@ def test_appends_to_existing_updates(store: Store):
     before = 'package1\npackage2\npackage3\n'
     after = 'package1\nnew_package\n\npackage3\n'
     with mock_proot(store, before, after):
-        store.dispatch(Event.TARGET_BRANCH_FINALIZED)
+        store.dispatch(Event.UPDATE_INSTALLED_DEPENDENCIES, from_index=0, to_index=1)
     assert store.state.package_config.programs_added == ('new_package', 'other_new_package', 'package1')
     assert store.state.package_config.programs_removed == ('package2', 'package_removed')
 
