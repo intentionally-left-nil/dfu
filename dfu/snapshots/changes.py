@@ -51,5 +51,5 @@ done
         cwd="/",
     )
     # Important: use the null character as the delimiter (and read -d '') since that can't appear in a filename
-    result = subprocess.run(args, capture_output=True, input="\0".join(paths), text=True)
-    return [p for p in result.stdout.splitlines()]
+    result = subprocess.run(args, capture_output=True, input="\0".join(paths).encode())
+    return [p for p in result.stdout.decode().splitlines()]
