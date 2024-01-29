@@ -28,8 +28,8 @@ class Playground:
 
         self.location = location.resolve()
 
-    @contextmanager
     @classmethod
+    @contextmanager
     def temporary(cls, location: Path | None = None, prefix: str = 'dfu'):
         playground = cls(location=location, prefix=prefix)
         try:
