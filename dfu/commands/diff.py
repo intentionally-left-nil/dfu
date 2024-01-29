@@ -126,9 +126,9 @@ def _copy_files(store: Store, *, snapshot_index: int, sources: dict[str, list[st
         mountpoint = snapper.get_mountpoint()
         snapshot_dir = snapper.get_snapshot_path(snapshot_id)
         for file in files:
-            sub_path = (Path('/') / file).relative_to(mountpoint)
+            sub_path = Path(file).relative_to(mountpoint)
             src = snapshot_dir / sub_path
-            dest = working_playground.location / 'files' / file
+            dest = working_playground.location / 'files' / file.removeprefix('/')
             if subprocess.run(['sudo', 'stat', str(src)], capture_output=True).returncode == 0:
                 dest.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
                 subprocess.run(
