@@ -16,9 +16,7 @@ def launch_snapshot_shell(store: Store, snapshot_index: int):
     subprocess.run(args)
 
 
-def launch_shell(
-    store: Store, location: Literal['placeholder', 'diff_files', 'install_files', 'uninstall_files'] | None
-):
+def launch_shell(store: Store, location: Literal['diff_files', 'install_files', 'uninstall_files'] | None):
     if not location:
         if store.state.uninstall and store.state.uninstall.dry_run_dir:
             location = 'uninstall_files'
@@ -26,18 +24,12 @@ def launch_shell(
             location = 'install_files'
         elif store.state.diff and store.state.diff.working_dir:
             location = 'diff_files'
-        elif store.state.diff and store.state.diff.placeholder_dir:
-            location = 'placeholder'
         else:
             raise ValueError("No shell directory found")
         click.echo(f"Autodetecting --location {location}", err=True)
 
     cwd: str
     match location:
-        case 'placeholder':
-            if not store.state.diff or not store.state.diff.placeholder_dir:
-                raise ValueError("No placeholder directory found")
-            cwd = store.state.diff.placeholder_dir
         case 'diff_files':
             if not store.state.diff or not store.state.diff.working_dir:
                 raise ValueError("No diff directory found")
