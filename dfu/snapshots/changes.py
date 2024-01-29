@@ -8,11 +8,11 @@ from dfu.snapshots.snapper import Snapper
 from dfu.snapshots.snapper_diff import FileChangeAction, SnapperDiff
 
 
-def files_modified(store: Store, *, from_index: int, to_index: int, only_ignored: bool) -> dict[str, set[str]]:
+def files_modified(store: Store, *, from_index: int, to_index: int, only_ignored: bool) -> dict[str, list[str]]:
     """Returns a dict of snapper_name -> set of files modified between the two snapshots."""
     pre_snapshot = store.state.package_config.snapshots[from_index]
     post_snapshot = store.state.package_config.snapshots[to_index]
-    files_modified: dict[str, set[str]] = dict()
+    files_modified: dict[str, list[str]] = dict()
     for snapper_name, pre_id in pre_snapshot.items():
         post_id = post_snapshot[snapper_name]
         snapper = Snapper(snapper_name)
@@ -27,21 +27,29 @@ def files_modified(store: Store, *, from_index: int, to_index: int, only_ignored
         else:
             deltas = [d for d in deltas if d.path not in ignored_files]
 
-        changes: set[str] = set()
-        for delta in deltas:
-            snapshot = pre_snapshot if delta.action == FileChangeAction.deleted else post_snapshot
-            if is_file(store, snapshot, delta.path):
-                changes.add(delta.path)
+        pre_files_to_check = [delta.path for delta in deltas if delta.action == FileChangeAction.deleted]
+        pre_files = filter_files(store, pre_snapshot, pre_files_to_check)
 
-        files_modified[snapper_name] = changes
+        post_files_to_check = [delta.path for delta in deltas if delta.action != FileChangeAction.deleted]
+        post_files = filter_files(store, post_snapshot, post_files_to_check)
+        files_modified[snapper_name] = pre_files + post_files
     return files_modified
 
 
-def is_file(store: Store, snapshot: MappingProxyType[str, int], path: str) -> bool:
+def filter_files(store: Store, snapshot: MappingProxyType[str, int], paths: list[str]) -> list[str]:
+    script = """\
+while read -r -d '' path ; do
+    if [ -f "$path" ] || [ -L "$path" ] ; then
+        echo "$path"
+    fi
+done
+"""
     args = proot(
-        ["/bin/sh", "-c", 'test -f "$1" || test -L "$1"', "_", path],
+        ["/bin/sh", "-c", script],
         config=store.state.config,
         snapshot=snapshot,
         cwd="/",
     )
-    return subprocess.run(args, capture_output=True).returncode == 0
+    # Important: use the null character as the delimiter (and read -d '') since that can't appear in a filename
+    result = subprocess.run(args, capture_output=True, input="\0".join(paths).encode(), text=True)
+    return [p.decode() for p in result.stdout.splitlines()]
