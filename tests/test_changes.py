@@ -55,31 +55,31 @@ def test_files_modified_no_snapshots(store: Store, mock_is_file):
         package_config=store.state.package_config.update(snapshots=(MappingProxyType({}),))
     )
     with mock_get_delta({"root": []}):
-        assert files_modified(store, from_index=0, to_index=0, only_ignored=False) == set()
+        assert files_modified(store, from_index=0, to_index=0, only_ignored=False) == {}
 
 
 def test_files_modified_no_changes(store: Store, mock_is_file):
     with mock_get_delta({"root": []}):
-        assert files_modified(store, from_index=0, to_index=0, only_ignored=False) == set()
+        assert files_modified(store, from_index=0, to_index=0, only_ignored=False) == {"root": set()}
 
 
 def test_files_modified_nothing_ignored(store: Store, mock_is_file):
     with mock_get_delta({"root": ["/etc/test.conf", "/etc/test2.conf"]}):
-        assert files_modified(store, from_index=0, to_index=1, only_ignored=False) == set(
-            ["/etc/test.conf", "/etc/test2.conf"]
-        )
+        assert files_modified(store, from_index=0, to_index=1, only_ignored=False) == {
+            "root": set(["/etc/test.conf", "/etc/test2.conf"])
+        }
 
 
 def test_files_modified_all_files_are_ignored(store: Store, mock_is_file):
     with mock_get_delta({"root": ["/usr/bin/bash", "/usr/bin/zsh"]}):
-        assert files_modified(store, from_index=0, to_index=1, only_ignored=False) == set()
+        assert files_modified(store, from_index=0, to_index=1, only_ignored=False) == {"root": set()}
 
 
 def test_files_modified_only_show_ignored(store: Store, mock_is_file):
     with mock_get_delta({"root": ["/usr/bin/bash", "/usr/bin/zsh", "/etc/test.conf"]}):
-        assert files_modified(store, from_index=0, to_index=1, only_ignored=True) == set(
-            ["/usr/bin/bash", "/usr/bin/zsh"]
-        )
+        assert files_modified(store, from_index=0, to_index=1, only_ignored=True) == {
+            "root": set(["/usr/bin/bash", "/usr/bin/zsh"])
+        }
 
 
 @pytest.fixture
