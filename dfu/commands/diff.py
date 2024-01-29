@@ -12,6 +12,7 @@ from dfu.package.dfu_diff import DfuDiff
 from dfu.revision.git import (
     copy_template_gitignore,
     git_add,
+    git_are_files_staged,
     git_bundle,
     git_commit,
     git_diff,
@@ -70,13 +71,14 @@ def continue_diff(store: Store):
             dedent(
                 """\
                 Initial files have been created here. Run dfu shell to inspect the changes.
-                Once you're happy with the initial state, run git commit, and then dfu diff --continue"""
+                Once you're happy with the initial state, run dfu diff --continue"""
             ),
             err=True,
         )
         return
 
     if not store.state.diff.copied_post_files:
+        _auto_commit(playground.location, "Initial files")
         if sources is None:
             sources = files_modified(
                 store, from_index=store.state.diff.from_index, to_index=store.state.diff.to_index, only_ignored=False
@@ -89,7 +91,7 @@ def continue_diff(store: Store):
             dedent(
                 """\
                 Changes have been made to the diff directory. Run dfu shell to inspect the changes.
-                When satisfied, run git commit, and then dfu diff --continue
+                When satisfied, run dfu diff --continue
                 """
             ),
             err=True,
@@ -97,6 +99,7 @@ def continue_diff(store: Store):
         return
 
     if not store.state.diff.created_patch_file:
+        _auto_commit(playground.location, "File modifications")
         if git_num_commits(playground.location) < 2:
             click.echo("No changes detected", err=True)
         else:
@@ -149,3 +152,9 @@ def _initialize_playground(store: Store, playground: Playground):
 
     git_add(playground.location, ['.gitignore'])
     git_commit(playground.location, "Add gitignore")
+
+
+def _auto_commit(working_dir: Path, message: str):
+    git_add(working_dir, ['files'])
+    if git_are_files_staged(working_dir):
+        git_commit(working_dir, message)
