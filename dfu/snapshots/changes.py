@@ -38,14 +38,14 @@ def files_modified(store: Store, *, from_index: int, to_index: int, only_ignored
 
 def filter_files(store: Store, snapshot: MappingProxyType[str, int], paths: list[str]) -> list[str]:
     script = """\
-while read -r -d '' path ; do
+while IFS= read -r -d $'\0' path ; do
     if [ -f "$path" ] || [ -L "$path" ] ; then
         echo "$path"
     fi
 done
 """
     args = proot(
-        ["/bin/sh", "-c", script],
+        ["/bin/bash", "-c", script],
         config=store.state.config,
         snapshot=snapshot,
         cwd="/",
