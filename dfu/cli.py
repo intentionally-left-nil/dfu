@@ -133,8 +133,8 @@ def config_init(snapper_config: list[str], file: str | None):
 
 
 @main.command()
-@click.option('--location', type=click.Choice(['placeholder', 'diff_files', 'install_files', 'uninstall_files']))
-def shell(location: Literal['placeholder', 'diff_files', 'install_files', 'uninstall_files'] | None):
+@click.option('--location', type=click.Choice(['diff_files', 'install_files', 'uninstall_files']))
+def shell(location: Literal['diff_files', 'install_files', 'uninstall_files'] | None):
     launch_shell(load_store(), location)
 
 

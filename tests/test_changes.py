@@ -121,7 +121,6 @@ def test_filter_files(tmp_path: Path, store: Store, mock_subprocess_run):
     directory_symlink.symlink_to(tmp_path / 'very')
 
     paths = [
-        "file.txt",
         "etc/file2.txt",
         "very/nested/file3.txt",
         "very/nested/symlink",
@@ -129,12 +128,15 @@ def test_filter_files(tmp_path: Path, store: Store, mock_subprocess_run):
         "missing.txt",
         "etc",
         "very/nested",
+        "file.txt",  # This is last on purpose, to test that the last file is read
     ]
 
+    assert filter_files(store, MappingProxyType({"root": 1}), []) == []
+
     assert filter_files(store, MappingProxyType({"root": 1}), paths) == [
-        "file.txt",
         "etc/file2.txt",
         "very/nested/file3.txt",
         "very/nested/symlink",
         "very_symlink",
+        "file.txt",
     ]
