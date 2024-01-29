@@ -3,12 +3,12 @@ from enum import StrEnum, auto
 
 
 class Event(StrEnum):
-    TARGET_BRANCH_FINALIZED = auto()
+    UPDATE_INSTALLED_DEPENDENCIES = auto()
     INSTALL_DEPENDENCIES = auto()
     UNINSTALL_DEPENDENCIES = auto()
 
 
 class DfuPlugin(ABC):
     @abstractmethod
-    def handle(self, event: Event):  # pragma: no cover
+    def handle(self, event: Event, **kwargs):  # pragma: no cover
         pass

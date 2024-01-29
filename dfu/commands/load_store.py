@@ -5,7 +5,6 @@ from dfu.api.entrypoint import Entrypoint
 from dfu.api.state import State
 from dfu.api.store import Store
 from dfu.commands.load_config import load_config
-from dfu.package.dfu_diff import DfuDiff
 from dfu.package.install import Install
 from dfu.package.package_config import PackageConfig, find_package_config
 from dfu.package.uninstall import Uninstall
@@ -23,7 +22,6 @@ def load_store() -> Store:
     package_config = PackageConfig.from_file(package_dir / "dfu_config.json")
 
     diff_path = package_dir / ".dfu" / "diff.json"
-    diff = DfuDiff.from_file(diff_path) if diff_path.exists() else None
 
     install_path = package_dir / ".dfu" / "install.json"
     install = Install.from_file(install_path) if install_path.exists() else None
@@ -35,7 +33,6 @@ def load_store() -> Store:
         config=load_config(),
         package_dir=package_dir,
         package_config=package_config,
-        diff=diff,
         install=install,
         uninstall=uninstall,
     )

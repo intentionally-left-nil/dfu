@@ -6,18 +6,16 @@ from typing import Literal
 import click
 
 from dfu.commands import (
-    abort_diff,
     abort_install,
     abort_uninstall,
-    begin_diff,
     begin_install,
     begin_uninstall,
-    continue_diff,
     continue_install,
     continue_uninstall,
     create_config,
     create_package,
     create_snapshot,
+    generate_diff,
     get_config_paths,
     launch_shell,
     launch_snapshot_shell,
@@ -57,20 +55,11 @@ def snap():
 
 
 @main.command()
-@click.option('--abort', is_flag=True, help='Abort the operation', default=None)
-@click.option('--continue', 'continue_', is_flag=True, help='Continue the rebase operation', default=None)
 @click.option('--from', 'from_', type=int, default=0, help='Snapshot index to compute the before state')
 @click.option('--to', type=int, default=-1, help='Snapshot index to compute the end state')
-def diff(abort: bool | None, continue_: bool | None, from_: int, to: int):
-    if abort and continue_:
-        raise ValueError("Cannot specify both --abort and --continue")
-    store = load_store()
-    if abort:
-        abort_diff(store)
-    elif continue_:
-        continue_diff(store)
-    else:
-        begin_diff(store, from_index=from_, to_index=to)
+@click.option('--interactive', '-i', is_flag=True, help='Inspect and modify the changes', default=False)
+def diff(from_: int, to: int, interactive: bool):
+    generate_diff(load_store(), from_index=from_, to_index=to, interactive=interactive)
 
 
 @main.command(name="ls-files")
@@ -133,8 +122,8 @@ def config_init(snapper_config: list[str], file: str | None):
 
 
 @main.command()
-@click.option('--location', type=click.Choice(['diff_files', 'install_files', 'uninstall_files']))
-def shell(location: Literal['diff_files', 'install_files', 'uninstall_files'] | None):
+@click.option('--location', type=click.Choice(['install_files', 'uninstall_files']))
+def shell(location: Literal['install_files', 'uninstall_files'] | None):
     launch_shell(load_store(), location)
 
 

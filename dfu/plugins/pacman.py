@@ -16,19 +16,20 @@ class PacmanPlugin(DfuPlugin):
     def __init__(self, store: Store):
         self.store = store
 
-    def handle(self, event: Event):
+    def handle(self, event: Event, **kwargs):
         match event:
-            case Event.TARGET_BRANCH_FINALIZED:
-                self._update_installed_packages()
+            case Event.UPDATE_INSTALLED_DEPENDENCIES:
+                from_index: int = kwargs['from_index']
+                to_index: int = kwargs['to_index']
+                self._update_installed_packages(from_index, to_index)
             case Event.INSTALL_DEPENDENCIES:
                 self._install_dependencies()
             case Event.UNINSTALL_DEPENDENCIES:
                 self._uninstall_dependencies()
 
-    def _update_installed_packages(self):
-        assert self.store.state.diff
-        old = self._get_installed_packages(self.store.state.diff.from_index)
-        new = self._get_installed_packages(self.store.state.diff.to_index)
+    def _update_installed_packages(self, from_index: int, to_index: int):
+        old = self._get_installed_packages(from_index)
+        new = self._get_installed_packages(to_index)
 
         added = list((new - old) | set(self.store.state.package_config.programs_added))
         removed = list((old - new) | set(self.store.state.package_config.programs_removed))
@@ -40,7 +41,6 @@ class PacmanPlugin(DfuPlugin):
                 programs_added=tuple(added),
                 programs_removed=tuple(removed),
             ),
-            diff=self.store.state.diff.update(updated_installed_programs=True),
         )
 
     def _get_installed_packages(self, snapshot_index: int) -> set[str]:

@@ -4,7 +4,6 @@ import pytest
 
 from dfu.api import Event, State, Store
 from dfu.config import Config
-from dfu.package.dfu_diff import DfuDiff
 from dfu.package.install import Install
 from dfu.package.package_config import PackageConfig
 from dfu.package.uninstall import Uninstall
@@ -25,20 +24,6 @@ def test_save_package_config(store: Store):
         package_config=store.state.package_config.update(description="Updated the description")
     )
     assert PackageConfig.from_file(store.state.package_dir / 'dfu_config.json') == store.state.package_config
-
-
-def test_update_dfu_diff(store: Store):
-    diff = DfuDiff(from_index=0, to_index=42)
-    store.state = store.state.update(diff=diff)
-    assert DfuDiff.from_file(store.state.package_dir / '.dfu' / 'diff.json') == diff
-
-
-def test_delete_dfu_diff(store: Store):
-    diff = DfuDiff(from_index=0, to_index=42)
-    store.state = store.state.update(diff=diff)
-    assert (store.state.package_dir / '.dfu' / 'diff.json').exists()
-    store.state = store.state.update(diff=None)
-    assert not (store.state.package_dir / '.dfu' / 'diff.json').exists()
 
 
 def test_update_install(store: Store):

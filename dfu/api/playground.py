@@ -1,5 +1,6 @@
 import platform
 import subprocess
+from contextlib import contextmanager
 from pathlib import Path
 from shutil import copy2, rmtree
 from tempfile import mkdtemp
@@ -26,6 +27,15 @@ class Playground:
             location = Path(mkdtemp(prefix=prefix))
 
         self.location = location.resolve()
+
+    @contextmanager
+    @classmethod
+    def temporary(cls, location: Path | None = None, prefix: str = 'dfu'):
+        playground = cls(location=location, prefix=prefix)
+        try:
+            yield playground
+        finally:
+            playground.cleanup()
 
     def list_files_in_patch(
         self,
