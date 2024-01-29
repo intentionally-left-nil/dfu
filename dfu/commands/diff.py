@@ -40,6 +40,7 @@ def generate_diff(store: Store, *, from_index: int, to_index: int, interactive: 
             if subshell(playground.location).returncode != 0:
                 click.echo("Aborting...", err=True)
                 return
+        _auto_commit(playground.location, "Modified files")
         _create_patch(store, playground=playground, from_index=from_index, to_index=to_index)
         click.echo("Detecting which programs were installed and removed...", err=True)
         store.dispatch(Event.UPDATE_INSTALLED_DEPENDENCIES, from_index=from_index, to_index=to_index)
