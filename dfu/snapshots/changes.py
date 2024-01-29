@@ -38,7 +38,7 @@ def files_modified(store: Store, *, from_index: int, to_index: int, only_ignored
 
 def filter_files(store: Store, snapshot: MappingProxyType[str, int], paths: list[str]) -> list[str]:
     script = """\
-while IFS= read -r -d $'\0' path ; do
+while IFS= read -r -d $'\\0' path ; do
     if [ -f "$path" ] || [ -L "$path" ] ; then
         echo "$path"
     fi
@@ -51,5 +51,5 @@ done
         cwd="/",
     )
     # Important: use the null character as the delimiter (and read -d '') since that can't appear in a filename
-    result = subprocess.run(args, capture_output=True, input="\0".join(paths).encode())
-    return [p for p in result.stdout.decode().splitlines()]
+    result = subprocess.run(args, capture_output=True, text=True, input="\0".join(paths))
+    return [p for p in result.stdout.splitlines()]
