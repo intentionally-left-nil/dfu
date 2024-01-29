@@ -9,7 +9,7 @@ import pytest
 
 from dfu.api import Store
 from dfu.revision.git import DEFAULT_GITIGNORE
-from dfu.snapshots.changes import files_modified, is_file
+from dfu.snapshots.changes import files_modified, filter_files
 from dfu.snapshots.proot import proot
 from dfu.snapshots.snapper import Snapper
 from dfu.snapshots.snapper_diff import FileChangeAction, SnapperDiff
@@ -103,22 +103,7 @@ def mock_subprocess_run(tmp_path: Path, mock_proot):
         yield mock_subprocess_run
 
 
-@pytest.mark.parametrize(
-    ['path', 'expected'],
-    [
-        # Note that due to the way the mocking works, all the paths have to be relative
-        # The prod code uses proot to properly chroot and doesn't have this restriction
-        ("file.txt", True),
-        ("etc/file2.txt", True),
-        ("very/nested/file3.txt", True),
-        ("very/nested/symlink", True),
-        ("very_symlink", True),
-        ("missing.txt", False),
-        ("etc", False),
-        ("very/nested", False),
-    ],
-)
-def test_is_file(path: str, expected: bool, tmp_path: Path, store: Store, mock_subprocess_run):
+def test_filter_files(tmp_path: Path, store: Store, mock_subprocess_run):
     files: list[Path] = [
         (tmp_path / "file.txt"),
         (tmp_path / 'etc' / 'file2.txt'),
@@ -135,4 +120,21 @@ def test_is_file(path: str, expected: bool, tmp_path: Path, store: Store, mock_s
     directory_symlink = tmp_path / 'very_symlink'
     directory_symlink.symlink_to(tmp_path / 'very')
 
-    assert is_file(store, MappingProxyType({"root": 1}), path) == expected
+    paths = [
+        "file.txt",
+        "etc/file2.txt",
+        "very/nested/file3.txt",
+        "very/nested/symlink",
+        "very_symlink",
+        "missing.txt",
+        "etc",
+        "very/nested",
+    ]
+
+    assert filter_files(store, MappingProxyType({"root": 1}), paths) == [
+        "file.txt",
+        "etc/file2.txt",
+        "very/nested/file3.txt",
+        "very/nested/symlink",
+        "very_symlink",
+    ]
