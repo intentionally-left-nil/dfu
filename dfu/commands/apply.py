@@ -123,6 +123,8 @@ def _confirm_changes(playground: Playground):
                 break
             case 'a' | 'abort':
                 raise ValueError("Aborting")
+            case _:
+                raise ValueError("Unexpected choice")
 
 
 def _auto_commit(playground: Playground, message: str):
