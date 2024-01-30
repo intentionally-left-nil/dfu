@@ -60,18 +60,17 @@ class PacmanPlugin(DfuPlugin):
     def _install_dependencies(self, *, confirm: bool, dry_run: bool):
         to_remove = [p for p in self.store.state.package_config.programs_removed if _is_package_installed(p)]
         _uninstall(to_remove, confirm=confirm, dry_run=dry_run)
-        if self.store.state.package_config.programs_added:
-            _install(self.store.state.package_config.programs_added, confirm=confirm, dry_run=dry_run)
+        _install(self.store.state.package_config.programs_added, confirm=confirm, dry_run=dry_run)
 
     def _uninstall_dependencies(self, *, confirm: bool, dry_run: bool):
         to_remove = [p for p in self.store.state.package_config.programs_added if _is_package_installed(p)]
-        if to_remove:
-            _uninstall(to_remove, confirm=confirm, dry_run=dry_run)
-        if self.store.state.package_config.programs_removed:
-            _install(self.store.state.package_config.programs_removed, confirm=confirm, dry_run=dry_run)
+        _uninstall(to_remove, confirm=confirm, dry_run=dry_run)
+        _install(self.store.state.package_config.programs_removed, confirm=confirm, dry_run=dry_run)
 
 
 def _install(packages: list[str] | tuple[str, ...], *, confirm: bool, dry_run: bool):
+    if not packages:
+        return
     click.echo(f"Installing dependencies: {', '.join(packages)}", err=True)
     if click.confirm("Would you like to continue?"):
         args = ['sudo', 'pacman', '-S', '--needed', *packages]
@@ -82,6 +81,8 @@ def _install(packages: list[str] | tuple[str, ...], *, confirm: bool, dry_run: b
 
 
 def _uninstall(packages: list[str], *, confirm: bool, dry_run: bool):
+    if not packages:
+        return
     click.echo(f"Removing dependencies: {', '.join(packages)}", err=True)
     if click.confirm("Would you like to continue?"):
         args = ['sudo', 'pacman', '-R', *packages]
