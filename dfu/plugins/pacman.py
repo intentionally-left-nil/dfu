@@ -19,17 +19,11 @@ class PacmanPlugin(DfuPlugin):
     def handle(self, event: Event, **kwargs):
         match event:
             case Event.UPDATE_INSTALLED_DEPENDENCIES:
-                from_index: int = kwargs['from_index']
-                to_index: int = kwargs['to_index']
-                self._update_installed_packages(from_index, to_index)
+                self._update_installed_packages(kwargs['from_index'], kwargs['to_index'])
             case Event.INSTALL_DEPENDENCIES:
-                confirm: bool = kwargs['confirm']
-                dry_run: bool = kwargs['dry_run']
-                self._install_dependencies(confirm=confirm, dry_run=dry_run)
+                self._install_dependencies(confirm=kwargs['confirm'], dry_run=kwargs['dry_run'])
             case Event.UNINSTALL_DEPENDENCIES:
-                confirm: bool = kwargs['confirm']
-                dry_run: bool = kwargs['dry_run']
-                self._uninstall_dependencies(confirm=confirm, dry_run=dry_run)
+                self._uninstall_dependencies(confirm=kwargs['confirm'], dry_run=kwargs['dry_run'])
 
     def _update_installed_packages(self, from_index: int, to_index: int):
         old = self._get_installed_packages(from_index)
