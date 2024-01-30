@@ -67,7 +67,7 @@ def _apply_patches(store: Store, *, playground: Playground, reverse: bool, inter
             )
         if not merged_cleanly or step.interactive:
             subshell(playground.location).check_returncode()
-            _auto_commit(playground, f"Patch {step.patch.name}")
+        _auto_commit(playground, f"Patch {step.patch.name}")
 
 
 def _patch_order_interactive(patches: list[Path], *, reverse: bool) -> list[PatchStep]:
