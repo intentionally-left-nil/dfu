@@ -12,7 +12,6 @@ from dfu.commands import (
     create_snapshot,
     generate_diff,
     get_config_paths,
-    launch_shell,
     launch_snapshot_shell,
     load_store,
     ls_files,
@@ -96,14 +95,8 @@ def config_init(snapper_config: list[str], file: str | None):
 
 
 @main.command()
-@click.option('--location', type=click.Choice(['install_files', 'uninstall_files']))
-def shell(location: Literal['install_files', 'uninstall_files'] | None):
-    launch_shell(load_store(), location)
-
-
-@main.command()
 @click.option('--id', 'id_', type=int, help='The snapshot id to chroot into', default=-1)
-def snapshot_shell(id_: int):
+def shell(id_: int):
     launch_snapshot_shell(load_store(), id_)
 
 

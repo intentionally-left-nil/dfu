@@ -6,4 +6,4 @@ from dfu.commands.diff import generate_diff
 from dfu.commands.load_config import get_config_paths, load_config
 from dfu.commands.load_store import load_store
 from dfu.commands.ls_files import ls_files
-from dfu.commands.shell import launch_shell, launch_snapshot_shell
+from dfu.commands.shell import launch_snapshot_shell
