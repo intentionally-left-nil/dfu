@@ -6,18 +6,12 @@ from typing import Literal
 import click
 
 from dfu.commands import (
-    abort_install,
-    abort_uninstall,
-    begin_install,
-    begin_uninstall,
-    continue_install,
-    continue_uninstall,
+    apply_package,
     create_config,
     create_package,
     create_snapshot,
     generate_diff,
     get_config_paths,
-    launch_shell,
     launch_snapshot_shell,
     load_store,
     ls_files,
@@ -62,42 +56,21 @@ def diff(from_: int, to: int, interactive: bool):
     generate_diff(load_store(), from_index=from_, to_index=to, interactive=interactive)
 
 
+@main.command()
+@click.option('--reverse', '-r', is_flag=True, help='Uninstall the package', default=False)
+@click.option('--force', '-f', is_flag=True, help='Do not require confirmation', default=False)
+@click.option('--interactive', '-i', is_flag=True, help='Inspect and modify the changes', default=False)
+@click.option('--dry-run', help="Do not apply the changes to the computer", is_flag=True, default=False)
+def apply(reverse: bool, force: bool, interactive: bool, dry_run: bool):
+    apply_package(load_store(), reverse=reverse, confirm=not force, interactive=interactive, dry_run=dry_run)
+
+
 @main.command(name="ls-files")
 @click.option("-i", "--ignored", is_flag=True, help="Show only ignored files", default=False)
 @click.option('--from', 'from_', type=int, default=0, help='Snapshot index to compute the before state')
 @click.option('--to', type=int, default=-1, help='Snapshot index to compute the end state')
 def ls_files_command(ignored: bool, from_: int, to: int):
     ls_files(load_store(), from_index=from_, to_index=to, only_ignored=ignored)
-
-
-@main.command()
-@click.option('--abort', is_flag=True, help='Abort the operation', default=None)
-@click.option('--continue', 'continue_', is_flag=True, help='Continue the install operation', default=None)
-def install(abort: bool | None, continue_: bool | None):
-    if abort and continue_:
-        raise ValueError("Cannot specify both --abort and --continue")
-    store = load_store()
-    if abort:
-        abort_install(store)
-    elif continue_:
-        continue_install(store)
-    else:
-        begin_install(store)
-
-
-@main.command()
-@click.option('--abort', is_flag=True, help='Abort the operation', default=None)
-@click.option('--continue', 'continue_', is_flag=True, help='Continue the uninstall operation', default=None)
-def uninstall(abort: bool | None, continue_: bool | None):
-    if abort and continue_:
-        raise ValueError("Cannot specify both --abort and --continue")
-    store = load_store()
-    if abort:
-        abort_uninstall(store)
-    elif continue_:
-        continue_uninstall(store)
-    else:
-        begin_uninstall(store)
 
 
 @click.group
@@ -122,14 +95,8 @@ def config_init(snapper_config: list[str], file: str | None):
 
 
 @main.command()
-@click.option('--location', type=click.Choice(['install_files', 'uninstall_files']))
-def shell(location: Literal['install_files', 'uninstall_files'] | None):
-    launch_shell(load_store(), location)
-
-
-@main.command()
 @click.option('--id', 'id_', type=int, help='The snapshot id to chroot into', default=-1)
-def snapshot_shell(id_: int):
+def shell(id_: int):
     launch_snapshot_shell(load_store(), id_)
 
 

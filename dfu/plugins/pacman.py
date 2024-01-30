@@ -19,13 +19,11 @@ class PacmanPlugin(DfuPlugin):
     def handle(self, event: Event, **kwargs):
         match event:
             case Event.UPDATE_INSTALLED_DEPENDENCIES:
-                from_index: int = kwargs['from_index']
-                to_index: int = kwargs['to_index']
-                self._update_installed_packages(from_index, to_index)
+                self._update_installed_packages(kwargs['from_index'], kwargs['to_index'])
             case Event.INSTALL_DEPENDENCIES:
-                self._install_dependencies()
+                self._install_dependencies(confirm=kwargs['confirm'], dry_run=kwargs['dry_run'])
             case Event.UNINSTALL_DEPENDENCIES:
-                self._uninstall_dependencies()
+                self._uninstall_dependencies(confirm=kwargs['confirm'], dry_run=kwargs['dry_run'])
 
     def _update_installed_packages(self, from_index: int, to_index: int):
         old = self._get_installed_packages(from_index)
@@ -53,30 +51,39 @@ class PacmanPlugin(DfuPlugin):
         packages = [package.strip() for package in packages]
         return set([package for package in packages if package])
 
-    def _install_dependencies(self):
+    def _install_dependencies(self, *, confirm: bool, dry_run: bool):
         to_remove = [p for p in self.store.state.package_config.programs_removed if _is_package_installed(p)]
-        if to_remove:
-            click.echo(f"Removing dependencies: {', '.join(to_remove)}", err=True)
-            args = ['sudo', 'pacman', '-R', *to_remove]
-            subprocess.run(args, check=True)
-        if self.store.state.package_config.programs_added:
-            click.echo(
-                f"Installing dependencies: {', '.join(self.store.state.package_config.programs_added)}", err=True
-            )
-            args = ['sudo', 'pacman', '-S', '--needed', *self.store.state.package_config.programs_added]
+        _uninstall(to_remove, confirm=confirm, dry_run=dry_run)
+        _install(self.store.state.package_config.programs_added, confirm=confirm, dry_run=dry_run)
+
+    def _uninstall_dependencies(self, *, confirm: bool, dry_run: bool):
+        to_remove = [p for p in self.store.state.package_config.programs_added if _is_package_installed(p)]
+        _uninstall(to_remove, confirm=confirm, dry_run=dry_run)
+        _install(self.store.state.package_config.programs_removed, confirm=confirm, dry_run=dry_run)
+
+
+def _install(packages: list[str] | tuple[str, ...], *, confirm: bool, dry_run: bool):
+    if not packages:
+        return
+    click.echo(f"Installing dependencies: {', '.join(packages)}", err=True)
+    if not confirm or click.confirm("Would you like to continue?"):
+        args = ['sudo', 'pacman', '-S', '--needed', '--noconfirm', *packages]
+        if dry_run:
+            click.echo("Dry run: Skipping installation", err=True)
+        else:
             subprocess.run(args, check=True)
 
-    def _uninstall_dependencies(self):
-        to_remove = [p for p in self.store.state.package_config.programs_added if _is_package_installed(p)]
-        if to_remove:
-            click.echo(f"Removing dependencies: {', '.join(to_remove)}", err=True)
-            args = ['sudo', 'pacman', '-R', *to_remove]
-            subprocess.run(args, check=True)
-        if self.store.state.package_config.programs_removed:
-            click.echo(
-                f"Installing dependencies: {', '.join(self.store.state.package_config.programs_removed)}", err=True
-            )
-            args = ['sudo', 'pacman', '-S', '--needed', *self.store.state.package_config.programs_removed]
+
+def _uninstall(packages: list[str], *, confirm: bool, dry_run: bool):
+    if not packages:
+        return
+    click.echo(f"Removing dependencies: {', '.join(packages)}", err=True)
+    if not confirm or click.confirm("Would you like to continue?"):
+        args = ['sudo', 'pacman', '-R', '--noconfirm', *packages]
+
+        if dry_run:
+            click.echo("Dry run: Skipping removal", err=True)
+        else:
             subprocess.run(args, check=True)
 
 
