@@ -9,14 +9,7 @@ import click
 from unidiff import PatchedFile, PatchSet
 from unidiff.constants import DEV_NULL
 
-from dfu.revision.git import (
-    git_add,
-    git_add_remote,
-    git_apply,
-    git_are_files_staged,
-    git_commit,
-    git_fetch,
-)
+from dfu.revision.git import git_add_remote, git_apply, git_fetch
 
 
 class Playground:
@@ -97,44 +90,6 @@ class Playground:
             git_fetch(self.location, remote_name)
         else:
             click.echo("No bundle file found for patch {patch.name}. Continuing without it", err=True)
-
-    def apply_patches(self, patches: list[Path], *, reverse: bool = False) -> tuple[bool, list[Path]]:
-        remaining_stack = list(reversed(patches))
-        merged_cleanly = True
-
-        for patch in patches:
-            bundle_file = patch.with_suffix('.pack')
-            if bundle_file.exists():
-                remote_name = bundle_file.stem
-                try:
-                    git_add_remote(self.location, remote_name, str(bundle_file.resolve()))
-                except subprocess.CalledProcessError as e:
-                    # If the remote already exists (because we were resolving a merge conflict),
-                    # then just ignore the error
-                    if e.returncode != 3:
-                        raise e
-
-                git_fetch(self.location, remote_name)
-            else:
-                click.echo("No bundle file found for patch {patch.name}. Continuing without it", err=True)
-
-            try:
-                click.echo(f"Applying patch {patch.name}", err=True)
-                merged_cleanly = git_apply(self.location, patch, reverse=reverse)
-            except subprocess.CalledProcessError as e:
-                click.echo(f"Failed to apply patch {patch.name}", err=True)
-                click.echo(e.output, err=True)
-                raise e
-
-            remaining_stack.pop()  # Even if there's a merge conflict, remove it so we don't try to apply it again
-            if merged_cleanly:
-                git_add(self.location, ['.'])
-                if git_are_files_staged(self.location):
-                    git_commit(self.location, f"Patch {patch.name}")
-            else:
-                break
-
-        return merged_cleanly, list(reversed(remaining_stack))
 
     def copy_files_to_filesystem(self, dest: Path = Path('/')):
         root_dir = self.location / 'files'
