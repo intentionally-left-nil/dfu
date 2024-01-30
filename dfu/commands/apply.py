@@ -117,11 +117,11 @@ def _confirm_changes(playground: Playground):
             show_choices=False,
         )
         match response.lower():
-            case 'i', 'inspect':
+            case 'i' | 'inspect':
                 subshell(playground.location)
-            case 'c', 'continue':
+            case 'c' | 'continue':
                 break
-            case 'a', 'abort':
+            case 'a' | 'abort':
                 raise ValueError("Aborting")
 
 
