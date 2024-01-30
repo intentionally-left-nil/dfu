@@ -37,6 +37,10 @@ def files_modified(store: Store, *, from_index: int, to_index: int, only_ignored
 
 
 def filter_files(store: Store, snapshot: MappingProxyType[str, int], paths: list[str]) -> list[str]:
+    if len(paths) == 0:
+        # Performance optimization: Suprocess.run() takes several hundred milliseconds.
+        # Since this is called before & after for each snapper config, there are many potentially empty calls
+        return []
     script = """\
 while IFS= read -r -d $'\\0' path ; do
     if [ -f "$path" ] || [ -L "$path" ] ; then
