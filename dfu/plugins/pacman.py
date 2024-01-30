@@ -73,7 +73,7 @@ def _install(packages: list[str] | tuple[str, ...], *, confirm: bool, dry_run: b
         return
     click.echo(f"Installing dependencies: {', '.join(packages)}", err=True)
     if not confirm or click.confirm("Would you like to continue?"):
-        args = ['sudo', 'pacman', '-S', '--needed' '--noconfirm', *packages]
+        args = ['sudo', 'pacman', '-S', '--needed', '--noconfirm', *packages]
         if dry_run:
             click.echo("Dry run: Skipping installation", err=True)
         else:
