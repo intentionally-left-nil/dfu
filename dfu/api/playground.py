@@ -72,6 +72,32 @@ class Playground:
                     capture_output=True,
                 )
 
+    def apply_patch(self, patch: Path, *, reverse: bool = False) -> bool:
+        self._fetch_bundle(patch.with_suffix('.pack'))
+        try:
+            click.echo(f"Applying patch {patch.name}", err=True)
+            merged_cleanly = git_apply(self.location, patch, reverse=reverse)
+            return merged_cleanly
+        except subprocess.CalledProcessError as e:
+            click.echo(f"Failed to apply patch {patch.name}", err=True)
+            click.echo(e.output, err=True)
+            raise e
+
+    def _fetch_bundle(self, bundle: Path):
+        if bundle.exists():
+            remote_name = bundle.stem
+            try:
+                git_add_remote(self.location, remote_name, str(bundle.resolve()))
+            except subprocess.CalledProcessError as e:
+                # If the remote already exists (because we were resolving a merge conflict),
+                # then just ignore the error
+                if e.returncode != 3:
+                    raise e
+
+            git_fetch(self.location, remote_name)
+        else:
+            click.echo("No bundle file found for patch {patch.name}. Continuing without it", err=True)
+
     def apply_patches(self, patches: list[Path], *, reverse: bool = False) -> tuple[bool, list[Path]]:
         remaining_stack = list(reversed(patches))
         merged_cleanly = True

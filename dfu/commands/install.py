@@ -1,4 +1,3 @@
-import subprocess
 from pathlib import Path
 from shutil import rmtree
 from textwrap import dedent

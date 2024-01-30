@@ -8,6 +8,7 @@ import click
 from dfu.commands import (
     abort_install,
     abort_uninstall,
+    apply_package,
     begin_install,
     begin_uninstall,
     continue_install,
@@ -60,6 +61,15 @@ def snap():
 @click.option('--interactive', '-i', is_flag=True, help='Inspect and modify the changes', default=False)
 def diff(from_: int, to: int, interactive: bool):
     generate_diff(load_store(), from_index=from_, to_index=to, interactive=interactive)
+
+
+@main.command()
+@click.option('--reverse', '-r', is_flag=True, help='Uninstall the package', default=False)
+@click.option('--force', '-f', is_flag=True, help='Do not require confirmation', default=False)
+@click.option('--interactive', '-i', is_flag=True, help='Inspect and modify the changes', default=False)
+@click.option('--dry-run', help="Do not apply the changes to the computer", is_flag=True, default=False)
+def apply(reverse: bool, force: bool, interactive: bool, dry_run: bool):
+    apply_package(load_store(), reverse=reverse, confirm=not force, interactive=interactive, dry_run=dry_run)
 
 
 @main.command(name="ls-files")
