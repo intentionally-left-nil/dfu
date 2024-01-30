@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
-from typing import Iterable, NamedTuple
+from typing import NamedTuple
 
 import click
 
@@ -46,9 +46,9 @@ def _copy_base_files(store: Store, *, playground: Playground):
 
 
 def _apply_patches(store: Store, *, playground: Playground, reverse: bool, interactive: bool):
-    patches = sorted(store.state.package_dir.glob('*.patch'))
+    patches = list(sorted(store.state.package_dir.glob('*.patch')))
     if reverse:
-        patches = reversed(patches)
+        patches = list(reversed(patches))
         pass
     if interactive:
         steps = _patch_order_interactive(patches, reverse=reverse)
@@ -70,10 +70,10 @@ def _apply_patches(store: Store, *, playground: Playground, reverse: bool, inter
             _auto_commit(playground, f"Patch {step.patch.name}")
 
 
-def _patch_order_interactive(patches: Iterable[Path], *, reverse: bool) -> list[PatchStep]:
+def _patch_order_interactive(patches: list[Path], *, reverse: bool) -> list[PatchStep]:
     with NamedTemporaryFile(prefix="dfu_apply_", suffix=".txt", mode="w+") as patch_order_file:
         template = f"""\
-# Apply patches {"in reverse order" if reverse else "in order"}
+# {"Revert patches" if reverse else "Apply patches"}
 # To make changes, you can reorder the patches, or delete any patches you don't want to apply.
 # Commands:
 # p, pick = use commit
