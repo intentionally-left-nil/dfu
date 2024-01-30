@@ -25,8 +25,7 @@ def apply_package(store: Store, *, reverse: bool, interactive: bool, confirm: bo
         _auto_commit(playground, "Initial files")
         _apply_patches(store, playground=playground, reverse=reverse, interactive=interactive)
         if confirm:
-            click.echo("Launching a subshell with the changes. Type exit 0 to continue, or exit 1 to abort", err=True)
-            subshell(playground.location).check_returncode()
+            _confirm_changes(playground)
 
         if dry_run:
             click.echo("Dry run: Skipping copying the files to the filesystem", err=True)
@@ -65,8 +64,9 @@ def _apply_patches(store: Store, *, playground: Playground, reverse: bool, inter
                     Make the correct changes, and then exit the subshell to continue."""
                 )
             )
-        if not merged_cleanly or step.interactive:
             subshell(playground.location).check_returncode()
+        elif step.interactive:
+            _confirm_changes(playground)
         _auto_commit(playground, f"Patch {step.patch.name}")
 
 
@@ -107,6 +107,22 @@ def _patch_order_interactive(patches: list[Path], *, reverse: bool) -> list[Patc
         else:
             steps.append(PatchStep(patch=Path(line), interactive=False))
     return steps
+
+
+def _confirm_changes(playground: Playground):
+    while True:
+        response: str = click.prompt(
+            "[I]nspect, [C]ontinue, [A]bort",
+            type=click.Choice(['i', 'inspect', 'c', 'continue', 'a', 'abort'], case_sensitive=False),
+            show_choices=False,
+        )
+        match response.lower():
+            case 'i', 'inspect':
+                subshell(playground.location)
+            case 'c', 'continue':
+                break
+            case 'a', 'abort':
+                raise ValueError("Aborting")
 
 
 def _auto_commit(playground: Playground, message: str):
