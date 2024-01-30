@@ -72,8 +72,8 @@ def _install(packages: list[str] | tuple[str, ...], *, confirm: bool, dry_run: b
     if not packages:
         return
     click.echo(f"Installing dependencies: {', '.join(packages)}", err=True)
-    if click.confirm("Would you like to continue?"):
-        args = ['sudo', 'pacman', '-S', '--needed', *packages]
+    if not confirm or click.confirm("Would you like to continue?"):
+        args = ['sudo', 'pacman', '-S', '--needed' '--noconfirm', *packages]
         if dry_run:
             click.echo("Dry run: Skipping installation", err=True)
         else:
@@ -84,8 +84,8 @@ def _uninstall(packages: list[str], *, confirm: bool, dry_run: bool):
     if not packages:
         return
     click.echo(f"Removing dependencies: {', '.join(packages)}", err=True)
-    if click.confirm("Would you like to continue?"):
-        args = ['sudo', 'pacman', '-R', *packages]
+    if not confirm or click.confirm("Would you like to continue?"):
+        args = ['sudo', 'pacman', '-R', '--noconfirm', *packages]
 
         if dry_run:
             click.echo("Dry run: Skipping removal", err=True)
