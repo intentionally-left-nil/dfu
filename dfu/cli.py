@@ -1,7 +1,6 @@
 import os
 import sys
 from pathlib import Path
-from typing import Literal
 
 import click
 
@@ -16,6 +15,7 @@ from dfu.commands import (
     load_store,
     ls_files,
 )
+from dfu.helpers.handle_errors import handle_errors
 from dfu.snapshots.snapper import Snapper
 
 
@@ -36,6 +36,7 @@ def main():
 @main.command()
 @click.option("-n", "--name", help="Name of the package")
 @click.option("-d", "--description", help="Description of the package")
+@handle_errors
 def init(name: str | None, description: str | None):
     final_name: str = click.prompt("Name", default=name or Path.cwd().name)
     final_description: str | None = click.prompt("Description", default=description or "", type=NullableString())
@@ -44,6 +45,7 @@ def init(name: str | None, description: str | None):
 
 
 @main.command()
+@handle_errors
 def snap():
     create_snapshot(load_store())
 
@@ -52,6 +54,7 @@ def snap():
 @click.option('--from', 'from_', type=int, default=0, help='Snapshot index to compute the before state')
 @click.option('--to', type=int, default=-1, help='Snapshot index to compute the end state')
 @click.option('--interactive', '-i', is_flag=True, help='Inspect and modify the changes', default=False)
+@handle_errors
 def diff(from_: int, to: int, interactive: bool):
     generate_diff(load_store(), from_index=from_, to_index=to, interactive=interactive)
 
@@ -61,6 +64,7 @@ def diff(from_: int, to: int, interactive: bool):
 @click.option('--force', '-f', is_flag=True, help='Do not require confirmation', default=False)
 @click.option('--interactive', '-i', is_flag=True, help='Inspect and modify the changes', default=False)
 @click.option('--dry-run', help="Do not apply the changes to the computer", is_flag=True, default=False)
+@handle_errors
 def apply(reverse: bool, force: bool, interactive: bool, dry_run: bool):
     apply_package(load_store(), reverse=reverse, confirm=not force, interactive=interactive, dry_run=dry_run)
 
@@ -69,6 +73,7 @@ def apply(reverse: bool, force: bool, interactive: bool, dry_run: bool):
 @click.option("-i", "--ignored", is_flag=True, help="Show only ignored files", default=False)
 @click.option('--from', 'from_', type=int, default=0, help='Snapshot index to compute the before state')
 @click.option('--to', type=int, default=-1, help='Snapshot index to compute the end state')
+@handle_errors
 def ls_files_command(ignored: bool, from_: int, to: int):
     ls_files(load_store(), from_index=from_, to_index=to, only_ignored=ignored)
 
@@ -81,6 +86,7 @@ def config():
 @config.command(name="init")
 @click.option("-s", "--snapper-config", multiple=True, default=[], help="Snapper configs to include")
 @click.option("-f", "--file", help="File to write config to")
+@handle_errors
 def config_init(snapper_config: list[str], file: str | None):
     if not snapper_config:
         default_configs = ",".join([c.name for c in Snapper.get_configs()])
@@ -96,6 +102,7 @@ def config_init(snapper_config: list[str], file: str | None):
 
 @main.command()
 @click.option('--id', 'id_', type=int, help='The snapshot id to chroot into', default=-1)
+@handle_errors
 def shell(id_: int):
     launch_snapshot_shell(load_store(), id_)
 

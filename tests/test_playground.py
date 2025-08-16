@@ -283,11 +283,13 @@ def test_copy_files_to_filesystem_creates_directories(tmp_path: Path, playground
     (tmp_path / 'etc' / 'other' / 'other.txt').write_text('other')
 
     playground.copy_files_to_filesystem(dest=tmp_path)
-    assert [p for p in tmp_path.glob('**/*') if p.is_file()] == [
-        Path(tmp_path / 'etc' / 'etc.txt').resolve(),
-        Path(tmp_path / 'etc' / 'other' / 'other.txt').resolve(),
-        Path(tmp_path / 'etc' / 'nested' / 'file.txt').resolve(),
-    ]
+    assert set([p for p in tmp_path.glob('**/*') if p.is_file()]) == set(
+        [
+            Path(tmp_path / 'etc' / 'etc.txt').resolve(),
+            Path(tmp_path / 'etc' / 'other' / 'other.txt').resolve(),
+            Path(tmp_path / 'etc' / 'nested' / 'file.txt').resolve(),
+        ]
+    )
 
     actual = tmp_path / 'etc' / 'nested' / 'file.txt'
     assert actual.stat().st_mode & 0o777 == 0o777

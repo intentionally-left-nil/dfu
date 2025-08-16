@@ -92,10 +92,16 @@ addopts = "--cov --cov-report=xml --cov-report=html --cov-config=.coveragerc"
 target-version = ["py311"]
 line-length = 120
 skip-string-normalization = true
+exclude = '''
+/(
+  \.env
+  |env
+)/
+'''
 
 [tool.isort]
 profile = "black"
-skip_glob = ["env/*"]
+skip_glob = ["env/*", ".env/*", "./env/*"]
 
 [tool.mypy]
 mypy_path = "typings/"
