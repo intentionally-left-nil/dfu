@@ -11,7 +11,7 @@ from dfu.api import Store
 from dfu.revision.git import DEFAULT_GITIGNORE
 from dfu.snapshots.changes import files_modified, filter_files
 from dfu.snapshots.proot import proot
-from dfu.snapshots.snapper import Snapper
+from dfu.snapshots.snapper import Snapper, SnapperName
 from dfu.snapshots.snapper_diff import FileChangeAction, SnapperDiff
 
 
@@ -24,7 +24,7 @@ def store(tmp_path: Path, request: pytest.FixtureRequest, setup_git: None) -> St
     base_store.state = base_store.state.update(
         package_dir=tmp_path,
         package_config=base_store.state.package_config.update(
-            snapshots=(MappingProxyType({"root": 1}), MappingProxyType({"root": 2}))
+            snapshots=(MappingProxyType({SnapperName("root"): 1}), MappingProxyType({SnapperName("root"): 2}))
         ),
     )
     return base_store
@@ -43,7 +43,7 @@ def mock_get_delta(responses: dict[str, list[str]]) -> Generator[MagicMock, None
 
 @pytest.fixture
 def mock_filter_files() -> Generator[MagicMock, None, None]:
-    def side_effect(store: Store, snapshot: MappingProxyType[str, int], paths: list[str]) -> list[str]:
+    def side_effect(store: Store, snapshot: MappingProxyType[SnapperName, int], paths: list[str]) -> list[str]:
         return paths
 
     with patch('dfu.snapshots.changes.filter_files', side_effect=side_effect) as mock_filter_files:
@@ -131,9 +131,9 @@ def test_filter_files(tmp_path: Path, store: Store, mock_subprocess_run: MagicMo
         "file.txt",  # This is last on purpose, to test that the last file is read
     ]
 
-    assert filter_files(store, MappingProxyType({"root": 1}), []) == []
+    assert filter_files(store, MappingProxyType({SnapperName("root"): 1}), []) == []
 
-    assert filter_files(store, MappingProxyType({"root": 1}), paths) == [
+    assert filter_files(store, MappingProxyType({SnapperName("root"): 1}), paths) == [
         "etc/file2.txt",
         "very/nested/file3.txt",
         "very/nested/symlink",

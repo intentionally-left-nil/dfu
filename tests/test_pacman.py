@@ -18,7 +18,7 @@ from dfu.config import Config
 from dfu.package.package_config import PackageConfig
 from dfu.plugins.pacman import PacmanPlugin
 from dfu.snapshots.proot import proot
-from dfu.snapshots.snapper import Snapper
+from dfu.snapshots.snapper import Snapper, SnapperName
 
 
 @pytest.fixture
@@ -30,7 +30,10 @@ def store(config: Config) -> Store:
             name="test",
             description="my cool description",
             programs_added=tuple(),
-            snapshots=(MappingProxyType({"root": 1, "home": 1}), MappingProxyType({"root": 2, "home": 2})),
+            snapshots=(
+                MappingProxyType({SnapperName("root"): 1, SnapperName("home"): 1}),
+                MappingProxyType({SnapperName("root"): 2, SnapperName("home"): 2}),
+            ),
             version="0.0.2",
         ),
     )

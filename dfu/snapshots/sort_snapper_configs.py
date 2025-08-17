@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 
-from dfu.snapshots.snapper import SnapperConfigInfo
+from dfu.snapshots.snapper import SnapperConfigInfo, SnapperName
 
 
-def sort_snapper_configs(configs: list[SnapperConfigInfo]) -> tuple[str, ...]:
+def sort_snapper_configs(configs: list[SnapperConfigInfo]) -> tuple[SnapperName, ...]:
     roots = _calculate_roots(configs)
     return _breadth_first_search(roots)
 
@@ -51,7 +51,7 @@ def _calculate_roots(configs: list[SnapperConfigInfo]) -> list[_Node]:
     return roots
 
 
-def _breadth_first_search(roots: list[_Node]) -> tuple[str, ...]:
+def _breadth_first_search(roots: list[_Node]) -> tuple[SnapperName, ...]:
     queue = roots.copy()
     names = []
     while queue:

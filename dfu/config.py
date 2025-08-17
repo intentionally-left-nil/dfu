@@ -3,10 +3,12 @@ from dataclasses import dataclass
 
 import msgspec
 
+from dfu.snapshots.snapper import SnapperName
+
 
 @dataclass
 class Btrfs:
-    snapper_configs: tuple[str, ...]
+    snapper_configs: tuple[SnapperName, ...]
 
 
 @dataclass

@@ -6,26 +6,26 @@ from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
 
-from dfu.snapshots.snapper import Snapper, SnapperConfigInfo
+from dfu.snapshots.snapper import Snapper, SnapperConfigInfo, SnapperName
 from dfu.snapshots.snapper_diff import FileChangeAction, SnapperDiff
 
 
 @pytest.fixture
 def snapper_instance() -> Snapper:
-    return Snapper('test')
+    return Snapper(SnapperName('test'))
 
 
 @patch('subprocess.run')
 def test_get_mountpoint_success(mock_run: Mock) -> None:
     mock_run.return_value = Mock(stdout='{"SUBVOLUME": "/test"}')
-    snapper = Snapper('test')
+    snapper = Snapper(SnapperName('test'))
     assert snapper.get_mountpoint() == Path('/test')
 
 
 @patch('subprocess.run')
 def test_get_mountpoint_no_subvolume(mock_run: Mock) -> None:
     mock_run.return_value = Mock(stdout='{}')
-    snapper = Snapper('test')
+    snapper = Snapper(SnapperName('test'))
     with pytest.raises(KeyError):
         snapper.get_mountpoint()
 
@@ -33,7 +33,7 @@ def test_get_mountpoint_no_subvolume(mock_run: Mock) -> None:
 @patch('subprocess.run')
 def test_get_mountpoint_invalid_json(mock_run: Mock) -> None:
     mock_run.return_value = Mock(stdout='{')
-    snapper = Snapper('test')
+    snapper = Snapper(SnapperName('test'))
     with pytest.raises(json.JSONDecodeError):
         snapper.get_mountpoint()
 
@@ -41,7 +41,7 @@ def test_get_mountpoint_invalid_json(mock_run: Mock) -> None:
 @patch('subprocess.run')
 def test_get_mountpoint_subprocess_error(mock_run: Mock) -> None:
     mock_run.side_effect = subprocess.CalledProcessError(1, 'cmd')
-    snapper = Snapper('test')
+    snapper = Snapper(SnapperName('test'))
     with pytest.raises(subprocess.CalledProcessError):
         snapper.get_mountpoint()
 
@@ -49,14 +49,14 @@ def test_get_mountpoint_subprocess_error(mock_run: Mock) -> None:
 @patch('subprocess.run')
 def test_create_snapshot_success(mock_run: Mock) -> None:
     mock_run.return_value = Mock(stdout='1\n')
-    snapper = Snapper('test')
+    snapper = Snapper(SnapperName('test'))
     assert snapper.create_snapshot('description') == 1
 
 
 @patch('subprocess.run')
 def test_create_snapshot_subprocess_error(mock_run: Mock) -> None:
     mock_run.side_effect = subprocess.CalledProcessError(1, 'cmd')
-    snapper = Snapper('test')
+    snapper = Snapper(SnapperName('test'))
     with pytest.raises(subprocess.CalledProcessError):
         snapper.create_snapshot('description')
 
@@ -64,7 +64,7 @@ def test_create_snapshot_subprocess_error(mock_run: Mock) -> None:
 @patch('subprocess.run')
 def test_create_snapshot_invalid_output(mock_run: Mock) -> None:
     mock_run.return_value = Mock(stdout='not a number\n')
-    snapper = Snapper('test')
+    snapper = Snapper(SnapperName('test'))
     with pytest.raises(ValueError):
         snapper.create_snapshot('description')
 
@@ -113,14 +113,14 @@ def test_get_delta_different_actions_and_permissions(mock_run: Mock, snapper_ins
 @patch('subprocess.run')
 def test_get_snapshot_path(mock_run: Mock) -> None:
     mock_run.return_value = Mock(stdout='{"SUBVOLUME": "/test"}')
-    snapper = Snapper('test')
+    snapper = Snapper(SnapperName('test'))
     assert snapper.get_snapshot_path(1) == Path('/test/.snapshots/1/snapshot')
 
 
 @patch('subprocess.run')
 def test_get_configs(mock_run: Mock) -> None:
     mock_run.return_value = Mock(stdout='{"configs": [{"config": "root", "subvolume": "/home"}]}')
-    assert Snapper.get_configs() == [SnapperConfigInfo(name="root", mountpoint=Path("/home"))]
+    assert Snapper.get_configs() == [SnapperConfigInfo(name=SnapperName("root"), mountpoint=Path("/home"))]
 
 
 @patch('subprocess.run')
@@ -132,4 +132,4 @@ def test_get_configs_requires_sudo(mock_run: MagicMock) -> None:
             return Mock(stdout='')
 
     mock_run.side_effect = mock_subprocess_run
-    assert Snapper.get_configs() == [SnapperConfigInfo(name="root", mountpoint=Path("/home"))]
+    assert Snapper.get_configs() == [SnapperConfigInfo(name=SnapperName("root"), mountpoint=Path("/home"))]
