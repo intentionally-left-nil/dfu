@@ -372,9 +372,7 @@ this is a conflict
 EQUALS
 file
 >>>>>>> theirs
-""".replace(
-    "EQUALS", "=" * 7
-)
+""".replace("EQUALS", "=" * 7)
 
 
 def test_apply_patches_merge_conflict(playground: Playground, file_patch: Path) -> None:

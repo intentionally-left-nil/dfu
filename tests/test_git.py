@@ -307,7 +307,8 @@ EQUALS
 hello
 >>>>>>> theirs
 '''.replace(
-            "EQUALS", "=" * 7  # Replaced to prevent text editors from thinking there's a merge conflict
+            "EQUALS",
+            "=" * 7,  # Replaced to prevent text editors from thinking there's a merge conflict
         )
     )
 
