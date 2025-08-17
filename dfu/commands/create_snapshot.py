@@ -1,11 +1,11 @@
 from types import MappingProxyType
 
 from dfu.api.store import Store
-from dfu.snapshots.snapper import Snapper
+from dfu.snapshots.snapper import Snapper, SnapperName
 
 
 def create_snapshot(store: Store) -> None:
-    snapshot: dict[str, int] = {}
+    snapshot: dict[SnapperName, int] = {}
     for snapper_config in store.state.config.btrfs.snapper_configs:
         snapper = Snapper(snapper_config)
         snapshot_id = snapper.create_snapshot(store.state.package_config.description or store.state.package_config.name)

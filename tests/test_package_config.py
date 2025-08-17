@@ -8,6 +8,7 @@ import pytest
 
 from dfu.helpers.json_serializable import JsonSerializableMixin
 from dfu.package.package_config import PackageConfig, find_package_config
+from dfu.snapshots.snapper import SnapperName
 
 
 @dataclass
@@ -15,28 +16,41 @@ class ValidConfigTest:
     test_id: str
     name: str = "expected_name"
     description: str | None = "expected_description"
-    snapshots: tuple[MappingProxyType[str, int], ...] = field(default_factory=tuple)
+    snapshots: tuple[MappingProxyType[SnapperName, int], ...] = field(default_factory=tuple)
 
 
 valid_config_tests = [
     ValidConfigTest(test_id="empty"),
-    ValidConfigTest(test_id="one snapshot", snapshots=(MappingProxyType({"root": 1}),)),
-    ValidConfigTest(test_id="two snapshots", snapshots=(MappingProxyType({"root": 1}), MappingProxyType({"root": 2}))),
+    ValidConfigTest(test_id="one snapshot", snapshots=(MappingProxyType({SnapperName("root"): 1}),)),
+    ValidConfigTest(
+        test_id="two snapshots",
+        snapshots=(MappingProxyType({SnapperName("root"): 1}), MappingProxyType({SnapperName("root"): 2})),
+    ),
     ValidConfigTest(
         test_id="one snapshot with root & home, and the second snapshot with only root",
-        snapshots=(MappingProxyType({"root": 1, "home": 2}), MappingProxyType({"root": 3})),
+        snapshots=(
+            MappingProxyType({SnapperName("root"): 1, SnapperName("home"): 2}),
+            MappingProxyType({SnapperName("root"): 3}),
+        ),
     ),
     ValidConfigTest(
         test_id="two snapshots with root & home",
-        snapshots=(MappingProxyType({"root": 1, "home": 2}), MappingProxyType({"root": 3, "home": 4})),
+        snapshots=(
+            MappingProxyType({SnapperName("root"): 1, SnapperName("home"): 2}),
+            MappingProxyType({SnapperName("root"): 3, SnapperName("home"): 4}),
+        ),
     ),
     ValidConfigTest(
         test_id="two snapshots where the directories are different",
-        snapshots=(MappingProxyType({"root": 1}), MappingProxyType({"home": 2})),
+        snapshots=(MappingProxyType({SnapperName("root"): 1}), MappingProxyType({SnapperName("home"): 2})),
     ),
     ValidConfigTest(
         test_id="Three snapshots",
-        snapshots=(MappingProxyType({"root": 1}), MappingProxyType({"root": 2}), MappingProxyType({"root": 3})),
+        snapshots=(
+            MappingProxyType({SnapperName("root"): 1}),
+            MappingProxyType({SnapperName("root"): 2}),
+            MappingProxyType({SnapperName("root"): 3}),
+        ),
     ),
 ]
 
@@ -142,7 +156,7 @@ def test_mount_point_in_hierarchy(tmp_path: Path) -> None:
 
 
 def test_package_config_is_immutable(package_config: PackageConfig) -> None:
-    package_config = package_config.update(snapshots=(MappingProxyType({"root": 1}),))
+    package_config = package_config.update(snapshots=(MappingProxyType({SnapperName("root"): 1}),))
     with pytest.raises(FrozenInstanceError):
         package_config.name = "new_name"  # type: ignore
     with pytest.raises(FrozenInstanceError):

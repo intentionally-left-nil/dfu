@@ -2,24 +2,26 @@ import json
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TypedDict
+from typing import NewType, TypedDict
 
 from dfu.snapshots.snapper_diff import SnapperDiff
 
+SnapperName = NewType('SnapperName', str)
+
 
 class SnapperConfig(TypedDict):
-    config: str
+    config: SnapperName
     subvolume: str
 
 
 @dataclass
 class SnapperConfigInfo:
-    name: str
+    name: SnapperName
     mountpoint: Path
 
 
 class Snapper:
-    snapper_name: str
+    snapper_name: SnapperName
 
     @classmethod
     def get_configs(cls) -> list[SnapperConfigInfo]:
@@ -34,7 +36,7 @@ class Snapper:
             data = json.loads(result.stdout)["configs"]
         return [SnapperConfigInfo(name=config["config"], mountpoint=Path(config["subvolume"])) for config in data]
 
-    def __init__(self, snapper_name: str) -> None:
+    def __init__(self, snapper_name: SnapperName) -> None:
         self.snapper_name = snapper_name
 
     def get_mountpoint(self) -> Path:

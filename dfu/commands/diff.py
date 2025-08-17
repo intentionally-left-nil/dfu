@@ -20,7 +20,7 @@ from dfu.revision.git import (
     git_num_commits,
 )
 from dfu.snapshots.changes import files_modified
-from dfu.snapshots.snapper import Snapper
+from dfu.snapshots.snapper import Snapper, SnapperName
 
 
 def generate_diff(store: Store, *, from_index: int, to_index: int, interactive: bool) -> None:
@@ -47,7 +47,9 @@ def generate_diff(store: Store, *, from_index: int, to_index: int, interactive: 
         click.echo("Updated the installed programs", err=True)
 
 
-def _copy_files(store: Store, *, playground: Playground, snapshot_index: int, sources: dict[str, list[str]]) -> None:
+def _copy_files(
+    store: Store, *, playground: Playground, snapshot_index: int, sources: dict[SnapperName, list[str]]
+) -> None:
     for snapper_name, files in sources.items():
         snapshot_id = store.state.package_config.snapshots[snapshot_index][snapper_name]
         snapper = Snapper(snapper_name)

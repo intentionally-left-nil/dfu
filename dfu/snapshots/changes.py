@@ -4,15 +4,15 @@ from types import MappingProxyType
 from dfu.api import Store
 from dfu.revision.git import git_check_ignore
 from dfu.snapshots.proot import proot
-from dfu.snapshots.snapper import Snapper
+from dfu.snapshots.snapper import Snapper, SnapperName
 from dfu.snapshots.snapper_diff import FileChangeAction, SnapperDiff
 
 
-def files_modified(store: Store, *, from_index: int, to_index: int, only_ignored: bool) -> dict[str, list[str]]:
+def files_modified(store: Store, *, from_index: int, to_index: int, only_ignored: bool) -> dict[SnapperName, list[str]]:
     """Returns a dict of snapper_name -> set of files modified between the two snapshots."""
     pre_snapshot = store.state.package_config.snapshots[from_index]
     post_snapshot = store.state.package_config.snapshots[to_index]
-    files_modified: dict[str, list[str]] = dict()
+    files_modified: dict[SnapperName, list[str]] = dict()
     for snapper_name, pre_id in pre_snapshot.items():
         post_id = post_snapshot[snapper_name]
         snapper = Snapper(snapper_name)
@@ -36,7 +36,7 @@ def files_modified(store: Store, *, from_index: int, to_index: int, only_ignored
     return files_modified
 
 
-def filter_files(store: Store, snapshot: MappingProxyType[str, int], paths: list[str]) -> list[str]:
+def filter_files(store: Store, snapshot: MappingProxyType[SnapperName, int], paths: list[str]) -> list[str]:
     if len(paths) == 0:
         # Performance optimization: Suprocess.run() takes several hundred milliseconds.
         # Since this is called before & after for each snapper config, there are many potentially empty calls

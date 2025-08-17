@@ -4,6 +4,7 @@ import pytest
 from msgspec import DecodeError, ValidationError
 
 from dfu.config import Btrfs, Config
+from dfu.snapshots.snapper import SnapperName
 
 
 def test_valid_config() -> None:
@@ -14,7 +15,7 @@ snapper_configs = ["/home", "/"]
 """
     actual = Config.from_toml(toml)
     expected = Config(
-        btrfs=Btrfs(snapper_configs=("/home", "/")),
+        btrfs=Btrfs(snapper_configs=(SnapperName("/home"), SnapperName("/"))),
     )
     assert actual == expected
 
@@ -25,7 +26,7 @@ def test_default_package_dir() -> None:
 snapper_configs = ["/home", "/"]
 """
     actual = Config.from_toml(toml)
-    expected = Config(btrfs=Btrfs(snapper_configs=("/home", "/")))
+    expected = Config(btrfs=Btrfs(snapper_configs=(SnapperName("/home"), SnapperName("/"))))
     assert actual == expected
 
 
@@ -39,7 +40,7 @@ snapper_configs = ["/home"]
         f.write(toml)
         f.flush()
         actual = Config.from_file(f.name)
-        expected = Config(btrfs=Btrfs(snapper_configs=("/home",)))
+        expected = Config(btrfs=Btrfs(snapper_configs=(SnapperName("/home"),)))
         assert actual == expected
 
 

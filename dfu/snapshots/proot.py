@@ -1,10 +1,12 @@
 from types import MappingProxyType
 
 from dfu.config import Config
-from dfu.snapshots.snapper import Snapper
+from dfu.snapshots.snapper import Snapper, SnapperName
 
 
-def proot(args: list[str], config: Config, snapshot: MappingProxyType[str, int], cwd: str | None = None) -> list[str]:
+def proot(
+    args: list[str], config: Config, snapshot: MappingProxyType[SnapperName, int], cwd: str | None = None
+) -> list[str]:
     mount_order = [x for x in config.btrfs.snapper_configs if x in snapshot]
     if len(mount_order) == 0:
         raise ValueError('No snapshots to mount')
