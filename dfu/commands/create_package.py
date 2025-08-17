@@ -1,6 +1,5 @@
 from pathlib import Path
 
-from dfu.config import Config
 from dfu.package.package_config import PackageConfig
 from dfu.revision.git import copy_template_gitignore, git_add, git_commit, git_init
 

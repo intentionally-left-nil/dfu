@@ -66,42 +66,38 @@ python = ["3.12"]
 dependencies = [
   "pytest",
   "pytest-cov>=4.1.0",
-  "black>=23.1.0",
+  "ruff>=0.12.9",
   "mypy>=1.0.0",
-  "isort>=5.12.0"
 ]
 [tool.hatch.envs.lint.scripts]
 typing = "mypy --install-types --non-interactive {args:dfu tests}"
-style = [
-  "black --check --diff {args:.}",
-  "isort --check --diff {args:.}",
+
+lint = "ruff check {args:.}"
+format = "ruff format {args:.}"
+fix = [
+  "ruff check --fix {args:.}",
+  "ruff format --fix {args:.}",
 ]
-fmt = [
-  "black {args:.}",
-  "isort {args:.}",
-]
+
 all = [
-  "style",
+  "lint",
+  "format",
   "typing",
 ]
 
 [tool.pytest.ini_options]
 addopts = "--cov --cov-report=xml --cov-report=html --cov-config=.coveragerc"
 
-[tool.black]
-target-version = ["py311"]
+[tool.ruff]
+exclude = [".venv", "env", ".env", "typings"]
 line-length = 120
-skip-string-normalization = true
-exclude = '''
-/(
-  \.env
-  |env
-)/
-'''
 
-[tool.isort]
-profile = "black"
-skip_glob = ["env/*", ".env/*", "./env/*"]
+[tool.ruff.lint]
+# 741: ambiguous-variable-name (allow names like l)
+ignore = ["E741"]
+
+[tool.ruff.format]
+quote-style = "preserve"
 
 [tool.mypy]
 mypy_path = "typings/"

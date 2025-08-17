@@ -1,12 +1,10 @@
 import subprocess
 from pathlib import Path
 from shutil import copy2
-from textwrap import dedent
 
 import click
 
-from dfu.api import Event, Playground, Store, UpdateInstalledDependenciesEvent
-from dfu.api.store import Store
+from dfu.api import Playground, Store, UpdateInstalledDependenciesEvent
 from dfu.helpers.normalize_snapshot_index import normalize_snapshot_index
 from dfu.helpers.subshell import subshell
 from dfu.revision.git import (

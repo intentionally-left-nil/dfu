@@ -1,5 +1,4 @@
 import subprocess
-from unittest.mock import Mock, patch
 
 import click
 from click.testing import CliRunner

@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from dfu.snapshots.btrfs import get_all_subvolumes
 

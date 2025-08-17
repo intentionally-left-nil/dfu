@@ -362,7 +362,7 @@ def file2_patch(patch_playground: Playground, tmp_path: Path) -> Path:
 
 
 def test_apply_patch_cleanly(playground: Playground, file_patch: Path, file2_patch: Path) -> None:
-    assert playground.apply_patch(file_patch) == True
+    assert playground.apply_patch(file_patch)
     assert (playground.location / 'files' / 'file.txt').read_text() == 'file'
 
 
@@ -372,9 +372,7 @@ this is a conflict
 EQUALS
 file
 >>>>>>> theirs
-""".replace(
-    "EQUALS", "=" * 7
-)
+""".replace("EQUALS", "=" * 7)
 
 
 def test_apply_patches_merge_conflict(playground: Playground, file_patch: Path) -> None:
@@ -383,7 +381,7 @@ def test_apply_patches_merge_conflict(playground: Playground, file_patch: Path) 
     file.write_text('this is a conflict')
     git_add(playground.location, ['files'])
     git_commit(playground.location, 'Added file')
-    assert playground.apply_patch(file_patch) == False
+    assert not playground.apply_patch(file_patch)
     assert file.read_text() == FILE_MERGE_CONFLICT
 
 
@@ -405,7 +403,7 @@ def test_apply_patches_git_remote_fails(playground: Playground, file_patch: Path
 def test_git_apply_without_bundle(playground: Playground, file_patch: Path) -> None:
     file_patch.with_suffix('.pack').unlink()
 
-    assert playground.apply_patch(file_patch) == True
+    assert playground.apply_patch(file_patch)
     assert (playground.location / 'files' / 'file.txt').read_text() == 'file'
 
 
@@ -417,5 +415,5 @@ def test_git_apply_merge_conflict_without_bundle(playground: Playground, file_pa
     git_add(playground.location, ['files'])
     git_commit(playground.location, 'Created file')
 
-    assert playground.apply_patch(file_patch) == False
+    assert not playground.apply_patch(file_patch)
     assert (playground.location / 'files' / 'file.txt').read_text() == FILE_MERGE_CONFLICT

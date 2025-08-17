@@ -9,7 +9,6 @@ from typing import NamedTuple
 import click
 
 from dfu.api import (
-    Event,
     InstallDependenciesEvent,
     Playground,
     Store,
@@ -85,7 +84,7 @@ def _patch_order_interactive(patches: list[Path], *, reverse: bool) -> list[Patc
 # p, pick = use commit
 # e, edit = use commit, but stop for amending
 # d, drop = remove commit
-{ "\n".join([str(p) for p in patches]) }
+{"\n".join([str(p) for p in patches])}
 """
         patch_order_file.write(template)
         patch_order_file.flush()

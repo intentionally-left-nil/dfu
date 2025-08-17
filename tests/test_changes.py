@@ -10,7 +10,6 @@ import pytest
 from dfu.api import Store
 from dfu.revision.git import DEFAULT_GITIGNORE
 from dfu.snapshots.changes import files_modified, filter_files
-from dfu.snapshots.proot import proot
 from dfu.snapshots.snapper import Snapper, SnapperName
 from dfu.snapshots.snapper_diff import FileChangeAction, SnapperDiff
 
