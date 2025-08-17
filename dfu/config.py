@@ -14,7 +14,7 @@ class Config:
     btrfs: Btrfs
 
     @classmethod
-    def from_file(cls, path: os.PathLike | str) -> "Config":
+    def from_file(cls, path: os.PathLike[str] | str) -> "Config":
         with open(path) as f:
             return cls.from_toml(f.read())
 

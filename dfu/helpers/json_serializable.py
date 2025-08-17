@@ -17,7 +17,7 @@ class JsonSerializableMixin:
     def from_json(cls: Type[T], data: str) -> T:
         return msgspec.json.decode(data, type=cls, dec_hook=cls.dec_hook)
 
-    def write(self, path: Path, mode: str = "wb"):
+    def write(self, path: Path, mode: str = "wb") -> None:
         if 'b' not in mode:
             mode += 'b'
         data = msgspec.json.encode(self, enc_hook=self.enc_hook)
@@ -34,7 +34,7 @@ class JsonSerializableMixin:
             raise NotImplementedError(f"Unknown type: {type(obj)}")
 
     @classmethod
-    def dec_hook(cls, type: Type, obj: Any) -> Any:
+    def dec_hook(cls, type: Type[Any], obj: Any) -> Any:
         if type is MappingProxyType or get_origin(type) is MappingProxyType:
             args = get_args(type)
             if len(args) == 2:

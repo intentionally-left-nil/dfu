@@ -4,9 +4,9 @@ from unittest.mock import Mock
 from dfu.api import DfuPlugin, Event, Store
 
 
-def test_plugin():
+def test_plugin() -> None:
     class TestPlugin(DfuPlugin):
-        def handle(self, event: Event, **kwargs) -> Any:
+        def handle(self, event: Event) -> None:
             pass
 
     def entrypoint(store: Store) -> DfuPlugin:

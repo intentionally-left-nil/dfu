@@ -10,7 +10,7 @@ from dfu.helpers.subshell import subshell
 from dfu.snapshots.proot import proot
 
 
-def launch_snapshot_shell(store: Store, snapshot_index: int):
+def launch_snapshot_shell(store: Store, snapshot_index: int) -> None:
     snapshot_index = normalize_snapshot_index(store.state.package_config, snapshot_index)
     snapshot = store.state.package_config.snapshots[snapshot_index]
     shell = os.environ.get('SHELL', '/bin/bash')

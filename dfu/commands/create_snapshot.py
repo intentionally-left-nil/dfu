@@ -4,7 +4,7 @@ from dfu.api.store import Store
 from dfu.snapshots.snapper import Snapper
 
 
-def create_snapshot(store: Store):
+def create_snapshot(store: Store) -> None:
     snapshot: dict[str, int] = {}
     for snapper_config in store.state.config.btrfs.snapper_configs:
         snapper = Snapper(snapper_config)

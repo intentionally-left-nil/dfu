@@ -6,7 +6,7 @@ from msgspec import DecodeError, ValidationError
 from dfu.config import Btrfs, Config
 
 
-def test_valid_config():
+def test_valid_config() -> None:
     toml = """
 package_dir = "/path/to/package_dir"
 [btrfs]
@@ -19,7 +19,7 @@ snapper_configs = ["/home", "/"]
     assert actual == expected
 
 
-def test_default_package_dir():
+def test_default_package_dir() -> None:
     toml = """
 [btrfs]
 snapper_configs = ["/home", "/"]
@@ -29,7 +29,7 @@ snapper_configs = ["/home", "/"]
     assert actual == expected
 
 
-def test_from_file():
+def test_from_file() -> None:
     toml = """
 package_dir = "/path/to/package_dir"
 [btrfs]
@@ -43,7 +43,7 @@ snapper_configs = ["/home"]
         assert actual == expected
 
 
-def test_invalid_types():
+def test_invalid_types() -> None:
     toml = """
 package_dir = "/path/to/package_dir"
 [btrfs]
@@ -53,7 +53,7 @@ snapper_configs = 5
         Config.from_toml(toml)
 
 
-def test_missing_field():
+def test_missing_field() -> None:
     toml = """
 package_dir = "/path/to/package_dir"
 [[btrfs.mounts]]
@@ -63,7 +63,7 @@ package_dir = "/path/to/package_dir"
         Config.from_toml(toml)
 
 
-def test_invalid_toml():
+def test_invalid_toml() -> None:
     toml = """{]"""
     with pytest.raises(DecodeError):
         Config.from_toml(toml)

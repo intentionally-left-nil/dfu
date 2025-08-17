@@ -7,3 +7,16 @@ from dfu.commands.load_config import get_config_paths, load_config
 from dfu.commands.load_store import load_store
 from dfu.commands.ls_files import ls_files
 from dfu.commands.shell import launch_snapshot_shell
+
+__all__ = [
+    "apply_package",
+    "create_config",
+    "create_package",
+    "create_snapshot",
+    "generate_diff",
+    "get_config_paths",
+    "load_config",
+    "load_store",
+    "ls_files",
+    "launch_snapshot_shell",
+]

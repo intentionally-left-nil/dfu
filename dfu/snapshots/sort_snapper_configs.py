@@ -27,7 +27,7 @@ class _Node:
             return True
         return False
 
-    def __lt__(self, other):
+    def __lt__(self, other: '_Node') -> bool:
         return f"{self.config.mountpoint}_{self.config.name}" < f"{other.config.mountpoint}_{other.config.name}"
 
 
