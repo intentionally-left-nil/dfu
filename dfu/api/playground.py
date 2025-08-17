@@ -102,23 +102,10 @@ class Playground:
 
             mode = oct(file.stat(follow_symlinks=False).st_mode & 0o777)[2:]  # Strip out the leading 0o
 
-            args = ["sudo", "install"]
+            args = ["sudo", "install", "-D"]
             if target.exists():
                 target_stat = target.stat(follow_symlinks=False)
                 args.extend(["-o", str(target_stat.st_uid), "-g", str(target_stat.st_gid)])
-
-            if platform.system() == "Darwin":
-                # We have to create the directory first as a separate call, using the -d flag
-                create_dir_args = args[:]
-
-                create_dir_args.extend(["-m", "755", "-d", str(file.parent.resolve()), str(target.parent.resolve())])
-                subprocess.run(
-                    create_dir_args,
-                    check=True,
-                    capture_output=True,
-                )
-            else:
-                args.append("-D")
 
             args.extend(["-m", mode, str(file.resolve()), str(target)])
             subprocess.run(
