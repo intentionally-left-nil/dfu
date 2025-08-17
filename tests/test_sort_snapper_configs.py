@@ -7,11 +7,11 @@ from dfu.snapshots.snapper import SnapperConfigInfo
 from dfu.snapshots.sort_snapper_configs import sort_snapper_configs
 
 
-def test_calculate_roots_empty():
+def test_calculate_roots_empty() -> None:
     assert sort_snapper_configs([]) == tuple()
 
 
-def test_calculate_roots_one_node():
+def test_calculate_roots_one_node() -> None:
     assert sort_snapper_configs([SnapperConfigInfo('test', Path('/test'))]) == ('test',)
 
 
@@ -25,11 +25,11 @@ def test_calculate_roots_one_node():
         ]
     ),
 )
-def test_calculate_roots_root_with_two_subchildren(configs: list[SnapperConfigInfo]):
+def test_calculate_roots_root_with_two_subchildren(configs: list[SnapperConfigInfo]) -> None:
     assert sort_snapper_configs(configs) == ('root', 'test2', 'test3')
 
 
-def test_two_independent_roots():
+def test_two_independent_roots() -> None:
     assert sort_snapper_configs(
         [
             SnapperConfigInfo('test', Path('/test')),
@@ -53,5 +53,5 @@ def test_two_independent_roots():
         )
     ),
 )
-def test_complex_case(configs: list[SnapperConfigInfo]):
+def test_complex_case(configs: list[SnapperConfigInfo]) -> None:
     assert sort_snapper_configs(configs) == ('root', 'home', 'var', 'another_user', 'me', 'log')

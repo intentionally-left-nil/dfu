@@ -1,14 +1,31 @@
 from abc import ABC, abstractmethod
-from enum import StrEnum, auto
+from dataclasses import dataclass
 
 
-class Event(StrEnum):
-    UPDATE_INSTALLED_DEPENDENCIES = auto()
-    INSTALL_DEPENDENCIES = auto()
-    UNINSTALL_DEPENDENCIES = auto()
+@dataclass
+class Event:
+    pass
+
+
+@dataclass
+class UpdateInstalledDependenciesEvent(Event):
+    from_index: int
+    to_index: int
+
+
+@dataclass
+class InstallDependenciesEvent(Event):
+    confirm: bool
+    dry_run: bool
+
+
+@dataclass
+class UninstallDependenciesEvent(Event):
+    confirm: bool
+    dry_run: bool
 
 
 class DfuPlugin(ABC):
     @abstractmethod
-    def handle(self, event: Event, **kwargs):  # pragma: no cover
+    def handle(self, event: Event) -> None:  # pragma: no cover
         pass

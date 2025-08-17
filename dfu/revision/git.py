@@ -6,16 +6,16 @@ from typing import Iterable
 from platformdirs import PlatformDirs
 
 
-def git_init(git_dir: Path):
+def git_init(git_dir: Path) -> None:
     subprocess.run(['git', 'init'], cwd=git_dir, check=True, capture_output=True)
 
 
-def git_add(git_dir: Path, paths: list[str | Path]):
+def git_add(git_dir: Path, paths: list[str | Path]) -> None:
     cmd = ['git', 'add'] + paths
     subprocess.run(cmd, cwd=git_dir, check=True, capture_output=True)
 
 
-def git_commit(git_dir: Path, message: str):
+def git_commit(git_dir: Path, message: str) -> None:
     subprocess.run(['git', 'commit', '-m', message], cwd=git_dir, check=True, capture_output=True)
 
 
@@ -77,7 +77,7 @@ def git_diff(git_dir: Path, base: str, target: str, subdirectory: str | None = N
     ).stdout
 
 
-def git_are_files_staged(git_dir: Path):
+def git_are_files_staged(git_dir: Path) -> bool:
     return_code = subprocess.run(['git', 'diff', '--cached', '--quiet'], cwd=git_dir, capture_output=True).returncode
     match return_code:
         case 0:
@@ -108,25 +108,25 @@ def git_apply(git_dir: Path, patch: Path, reverse: bool = False) -> bool:
         raise e
 
 
-def git_stash(git_dir: Path):
+def git_stash(git_dir: Path) -> None:
     subprocess.run(['git', 'stash', 'save'], cwd=git_dir, check=True, capture_output=True)
 
 
-def git_stash_pop(git_dir: Path):
+def git_stash_pop(git_dir: Path) -> None:
     subprocess.run(['git', 'stash', 'pop'], cwd=git_dir, check=True, capture_output=True)
 
 
-def git_bundle(git_dir: Path, dest: Path):
+def git_bundle(git_dir: Path, dest: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ['git', 'bundle', 'create', dest.resolve(), "--all"], cwd=git_dir, text=True, check=True, capture_output=True
     )
 
 
-def git_fetch(git_dir: Path, remote: str):
+def git_fetch(git_dir: Path, remote: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(['git', 'fetch', remote], cwd=git_dir, text=True, check=True, capture_output=True)
 
 
-def git_add_remote(git_dir: Path, name: str, remote: str):
+def git_add_remote(git_dir: Path, name: str, remote: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ['git', 'remote', 'add', name, remote], cwd=git_dir, text=True, check=True, capture_output=True
     )
@@ -140,7 +140,7 @@ def ensure_template_gitignore() -> Path:
     return template_gitignore
 
 
-def copy_template_gitignore(git_dir: Path):
+def copy_template_gitignore(git_dir: Path) -> None:
     package_gitignore = git_dir / '.gitignore'
     template_gitignore = ensure_template_gitignore()
     if not package_gitignore.exists() and template_gitignore.is_file():

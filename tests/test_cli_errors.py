@@ -20,7 +20,7 @@ success_handler_cmd = [
 
 
 @handle_errors
-def cli_with_failed_subprocess():
+def cli_with_failed_subprocess() -> None:
     """A dummy handler function that calls a subprocess that fails"""
     subprocess.run(
         dummy_handler_cmd,
@@ -30,7 +30,7 @@ def cli_with_failed_subprocess():
 
 
 @handle_errors
-def cli_with_successful_subprocess():
+def cli_with_successful_subprocess() -> None:
     """A handler function that calls a subprocess that succeeds"""
     subprocess.run(
         success_handler_cmd,
@@ -40,16 +40,16 @@ def cli_with_successful_subprocess():
 
 
 @handle_errors
-def cli_with_value_error():
+def cli_with_value_error() -> None:
     """A handler function that raises a ValueError"""
     raise ValueError("This is a test error")
 
 
-def test_handles_subprocess_errors():
+def test_handles_subprocess_errors() -> None:
     runner = CliRunner()
 
     @click.command()
-    def test_command():
+    def test_command() -> None:
         cli_with_failed_subprocess()
 
     result = runner.invoke(test_command)
@@ -61,11 +61,11 @@ def test_handles_subprocess_errors():
     assert "stderr output" in result.output
 
 
-def test_handles_successful_subprocess():
+def test_handles_successful_subprocess() -> None:
     runner = CliRunner()
 
     @click.command()
-    def test_command():
+    def test_command() -> None:
         cli_with_successful_subprocess()
 
     result = runner.invoke(test_command)
@@ -73,11 +73,11 @@ def test_handles_successful_subprocess():
     assert result.exit_code == 0
 
 
-def test_handles_value_error_with_stack_trace():
+def test_handles_value_error_with_stack_trace() -> None:
     runner = CliRunner()
 
     @click.command()
-    def test_command():
+    def test_command() -> None:
         cli_with_value_error()
 
     result = runner.invoke(test_command)

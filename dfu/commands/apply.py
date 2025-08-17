@@ -8,16 +8,22 @@ from typing import NamedTuple
 
 import click
 
-from dfu.api import Event, Playground, Store
+from dfu.api import (
+    Event,
+    InstallDependenciesEvent,
+    Playground,
+    Store,
+    UninstallDependenciesEvent,
+)
 from dfu.helpers.subshell import subshell
 from dfu.revision.git import git_add, git_are_files_staged, git_commit, git_init
 
 PatchStep = NamedTuple("PatchStep", [("patch", Path), ("interactive", bool)])
 
 
-def apply_package(store: Store, *, reverse: bool, interactive: bool, confirm: bool, dry_run: bool):
+def apply_package(store: Store, *, reverse: bool, interactive: bool, confirm: bool, dry_run: bool) -> None:
     if not reverse:
-        store.dispatch(Event.INSTALL_DEPENDENCIES, confirm=confirm, dry_run=dry_run)
+        store.dispatch(InstallDependenciesEvent(confirm=confirm, dry_run=dry_run))
 
     with Playground.temporary(prefix="dfu_apply_") as playground:
         git_init(playground.location)
@@ -33,10 +39,10 @@ def apply_package(store: Store, *, reverse: bool, interactive: bool, confirm: bo
             playground.copy_files_to_filesystem()
 
     if reverse:
-        store.dispatch(Event.UNINSTALL_DEPENDENCIES, confirm=confirm, dry_run=dry_run)
+        store.dispatch(UninstallDependenciesEvent(confirm=confirm, dry_run=dry_run))
 
 
-def _copy_base_files(store: Store, *, playground: Playground):
+def _copy_base_files(store: Store, *, playground: Playground) -> None:
     patch_files = store.state.package_dir.glob('*.patch')
     files_to_copy: set[Path] = set()
     for patch in patch_files:
@@ -44,7 +50,7 @@ def _copy_base_files(store: Store, *, playground: Playground):
     playground.copy_files_from_filesystem(files_to_copy)
 
 
-def _apply_patches(store: Store, *, playground: Playground, reverse: bool, interactive: bool):
+def _apply_patches(store: Store, *, playground: Playground, reverse: bool, interactive: bool) -> None:
     patches = list(sorted(store.state.package_dir.glob('*.patch')))
     if reverse:
         patches = list(reversed(patches))
@@ -109,7 +115,7 @@ def _patch_order_interactive(patches: list[Path], *, reverse: bool) -> list[Patc
     return steps
 
 
-def _confirm_changes(playground: Playground):
+def _confirm_changes(playground: Playground) -> None:
     while True:
         response: str = click.prompt(
             "[I]nspect, [C]ontinue, [A]bort",
@@ -127,7 +133,7 @@ def _confirm_changes(playground: Playground):
                 raise ValueError("Unexpected choice")
 
 
-def _auto_commit(playground: Playground, message: str):
+def _auto_commit(playground: Playground, message: str) -> None:
     git_add(playground.location, ['.'])
     if git_are_files_staged(playground.location):
         git_commit(playground.location, message)

@@ -22,14 +22,14 @@ from dfu.snapshots.snapper import Snapper
 class NullableString(click.ParamType):
     name = "string"
 
-    def convert(self, value, param, ctx):
+    def convert(self, value: str, param: click.Parameter | None, ctx: click.Context | None) -> str | None:
         if value == "":
             return None
         return value
 
 
 @click.group()
-def main():
+def main() -> None:
     pass
 
 
@@ -37,7 +37,7 @@ def main():
 @click.option("-n", "--name", help="Name of the package")
 @click.option("-d", "--description", help="Description of the package")
 @handle_errors
-def init(name: str | None, description: str | None):
+def init(name: str | None, description: str | None) -> None:
     final_name: str = click.prompt("Name", default=name or Path.cwd().name)
     final_description: str | None = click.prompt("Description", default=description or "", type=NullableString())
     path = create_package(name=final_name, description=final_description)
@@ -46,7 +46,7 @@ def init(name: str | None, description: str | None):
 
 @main.command()
 @handle_errors
-def snap():
+def snap() -> None:
     create_snapshot(load_store())
 
 
@@ -55,7 +55,7 @@ def snap():
 @click.option('--to', type=int, default=-1, help='Snapshot index to compute the end state')
 @click.option('--interactive', '-i', is_flag=True, help='Inspect and modify the changes', default=False)
 @handle_errors
-def diff(from_: int, to: int, interactive: bool):
+def diff(from_: int, to: int, interactive: bool) -> None:
     generate_diff(load_store(), from_index=from_, to_index=to, interactive=interactive)
 
 
@@ -65,7 +65,7 @@ def diff(from_: int, to: int, interactive: bool):
 @click.option('--interactive', '-i', is_flag=True, help='Inspect and modify the changes', default=False)
 @click.option('--dry-run', help="Do not apply the changes to the computer", is_flag=True, default=False)
 @handle_errors
-def apply(reverse: bool, force: bool, interactive: bool, dry_run: bool):
+def apply(reverse: bool, force: bool, interactive: bool, dry_run: bool) -> None:
     apply_package(load_store(), reverse=reverse, confirm=not force, interactive=interactive, dry_run=dry_run)
 
 
@@ -74,12 +74,12 @@ def apply(reverse: bool, force: bool, interactive: bool, dry_run: bool):
 @click.option('--from', 'from_', type=int, default=0, help='Snapshot index to compute the before state')
 @click.option('--to', type=int, default=-1, help='Snapshot index to compute the end state')
 @handle_errors
-def ls_files_command(ignored: bool, from_: int, to: int):
+def ls_files_command(ignored: bool, from_: int, to: int) -> None:
     ls_files(load_store(), from_index=from_, to_index=to, only_ignored=ignored)
 
 
 @click.group
-def config():
+def config() -> None:
     pass
 
 
@@ -87,7 +87,7 @@ def config():
 @click.option("-s", "--snapper-config", multiple=True, default=[], help="Snapper configs to include")
 @click.option("-f", "--file", help="File to write config to")
 @handle_errors
-def config_init(snapper_config: list[str], file: str | None):
+def config_init(snapper_config: list[str], file: str | None) -> None:
     if not snapper_config:
         default_configs = ",".join([c.name for c in Snapper.get_configs()])
         response = click.prompt(
@@ -103,7 +103,7 @@ def config_init(snapper_config: list[str], file: str | None):
 @main.command()
 @click.option('--id', 'id_', type=int, help='The snapshot id to chroot into', default=-1)
 @handle_errors
-def shell(id_: int):
+def shell(id_: int) -> None:
     launch_snapshot_shell(load_store(), id_)
 
 

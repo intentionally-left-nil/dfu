@@ -20,7 +20,7 @@ from dfu.snapshots.snapper_diff import FileChangeAction, SnapperDiff
         ("+....a created_a.txt", SnapperDiff("created_a.txt", FileChangeAction.created, False)),
     ],
 )
-def test_from_status(status, expected_diff):
+def test_from_status(status: str, expected_diff: SnapperDiff) -> None:
     diff = SnapperDiff.from_status(status)
     assert diff == expected_diff
 
@@ -34,6 +34,6 @@ def test_from_status(status, expected_diff):
         "+.....",
     ],
 )
-def test_from_status_invalid_format(status):
+def test_from_status_invalid_format(status: str) -> None:
     with pytest.raises(ValueError):
         SnapperDiff.from_status(status)

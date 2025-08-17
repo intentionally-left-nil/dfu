@@ -27,15 +27,15 @@ from dfu.revision.git import (
 
 
 @pytest.fixture(autouse=True)
-def auto_init(tmp_path: Path, setup_git):
+def auto_init(tmp_path: Path, setup_git: None) -> None:
     pass
 
 
-def test_git_init(tmp_path: Path):
+def test_git_init(tmp_path: Path) -> None:
     assert (tmp_path / '.git').exists()
 
 
-def test_git_add(tmp_path: Path):
+def test_git_add(tmp_path: Path) -> None:
     (tmp_path / 'file.txt').touch()
     git_add(tmp_path, ['file.txt'])
     result = subprocess.run(
@@ -48,7 +48,7 @@ def test_git_add(tmp_path: Path):
     assert result.stdout.splitlines() == ["file.txt"]
 
 
-def test_git_commit(tmp_path: Path):
+def test_git_commit(tmp_path: Path) -> None:
     (tmp_path / 'file.txt').touch()
     git_add(tmp_path, ['file.txt'])
     git_commit(tmp_path, 'Initial commit')
@@ -62,24 +62,24 @@ def test_git_commit(tmp_path: Path):
     assert result.stdout.splitlines()[1:] == ["file.txt"]
 
 
-def test_git_num_commits_zero_commits(tmp_path: Path):
+def test_git_num_commits_zero_commits(tmp_path: Path) -> None:
     assert git_num_commits(tmp_path) == 0
 
 
-def test_git_num_commits_not_a_git_folder(tmp_path: Path):
+def test_git_num_commits_not_a_git_folder(tmp_path: Path) -> None:
     rmtree(tmp_path / '.git')
     with pytest.raises(subprocess.CalledProcessError):
         git_num_commits(tmp_path)
 
 
-def test_git_num_commits_one_commit(tmp_path: Path):
+def test_git_num_commits_one_commit(tmp_path: Path) -> None:
     (tmp_path / 'file.txt').touch()
     git_add(tmp_path, ['file.txt'])
     git_commit(tmp_path, 'Initial commit')
     assert git_num_commits(tmp_path) == 1
 
 
-def test_git_num_commits_two_commits(tmp_path: Path):
+def test_git_num_commits_two_commits(tmp_path: Path) -> None:
     (tmp_path / 'file.txt').touch()
     git_add(tmp_path, ['file.txt'])
     git_commit(tmp_path, 'Initial commit')
@@ -90,7 +90,7 @@ def test_git_num_commits_two_commits(tmp_path: Path):
     assert git_num_commits(tmp_path) == 2
 
 
-def test_copy_template_gitignore(tmp_path: Path):
+def test_copy_template_gitignore(tmp_path: Path) -> None:
     template_dir = tmp_path / "template"
     template_dir.mkdir()
     (template_dir / ".gitignore").write_text("hello")
@@ -100,7 +100,7 @@ def test_copy_template_gitignore(tmp_path: Path):
     assert (tmp_path / '.gitignore').read_text() == 'hello'
 
 
-def test_copy_template_gitignore_generates_default_template(tmp_path: Path):
+def test_copy_template_gitignore_generates_default_template(tmp_path: Path) -> None:
     template_dir = tmp_path / "template"
     template_dir.mkdir()
     with patch.object(PlatformDirs, "user_data_path", new_callable=PropertyMock) as mock_user_data_path:
@@ -109,7 +109,7 @@ def test_copy_template_gitignore_generates_default_template(tmp_path: Path):
     assert (tmp_path / '.gitignore').read_text() == DEFAULT_GITIGNORE
 
 
-def test_copy_template_gitignore_skips_if_gitignore_exists(tmp_path: Path):
+def test_copy_template_gitignore_skips_if_gitignore_exists(tmp_path: Path) -> None:
     template_dir = tmp_path / "template"
     template_dir.mkdir()
     (template_dir / ".gitignore").write_text("template_copy")
@@ -120,7 +120,7 @@ def test_copy_template_gitignore_skips_if_gitignore_exists(tmp_path: Path):
     assert (tmp_path / '.gitignore').read_text() == 'local_copy'
 
 
-def test_git_ignore(tmp_path: Path):
+def test_git_ignore(tmp_path: Path) -> None:
     (tmp_path / '.gitignore').write_text(DEFAULT_GITIGNORE)
     ignored = git_check_ignore(
         tmp_path,
@@ -137,7 +137,7 @@ def test_git_ignore(tmp_path: Path):
     ]
 
 
-def test_git_ignore_no_files_ignored(tmp_path: Path):
+def test_git_ignore_no_files_ignored(tmp_path: Path) -> None:
     (tmp_path / '.gitignore').write_text(DEFAULT_GITIGNORE)
     ignored = git_check_ignore(
         tmp_path,
@@ -149,7 +149,7 @@ def test_git_ignore_no_files_ignored(tmp_path: Path):
     assert ignored == []
 
 
-def test_git_ignore_handles_error(tmp_path: Path):
+def test_git_ignore_handles_error(tmp_path: Path) -> None:
     (tmp_path / '.gitignore').write_text(DEFAULT_GITIGNORE)
     with pytest.raises(subprocess.CalledProcessError):
         git_check_ignore(
@@ -158,11 +158,11 @@ def test_git_ignore_handles_error(tmp_path: Path):
         )
 
 
-def test_git_ls_files_when_no_changes(tmp_path: Path):
+def test_git_ls_files_when_no_changes(tmp_path: Path) -> None:
     assert git_ls_files(tmp_path) == []
 
 
-def test_git_ls_files(tmp_path: Path):
+def test_git_ls_files(tmp_path: Path) -> None:
     (tmp_path / '.gitignore').write_text("/ignore")
     git_add(tmp_path, ['.gitignore'])
     git_commit(tmp_path, 'Initial commit')
@@ -174,7 +174,7 @@ def test_git_ls_files(tmp_path: Path):
     assert set(git_ls_files(tmp_path)) == set(['file.txt', 'staged.txt', '.gitignore'])
 
 
-def test_git_ls_files_in_subdirectory(tmp_path: Path):
+def test_git_ls_files_in_subdirectory(tmp_path: Path) -> None:
     (tmp_path / 'file.txt').touch()
     files = tmp_path / 'files'
     files.mkdir()
@@ -182,7 +182,7 @@ def test_git_ls_files_in_subdirectory(tmp_path: Path):
     assert git_ls_files(files) == ['files/test.txt']
 
 
-def test_git_diff(tmp_path: Path):
+def test_git_diff(tmp_path: Path) -> None:
     (tmp_path / 'file.txt').touch()
     git_add(tmp_path, ['file.txt'])
     git_commit(tmp_path, 'Initial commit')
@@ -203,7 +203,7 @@ index e69de29..b6fc4c6 100644
     )
 
 
-def test_git_diff_with_subdirectory(tmp_path: Path):
+def test_git_diff_with_subdirectory(tmp_path: Path) -> None:
     (tmp_path / 'file.txt').touch()
     git_add(tmp_path, ['file.txt'])
     git_commit(tmp_path, 'Initial commit')
@@ -228,23 +228,23 @@ index 0000000..bfe53d7
     )
 
 
-def test_git_no_files_are_staged(tmp_path: Path):
+def test_git_no_files_are_staged(tmp_path: Path) -> None:
     assert git_are_files_staged(tmp_path) == False
 
 
-def test_git_files_are_staged(tmp_path: Path):
+def test_git_files_are_staged(tmp_path: Path) -> None:
     (tmp_path / 'file.txt').touch()
     git_add(tmp_path, ['file.txt'])
     assert git_are_files_staged(tmp_path) == True
 
 
-def test_git_files_are_staged_error(tmp_path: Path):
+def test_git_files_are_staged_error(tmp_path: Path) -> None:
     rmtree(tmp_path / ".git")
     with pytest.raises(subprocess.CalledProcessError):
         git_are_files_staged(tmp_path)
 
 
-def test_git_stash(tmp_path: Path):
+def test_git_stash(tmp_path: Path) -> None:
     (tmp_path / '.gitignore').touch()
     git_add(tmp_path, ['.gitignore'])
     git_commit(tmp_path, 'Initial commit')
@@ -262,7 +262,7 @@ def test_git_stash(tmp_path: Path):
     assert (tmp_path / 'file.txt').exists()
 
 
-def test_git_apply(tmp_path: Path):
+def test_git_apply(tmp_path: Path) -> None:
     (tmp_path / '.gitignore').touch()
     git_add(tmp_path, ['.gitignore'])
     git_commit(tmp_path, 'Initial commit')
@@ -279,7 +279,7 @@ def test_git_apply(tmp_path: Path):
     assert (tmp_path / 'file.txt').read_text() == 'hello'
 
 
-def test_git_apply_with_conflict(tmp_path: Path):
+def test_git_apply_with_conflict(tmp_path: Path) -> None:
     (tmp_path / '.gitignore').touch()
     git_add(tmp_path, ['.gitignore'])
     git_commit(tmp_path, 'Initial commit')
@@ -312,7 +312,7 @@ hello
     )
 
 
-def test_git_apply_with_unstaged_changes(tmp_path: Path):
+def test_git_apply_with_unstaged_changes(tmp_path: Path) -> None:
     (tmp_path / '.gitignore').touch()
     git_add(tmp_path, ['.gitignore'])
     git_commit(tmp_path, 'Initial commit')
@@ -329,14 +329,14 @@ def test_git_apply_with_unstaged_changes(tmp_path: Path):
     assert git_apply(tmp_path, (tmp_path / 'changes.patch')) == False
 
 
-def test_git_apply_unknown_error(tmp_path: Path):
+def test_git_apply_unknown_error(tmp_path: Path) -> None:
     patch = tmp_path / "changes.patch"
     patch.write_text("THIS IS NOT A PATCH FILE")
     with pytest.raises(subprocess.CalledProcessError):
         git_apply(tmp_path, patch)
 
 
-def test_git_apply_reverse(tmp_path: Path):
+def test_git_apply_reverse(tmp_path: Path) -> None:
     (tmp_path / '.gitignore').touch()
     git_add(tmp_path, ['.gitignore'])
     git_commit(tmp_path, 'Initial commit')
@@ -350,7 +350,7 @@ def test_git_apply_reverse(tmp_path: Path):
     assert not (tmp_path / 'file.txt').exists()
 
 
-def test_git_bundle(tmp_path: Path):
+def test_git_bundle(tmp_path: Path) -> None:
     rmtree(tmp_path / '.git')
     src = tmp_path / 'src'
     src.mkdir()

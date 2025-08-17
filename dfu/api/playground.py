@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from shutil import copy2, rmtree
 from tempfile import mkdtemp
+from typing import Generator
 
 import click
 from unidiff import PatchedFile, PatchSet
@@ -15,7 +16,7 @@ from dfu.revision.git import git_add_remote, git_apply, git_fetch
 class Playground:
     location: Path
 
-    def __init__(self, location: Path | None = None, prefix: str = 'dfu'):
+    def __init__(self, location: Path | None = None, prefix: str = 'dfu') -> None:
         if location is None:
             location = Path(mkdtemp(prefix=prefix))
 
@@ -23,7 +24,7 @@ class Playground:
 
     @classmethod
     @contextmanager
-    def temporary(cls, location: Path | None = None, prefix: str = 'dfu'):
+    def temporary(cls, location: Path | None = None, prefix: str = 'dfu') -> Generator['Playground', None, None]:
         playground = cls(location=location, prefix=prefix)
         try:
             yield playground
@@ -49,7 +50,7 @@ class Playground:
                 files.add(Path('/', *source_path.parts[2:]))
         return files
 
-    def copy_files_from_filesystem(self, paths: list[Path] | set[Path]):
+    def copy_files_from_filesystem(self, paths: list[Path] | set[Path]) -> None:
         for path in paths:
             if path.is_dir():
                 continue
@@ -76,7 +77,7 @@ class Playground:
             click.echo(e.output, err=True)
             raise e
 
-    def _fetch_bundle(self, bundle: Path):
+    def _fetch_bundle(self, bundle: Path) -> None:
         if bundle.exists():
             remote_name = bundle.stem
             try:
@@ -91,7 +92,7 @@ class Playground:
         else:
             click.echo("No bundle file found for patch {patch.name}. Continuing without it", err=True)
 
-    def copy_files_to_filesystem(self, dest: Path = Path('/')):
+    def copy_files_to_filesystem(self, dest: Path = Path('/')) -> None:
         root_dir = self.location / 'files'
         for file in root_dir.rglob('*'):
             if file.is_dir():
@@ -127,5 +128,5 @@ class Playground:
             )
             click.echo(f"Updated {target}", err=True)
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         rmtree(self.location, ignore_errors=True)

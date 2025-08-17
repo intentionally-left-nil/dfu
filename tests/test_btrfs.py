@@ -6,7 +6,7 @@ from dfu.snapshots.btrfs import get_all_subvolumes
 
 
 @patch('subprocess.run')
-def test_get_all_subvolumes(mock_run: MagicMock):
+def test_get_all_subvolumes(mock_run: MagicMock) -> None:
     mock_run.return_value.stdout = '''\
 /
 /home

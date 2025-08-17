@@ -5,7 +5,7 @@ from textwrap import dedent
 
 import click
 
-from dfu.api import Event, Playground, Store
+from dfu.api import Event, Playground, Store, UpdateInstalledDependenciesEvent
 from dfu.api.store import Store
 from dfu.helpers.normalize_snapshot_index import normalize_snapshot_index
 from dfu.helpers.subshell import subshell
@@ -23,7 +23,7 @@ from dfu.snapshots.changes import files_modified
 from dfu.snapshots.snapper import Snapper
 
 
-def generate_diff(store: Store, *, from_index: int, to_index: int, interactive: bool):
+def generate_diff(store: Store, *, from_index: int, to_index: int, interactive: bool) -> None:
     from_index = normalize_snapshot_index(store.state.package_config, from_index)
     to_index = normalize_snapshot_index(store.state.package_config, to_index)
     if from_index > to_index:
@@ -43,11 +43,11 @@ def generate_diff(store: Store, *, from_index: int, to_index: int, interactive: 
         _auto_commit(playground.location, "Modified files")
         _create_patch(store, playground=playground, from_index=from_index, to_index=to_index)
         click.echo("Detecting which programs were installed and removed...", err=True)
-        store.dispatch(Event.UPDATE_INSTALLED_DEPENDENCIES, from_index=from_index, to_index=to_index)
+        store.dispatch(UpdateInstalledDependenciesEvent(from_index=from_index, to_index=to_index))
         click.echo("Updated the installed programs", err=True)
 
 
-def _copy_files(store: Store, *, playground: Playground, snapshot_index: int, sources: dict[str, list[str]]):
+def _copy_files(store: Store, *, playground: Playground, snapshot_index: int, sources: dict[str, list[str]]) -> None:
     for snapper_name, files in sources.items():
         snapshot_id = store.state.package_config.snapshots[snapshot_index][snapper_name]
         snapper = Snapper(snapper_name)
@@ -66,7 +66,7 @@ def _copy_files(store: Store, *, playground: Playground, snapshot_index: int, so
                 )
 
 
-def _initialize_playground(store: Store, playground: Playground):
+def _initialize_playground(store: Store, playground: Playground) -> None:
     git_init(playground.location)
     package_gitignore = store.state.package_dir / '.gitignore'
     (playground.location / "files").mkdir(mode=0o755, parents=True, exist_ok=True)
@@ -79,13 +79,13 @@ def _initialize_playground(store: Store, playground: Playground):
     git_commit(playground.location, "Add gitignore")
 
 
-def _auto_commit(working_dir: Path, message: str):
+def _auto_commit(working_dir: Path, message: str) -> None:
     git_add(working_dir, ['files'])
     if git_are_files_staged(working_dir):
         git_commit(working_dir, message)
 
 
-def _create_patch(store: Store, playground: Playground, from_index: int, to_index: int):
+def _create_patch(store: Store, playground: Playground, from_index: int, to_index: int) -> None:
     if git_num_commits(playground.location) >= 2:
         patch_file = store.state.package_dir / f"{from_index:03}_to_{to_index:03}.patch"
         git_bundle(playground.location, patch_file.with_suffix(".pack"))

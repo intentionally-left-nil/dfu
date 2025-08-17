@@ -38,7 +38,7 @@ def store(config: Config, package_config: PackageConfig) -> Store:
 
 
 @pytest.fixture
-def setup_git(tmp_path: Path):
+def setup_git(tmp_path: Path) -> None:
     git_init(tmp_path)
     subprocess.run(['git', 'config', 'user.name', 'myself'], cwd=tmp_path, check=True)
     subprocess.run(['git', 'config', 'user.email', 'me@example.com'], cwd=tmp_path, check=True)

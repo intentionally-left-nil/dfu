@@ -17,24 +17,24 @@ class Dog(JsonSerializableMixin):
     breed: str | None = None
 
 
-def test_from_file(tmp_path: Path):
+def test_from_file(tmp_path: Path) -> None:
     json_data = '{"name": "Ash", "age": 3}'
     (tmp_path / "dog.json").write_text(json_data)
     assert Dog.from_file(tmp_path / "dog.json") == Dog(name="Ash", age=3)
 
 
-def test_from_json():
+def test_from_json() -> None:
     json_data = '{"name": "Ash", "age": 3}'
     assert Dog.from_json(json_data) == Dog(name="Ash", age=3)
 
 
-def test_from_json_missing_fields():
+def test_from_json_missing_fields() -> None:
     json_data = '{"name": "Ash"}'
     with pytest.raises(ValidationError):
         Dog.from_json(json_data)
 
 
-def test_write(tmp_path: Path):
+def test_write(tmp_path: Path) -> None:
     dog = Dog(name="Ash", age=3)
     dog.write(tmp_path / "dog.json")
     assert (
@@ -49,26 +49,26 @@ def test_write(tmp_path: Path):
     assert json.loads((tmp_path / "dog.json").read_text()) == {"name": "Ash", "age": 3, "breed": None}
 
 
-def test_write_exclusive(tmp_path: Path):
+def test_write_exclusive(tmp_path: Path) -> None:
     dog = Dog(name="Ash", age=3)
     dog.write(tmp_path / "dog.json", mode="x")
     assert json.loads((tmp_path / "dog.json").read_text()) == {"name": "Ash", "age": 3, "breed": None}
 
 
-def test_write_exclusive_fails_if_file_exists(tmp_path: Path):
+def test_write_exclusive_fails_if_file_exists(tmp_path: Path) -> None:
     dog = Dog(name="Ash", age=3)
     (tmp_path / "dog.json").write_text("{}")
     with pytest.raises(FileExistsError):
         dog.write(tmp_path / "dog.json", mode="x")
 
 
-def test_mapping_proxy(tmp_path: Path):
+def test_mapping_proxy(tmp_path: Path) -> None:
     @dataclass
     class Inner(JsonSerializableMixin):
         data: MappingProxyType[str, int]
         typed_sub_data: MappingProxyType[str, MappingProxyType[str, int]]
-        untyped_sub_data: MappingProxyType[str, MappingProxyType]
-        untyped: MappingProxyType
+        untyped_sub_data: MappingProxyType[str, MappingProxyType]  # type: ignore[type-arg]
+        untyped: MappingProxyType  # type: ignore[type-arg]
 
     @dataclass
     class Outer(JsonSerializableMixin):
@@ -95,7 +95,7 @@ def test_mapping_proxy(tmp_path: Path):
     assert Outer.from_file(tmp_path / "example.json") == outer
 
 
-def test_unknown_sub_types(tmp_path: Path):
+def test_unknown_sub_types(tmp_path: Path) -> None:
     class Custom:
         def __init__(self, x: int = 0):
             self.x = x

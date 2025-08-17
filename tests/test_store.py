@@ -15,14 +15,14 @@ def state(config: Config, package_config: PackageConfig) -> State:
     return State(config=config, package_dir=Path("test"), package_config=package_config)
 
 
-def test_subscribe(state: State):
+def test_subscribe(state: State) -> None:
     store = Store(state)
     mock_callback = Mock(spec=Callback)
     store.subscribe(mock_callback)
     assert mock_callback in store._callbacks
 
 
-def test_unsubscribe(state: State):
+def test_unsubscribe(state: State) -> None:
     store = Store(state)
     mock_callback = Mock(spec=Callback)
     store.subscribe(mock_callback)
@@ -30,14 +30,14 @@ def test_unsubscribe(state: State):
     assert mock_callback not in store._callbacks
 
 
-def test_unsubscribe_not_subscribed(state: State):
+def test_unsubscribe_not_subscribed(state: State) -> None:
     store = Store(state)
     mock_callback = Mock(spec=Callback)
     with pytest.raises(KeyError):
         store.unsubscribe(mock_callback)
 
 
-def test_state_setter(state: State, package_config: PackageConfig):
+def test_state_setter(state: State, package_config: PackageConfig) -> None:
     store = Store(state)
     mock_callback = Mock(spec=Callback)
     store.subscribe(mock_callback)
@@ -47,14 +47,14 @@ def test_state_setter(state: State, package_config: PackageConfig):
     mock_callback.assert_called_once_with(old_state, new_state)
 
 
-def test_state_setter_no_callbacks(state: State):
+def test_state_setter_no_callbacks(state: State) -> None:
     store = Store(state)
     new_state = state.update(package_dir=Path("test2"))
     store.state = new_state
     assert store.state == new_state
 
 
-def test_state_setter_multiple_callbacks(state: State):
+def test_state_setter_multiple_callbacks(state: State) -> None:
     store = Store(state)
     mock_callback1 = Mock(spec=Callback)
     mock_callback2 = Mock(spec=Callback)
@@ -67,7 +67,7 @@ def test_state_setter_multiple_callbacks(state: State):
     mock_callback2.assert_called_once_with(old_state, new_state)
 
 
-def test_add_plugin(state: State):
+def test_add_plugin(state: State) -> None:
     store = Store(state)
     mock_plugin = Mock(spec=DfuPlugin)
     store.add_plugin(mock_plugin)

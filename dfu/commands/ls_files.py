@@ -5,7 +5,7 @@ from dfu.helpers.normalize_snapshot_index import normalize_snapshot_index
 from dfu.snapshots.changes import files_modified
 
 
-def ls_files(store: Store, *, from_index: int, to_index: int, only_ignored: bool):
+def ls_files(store: Store, *, from_index: int, to_index: int, only_ignored: bool) -> None:
     from_index = normalize_snapshot_index(store.state.package_config, from_index)
     to_index = normalize_snapshot_index(store.state.package_config, to_index)
     if from_index > to_index:

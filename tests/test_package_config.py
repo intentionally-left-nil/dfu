@@ -42,26 +42,26 @@ valid_config_tests = [
 
 
 @pytest.mark.parametrize("test", valid_config_tests, ids=[t.test_id for t in valid_config_tests])
-def test_valid_configs(test: ValidConfigTest):
+def test_valid_configs(test: ValidConfigTest) -> None:
     json_data = msgspec.json.encode(test, enc_hook=JsonSerializableMixin.enc_hook).decode('utf-8')
     actual = PackageConfig.from_json(json_data)
     expected = PackageConfig(name=test.name, description=test.description, snapshots=test.snapshots)
     assert actual == expected
 
 
-def test_file_in_current_directory(tmp_path):
+def test_file_in_current_directory(tmp_path: Path) -> None:
     dfu_config = tmp_path / 'dfu_config.json'
     dfu_config.touch()
     assert find_package_config(tmp_path) == dfu_config
 
 
-def test_dfu_config_is_directory_not_file(tmp_path):
+def test_dfu_config_is_directory_not_file(tmp_path: Path) -> None:
     dfu_config = tmp_path / 'dfu_config.json'
     dfu_config.mkdir()
     assert find_package_config(tmp_path) is None
 
 
-def test_file_in_parent_directory(tmp_path):
+def test_file_in_parent_directory(tmp_path: Path) -> None:
     dfu_config = tmp_path / 'dfu_config.json'
     dfu_config.touch()
     child_dir = tmp_path / 'child'
@@ -69,7 +69,7 @@ def test_file_in_parent_directory(tmp_path):
     assert find_package_config(child_dir) == dfu_config
 
 
-def test_file_in_grandparent_directory(tmp_path):
+def test_file_in_grandparent_directory(tmp_path: Path) -> None:
     dfu_config = tmp_path / 'dfu_config.json'
     dfu_config.touch()
     child_dir = tmp_path / 'child' / 'grandchild'
@@ -77,7 +77,7 @@ def test_file_in_grandparent_directory(tmp_path):
     assert find_package_config(child_dir) == dfu_config
 
 
-def test_permissions_issue(tmp_path: Path):
+def test_permissions_issue(tmp_path: Path) -> None:
     dfu_config = tmp_path / 'dfu_config.json'
     dfu_config.touch()
     child_dir = tmp_path / 'child'
@@ -90,7 +90,7 @@ def test_permissions_issue(tmp_path: Path):
         child_dir.chmod(0o755)
 
 
-def test_symlinks_in_parent_hierarchy(tmp_path: Path):
+def test_symlinks_in_parent_hierarchy(tmp_path: Path) -> None:
     # Creates the following directory structure:
     # tmp_path
     # ├── child
@@ -106,7 +106,7 @@ def test_symlinks_in_parent_hierarchy(tmp_path: Path):
     assert find_package_config(symlink_dir) == symlink_dir / 'dfu_config.json'
 
 
-def test_symlink_infinite_loop_in_parent_hierarchy(tmp_path: Path):
+def test_symlink_infinite_loop_in_parent_hierarchy(tmp_path: Path) -> None:
     # Creates the following directory structure:
     # tmp_path
     # ├── child
@@ -124,7 +124,7 @@ def test_symlink_infinite_loop_in_parent_hierarchy(tmp_path: Path):
     assert find_package_config(infinite_dir) == dfu_config
 
 
-def test_mount_point_in_hierarchy(tmp_path):
+def test_mount_point_in_hierarchy(tmp_path: Path) -> None:
     # Creates the following directory structure:
     # tmp_path
     # ├── dfu_config.json
@@ -141,7 +141,7 @@ def test_mount_point_in_hierarchy(tmp_path):
         assert find_package_config(child_dir) is None
 
 
-def test_package_config_is_immutable(package_config: PackageConfig):
+def test_package_config_is_immutable(package_config: PackageConfig) -> None:
     package_config = package_config.update(snapshots=(MappingProxyType({"root": 1}),))
     with pytest.raises(FrozenInstanceError):
         package_config.name = "new_name"  # type: ignore

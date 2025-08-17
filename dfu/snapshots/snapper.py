@@ -2,8 +2,14 @@ import json
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TypedDict
 
 from dfu.snapshots.snapper_diff import SnapperDiff
+
+
+class SnapperConfig(TypedDict):
+    config: str
+    subvolume: str
 
 
 @dataclass
@@ -17,7 +23,7 @@ class Snapper:
 
     @classmethod
     def get_configs(cls) -> list[SnapperConfigInfo]:
-        data: list[dict]
+        data: list[SnapperConfig]
         try:
             # When running without sudo, the exit code fails, however the config listing still succeeds
             # Try without sudo, see if the "configs" entry exist. Otherwise, fall-back to sudo
