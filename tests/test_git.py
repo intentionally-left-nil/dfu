@@ -229,13 +229,13 @@ index 0000000..bfe53d7
 
 
 def test_git_no_files_are_staged(tmp_path: Path) -> None:
-    assert git_are_files_staged(tmp_path) == False
+    assert not git_are_files_staged(tmp_path)
 
 
 def test_git_files_are_staged(tmp_path: Path) -> None:
     (tmp_path / 'file.txt').touch()
     git_add(tmp_path, ['file.txt'])
-    assert git_are_files_staged(tmp_path) == True
+    assert git_are_files_staged(tmp_path)
 
 
 def test_git_files_are_staged_error(tmp_path: Path) -> None:
@@ -275,7 +275,7 @@ def test_git_apply(tmp_path: Path) -> None:
     assert not (tmp_path / 'file.txt').exists()
 
     (tmp_path / 'changes.patch').write_text(diff)
-    assert git_apply(tmp_path, (tmp_path / 'changes.patch')) == True
+    assert git_apply(tmp_path, (tmp_path / 'changes.patch'))
     assert (tmp_path / 'file.txt').read_text() == 'hello'
 
 
@@ -295,7 +295,7 @@ def test_git_apply_with_conflict(tmp_path: Path) -> None:
     git_commit(tmp_path, 'Changed file.txt to goodbye')
 
     (tmp_path / 'changes.patch').write_text(diff)
-    assert git_apply(tmp_path, (tmp_path / 'changes.patch')) == False
+    assert not git_apply(tmp_path, (tmp_path / 'changes.patch'))
 
     print(file.read_text())
     assert (
@@ -326,7 +326,7 @@ def test_git_apply_with_unstaged_changes(tmp_path: Path) -> None:
     file.write_text('goodbye')
 
     (tmp_path / 'changes.patch').write_text(diff)
-    assert git_apply(tmp_path, (tmp_path / 'changes.patch')) == False
+    assert not git_apply(tmp_path, (tmp_path / 'changes.patch'))
 
 
 def test_git_apply_unknown_error(tmp_path: Path) -> None:

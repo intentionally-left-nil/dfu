@@ -1,12 +1,9 @@
 import os
 import subprocess
-from typing import Literal
 
-import click
 
 from dfu.api import Store
 from dfu.helpers.normalize_snapshot_index import normalize_snapshot_index
-from dfu.helpers.subshell import subshell
 from dfu.snapshots.proot import proot
 
 

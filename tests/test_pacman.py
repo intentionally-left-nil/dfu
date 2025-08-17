@@ -9,7 +9,6 @@ import pytest
 
 from dfu.api import State, Store
 from dfu.api.plugin import (
-    Event,
     InstallDependenciesEvent,
     UninstallDependenciesEvent,
     UpdateInstalledDependenciesEvent,

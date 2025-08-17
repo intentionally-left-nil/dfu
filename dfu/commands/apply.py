@@ -9,7 +9,6 @@ from typing import NamedTuple
 import click
 
 from dfu.api import (
-    Event,
     InstallDependenciesEvent,
     Playground,
     Store,

@@ -5,7 +5,6 @@ from tempfile import NamedTemporaryFile
 
 import click
 import msgspec
-from tomlkit import dumps
 
 from dfu.config import Btrfs, Config
 from dfu.snapshots.btrfs import get_all_subvolumes

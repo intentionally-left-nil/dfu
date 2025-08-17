@@ -2,7 +2,6 @@ import subprocess
 
 import click
 
-from dfu.api.entrypoint import Entrypoint
 from dfu.api.plugin import (
     DfuPlugin,
     Event,
@@ -97,4 +96,5 @@ def _is_package_installed(package: str) -> bool:
     return result.returncode == 0
 
 
-entrypoint: Entrypoint = lambda store: PacmanPlugin(store)
+def entrypoint(store: Store) -> PacmanPlugin:
+    return PacmanPlugin(store)

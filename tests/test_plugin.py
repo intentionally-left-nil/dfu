@@ -1,4 +1,3 @@
-from typing import Any
 from unittest.mock import Mock
 
 from dfu.api import DfuPlugin, Event, Store

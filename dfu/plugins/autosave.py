@@ -1,4 +1,4 @@
-from dfu.api import Callback, DfuPlugin, Entrypoint, State, Store
+from dfu.api import DfuPlugin, State, Store
 from dfu.api.plugin import Event
 
 
@@ -14,4 +14,5 @@ class AutosavePlugin(DfuPlugin):
             new_state.package_config.write(new_state.package_dir / 'dfu_config.json')
 
 
-entrypoint: Entrypoint = lambda store: AutosavePlugin(store)
+def entrypoint(store: Store) -> AutosavePlugin:
+    return AutosavePlugin(store)

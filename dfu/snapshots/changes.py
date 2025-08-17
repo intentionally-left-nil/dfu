@@ -5,7 +5,7 @@ from dfu.api import Store
 from dfu.revision.git import git_check_ignore
 from dfu.snapshots.proot import proot
 from dfu.snapshots.snapper import Snapper, SnapperName
-from dfu.snapshots.snapper_diff import FileChangeAction, SnapperDiff
+from dfu.snapshots.snapper_diff import FileChangeAction
 
 
 def files_modified(store: Store, *, from_index: int, to_index: int, only_ignored: bool) -> dict[SnapperName, list[str]]:
