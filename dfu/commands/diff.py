@@ -1,3 +1,4 @@
+import json
 import os
 import pwd
 import subprocess
@@ -6,6 +7,7 @@ from shutil import copy2
 
 import click
 
+from dfu import __version__
 from dfu.api import Playground, Store, UpdateInstalledDependenciesEvent
 from dfu.helpers.normalize_snapshot_index import normalize_snapshot_index
 from dfu.helpers.subshell import subshell
@@ -39,7 +41,7 @@ def generate_diff(store: Store, *, from_index: int, to_index: int, interactive: 
             files_modified=sources,
             snapshot_index=from_index,
         )
-        _auto_commit(playground.location, "Initial files")
+        _auto_commit(playground.location, "Initial files", ['files', 'acl.txt'])
         _copy_files(store, playground=playground, snapshot_index=to_index, sources=sources)
         _copy_permissions(
             store,
@@ -47,12 +49,13 @@ def generate_diff(store: Store, *, from_index: int, to_index: int, interactive: 
             files_modified=sources,
             snapshot_index=to_index,
         )
+        _copy_config(playground)
         if interactive:
             click.echo("Launching a subshell with the changes. Type exit 0 to continue, or exit 1 to abort")
             if subshell(playground.location).returncode != 0:
                 click.echo("Aborting...", err=True)
                 return
-        _auto_commit(playground.location, "Modified files")
+        _auto_commit(playground.location, "Modified files", ['files', 'acl.txt', 'config.json'])
         _create_patch(store, playground=playground, from_index=from_index, to_index=to_index)
         click.echo("Detecting which programs were installed and removed...", err=True)
         store.dispatch(UpdateInstalledDependenciesEvent(from_index=from_index, to_index=to_index))
@@ -93,6 +96,11 @@ def _copy_permissions(
     dest.write_text("\n".join(permissions))
 
 
+def _copy_config(playground: Playground) -> None:
+    config = playground.location / "config.json"
+    config.write_text(json.dumps({"version": __version__, "pack_format": 2}))
+
+
 def _initialize_playground(store: Store, playground: Playground) -> None:
     git_init(playground.location)
     package_gitignore = store.state.package_dir / '.gitignore'
@@ -106,8 +114,8 @@ def _initialize_playground(store: Store, playground: Playground) -> None:
     git_commit(playground.location, "Add gitignore")
 
 
-def _auto_commit(working_dir: Path, message: str) -> None:
-    git_add(working_dir, ['files', 'acl.txt'])
+def _auto_commit(working_dir: Path, message: str, files: list[str | Path]) -> None:
+    git_add(working_dir, files)
     if git_are_files_staged(working_dir):
         git_commit(working_dir, message)
 
