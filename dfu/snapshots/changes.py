@@ -4,6 +4,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 from dfu.api import Store
+from dfu.package.acl_file import AclEntry, AclFile
 from dfu.revision.git import git_check_ignore
 from dfu.snapshots.proot import proot
 from dfu.snapshots.snapper import Snapper, SnapperName
@@ -65,17 +66,17 @@ done
     return [p for p in result.stdout.splitlines()]
 
 
-def get_permissions(store: Store, *, files_modified: dict[SnapperName, list[str]], snapshot_index: int) -> list[str]:
-    """Returns a sorted list of permission metadata for the files and folders in a given snapshot
-    Each item contains a string in the format "path mode uid gid"
+def get_permissions(store: Store, *, files_modified: dict[SnapperName, list[str]], snapshot_index: int) -> AclFile:
+    """Returns an AclFile containing permission metadata for the files and folders in a given snapshot
+    Each entry contains a path, mode, uid, and gid.
     For example, given a Snapper snapshot mounted at /home with a file /home/user/file.txt
-    this might return:
+    this might return an AclFile with entries like:
     [
-        "/home/user/ 755 user user",
-        "/home/user/file.txt 644 user user",
+        AclEntry(Path("/home/user/"), "755", "user", "user"),
+        AclEntry(Path("/home/user/file.txt"), "644", "user", "user"),
     ]
     """
-    permissions: set[str] = set()
+    entries: dict[Path, AclEntry] = {}
     snapshot = store.state.package_config.snapshots[snapshot_index]
     for snapper_name, paths in files_modified.items():
         paths = filter_files(store, snapshot, paths)
@@ -111,7 +112,8 @@ def get_permissions(store: Store, *, files_modified: dict[SnapperName, list[str]
                         dest = dest[:-1]
                     for parent in sub_path.parents:
                         sub_path_directories.add(parent)
-                permissions.add(f"{dest} {mode} {uid} {gid}")
+                path_obj = Path(dest)
+                entries[path_obj] = AclEntry(path_obj, mode, uid, gid)
             else:
                 print(f"{dest} is an unhandled file type. Ignoring", file=sys.stderr)
                 continue
@@ -128,6 +130,7 @@ def get_permissions(store: Store, *, files_modified: dict[SnapperName, list[str]
                 check=True,
             )
             mode, uid, gid = stats.stdout.strip().split("#")
-            permissions.add(f"{dest} {mode} {uid} {gid}")
+            path_obj = Path(dest)
+            entries[path_obj] = AclEntry(path_obj, mode, uid, gid)
 
-    return list(sorted(permissions, key=lambda x: x.split()[0]))
+    return AclFile(entries)

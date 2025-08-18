@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from dfu.api import Store
+from dfu.package.acl_file import AclEntry
 from dfu.revision.git import DEFAULT_GITIGNORE
 from dfu.snapshots.changes import files_modified, filter_files, get_permissions
 from dfu.snapshots.snapper import Snapper, SnapperName
@@ -207,7 +208,8 @@ def mock_snapper(tmp_path: Path) -> Generator[Any, None, None]:
 
 
 def test_get_permissions_no_changes(store: Store, mock_filter_files: MagicMock) -> None:
-    assert get_permissions(store, files_modified={}, snapshot_index=1) == []
+    result = get_permissions(store, files_modified={}, snapshot_index=1)
+    assert len(result.entries) == 0
 
 
 def test_get_permissions_empty_file_owned_by_user(
@@ -219,9 +221,11 @@ def test_get_permissions_empty_file_owned_by_user(
 ) -> None:
     (tmp_path / "user" / "snapshot" / "file.txt").touch()
     current_user = os.getlogin()
-    assert get_permissions(
+    result = get_permissions(
         store_with_user_snapper, files_modified={SnapperName("user"): ["/user/file.txt"]}, snapshot_index=1
-    ) == [f"/user/file.txt 644 {current_user} {current_user}"]
+    )
+    expected_entry = AclEntry(Path("/user/file.txt"), "644", current_user, current_user)
+    assert result.entries[Path("/user/file.txt")] == expected_entry
 
 
 def test_get_permissions_file_owned_by_user(
@@ -233,9 +237,11 @@ def test_get_permissions_file_owned_by_user(
 ) -> None:
     (tmp_path / "user" / "snapshot" / "file.txt").write_text("Hello, world!")
     current_user = os.getlogin()
-    assert get_permissions(
+    result = get_permissions(
         store_with_user_snapper, files_modified={SnapperName("user"): ["/user/file.txt"]}, snapshot_index=1
-    ) == [f"/user/file.txt 644 {current_user} {current_user}"]
+    )
+    expected_entry = AclEntry(Path("/user/file.txt"), "644", current_user, current_user)
+    assert result.entries[Path("/user/file.txt")] == expected_entry
 
 
 def test_get_permissions_symlink_owned_by_user(
@@ -252,9 +258,11 @@ def test_get_permissions_symlink_owned_by_user(
     sym_path.symlink_to(real_file)
     current_user = os.getlogin()
     # Symlinks are always 777
-    assert get_permissions(
+    result = get_permissions(
         store_with_user_snapper, files_modified={SnapperName("user"): ["/user/symlink.txt"]}, snapshot_index=1
-    ) == [f"/user/symlink.txt 777 {current_user} {current_user}"]
+    )
+    expected_entry = AclEntry(Path("/user/symlink.txt"), "777", current_user, current_user)
+    assert result.entries[Path("/user/symlink.txt")] == expected_entry
 
 
 def test_get_permission_subpath_owned_by_user(
@@ -271,15 +279,20 @@ def test_get_permission_subpath_owned_by_user(
     path.write_text("Hello, world!")
     path.chmod(0o644)
     current_user = os.getlogin()
-    assert get_permissions(
+    result = get_permissions(
         store_with_user_snapper,
         files_modified={SnapperName("user"): ["/user/subpath/subpath2/file.txt"]},
         snapshot_index=1,
-    ) == [
-        f"/user/subpath/ 766 {current_user} {current_user}",
-        f"/user/subpath/subpath2/ 766 {current_user} {current_user}",
-        f"/user/subpath/subpath2/file.txt 644 {current_user} {current_user}",
-    ]
+    )
+    expected_entries = {
+        Path("/user/subpath/"): AclEntry(Path("/user/subpath/"), "766", current_user, current_user),
+        Path("/user/subpath/subpath2/"): AclEntry(Path("/user/subpath/subpath2/"), "766", current_user, current_user),
+        Path("/user/subpath/subpath2/file.txt"): AclEntry(
+            Path("/user/subpath/subpath2/file.txt"), "644", current_user, current_user
+        ),
+    }
+    for path, expected_entry in expected_entries.items():
+        assert result.entries[path] == expected_entry
 
 
 def test_get_permissions_setuid_setgid(
@@ -325,15 +338,18 @@ def test_get_permissions_setuid_setgid(
         snapshot_index=1,
     )
 
-    expected_permissions = [
-        f"/user/setgid_dir/ 2755 {current_user} {current_user}",
-        f"/user/setgid_file 2755 {current_user} {current_user}",
-        f"/user/setuid_dir/ 4755 {current_user} {current_user}",
-        f"/user/setuid_file 4755 {current_user} {current_user}",
-        f"/user/setuid_setgid_file 6755 {current_user} {current_user}",
-    ]
+    expected_entries = {
+        Path("/user/setgid_dir/"): AclEntry(Path("/user/setgid_dir/"), "2755", current_user, current_user),
+        Path("/user/setgid_file"): AclEntry(Path("/user/setgid_file"), "2755", current_user, current_user),
+        Path("/user/setuid_dir/"): AclEntry(Path("/user/setuid_dir/"), "4755", current_user, current_user),
+        Path("/user/setuid_file"): AclEntry(Path("/user/setuid_file"), "4755", current_user, current_user),
+        Path("/user/setuid_setgid_file"): AclEntry(
+            Path("/user/setuid_setgid_file"), "6755", current_user, current_user
+        ),
+    }
 
-    assert sorted(result) == sorted(expected_permissions)
+    for path, expected_entry in expected_entries.items():
+        assert result.entries[path] == expected_entry
 
 
 def test_get_permissions_multiple_roots(
@@ -354,16 +370,19 @@ def test_get_permissions_multiple_roots(
     user_path.chmod(0o600)
 
     current_user = os.getlogin()
-    assert get_permissions(
+    result = get_permissions(
         store_with_user_snapper,
         files_modified={
             SnapperName("root"): ["/root/subpath/test.txt"],
             SnapperName("user"): ["/user/subpath/test.txt"],
         },
         snapshot_index=1,
-    ) == [
-        f"/root/subpath/ 755 {current_user} {current_user}",
-        f"/root/subpath/test.txt 644 {current_user} {current_user}",
-        f"/user/subpath/ 755 {current_user} {current_user}",
-        f"/user/subpath/test.txt 600 {current_user} {current_user}",
-    ]
+    )
+    expected_entries = {
+        Path("/root/subpath/"): AclEntry(Path("/root/subpath/"), "755", current_user, current_user),
+        Path("/root/subpath/test.txt"): AclEntry(Path("/root/subpath/test.txt"), "644", current_user, current_user),
+        Path("/user/subpath/"): AclEntry(Path("/user/subpath/"), "755", current_user, current_user),
+        Path("/user/subpath/test.txt"): AclEntry(Path("/user/subpath/test.txt"), "600", current_user, current_user),
+    }
+    for path, expected_entry in expected_entries.items():
+        assert result.entries[path] == expected_entry

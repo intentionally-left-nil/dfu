@@ -91,9 +91,9 @@ def _copy_permissions(
     files_modified: dict[SnapperName, list[str]],
     snapshot_index: int,
 ) -> None:
-    permissions = get_permissions(store, files_modified=files_modified, snapshot_index=snapshot_index)
+    acl_file = get_permissions(store, files_modified=files_modified, snapshot_index=snapshot_index)
     dest = playground.location / "acl.txt"
-    dest.write_text("\n".join(permissions))
+    acl_file.write(dest)
 
 
 def _copy_config(playground: Playground) -> None:
