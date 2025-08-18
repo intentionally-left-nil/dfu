@@ -15,7 +15,7 @@ For example:
 /tmp/file.iso 0644 nil:nil {"trusted.md5sum":"abc123"}
 ```
 
-Next, all the files and folders are copied over with permissive settings to ensure that git can properly access them. All files are owned by the current user. All files are given 644 access, and directories are listed as 755. If the current file is marked as executable by the current user, then the file is also marked as such.
+Next, all the files and folders are copied over with permissive settings to ensure that git can properly access them. All files are owned by the current user with 0o755 permissions. Since we are doing our own thing, we are going to completely ignore the executable flag within git (hence the 644 for files)
 
 This will allow git to see and edit any file in the playground. Now we can do all of the normal operations, such as `git add`, or `git merge` to apply the changes to the playground.
 

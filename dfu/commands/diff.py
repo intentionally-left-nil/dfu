@@ -1,3 +1,5 @@
+import os
+import pwd
 import subprocess
 from pathlib import Path
 from shutil import copy2
@@ -17,7 +19,7 @@ from dfu.revision.git import (
     git_init,
     git_num_commits,
 )
-from dfu.snapshots.changes import files_modified
+from dfu.snapshots.changes import files_modified, get_permissions
 from dfu.snapshots.snapper import Snapper, SnapperName
 
 
@@ -31,8 +33,20 @@ def generate_diff(store: Store, *, from_index: int, to_index: int, interactive: 
         _initialize_playground(store, playground)
         sources = files_modified(store, from_index=from_index, to_index=to_index, only_ignored=False)
         _copy_files(store, playground=playground, snapshot_index=from_index, sources=sources)
+        _copy_permissions(
+            store,
+            playground=playground,
+            files_modified=sources,
+            snapshot_index=from_index,
+        )
         _auto_commit(playground.location, "Initial files")
         _copy_files(store, playground=playground, snapshot_index=to_index, sources=sources)
+        _copy_permissions(
+            store,
+            playground=playground,
+            files_modified=sources,
+            snapshot_index=to_index,
+        )
         if interactive:
             click.echo("Launching a subshell with the changes. Type exit 0 to continue, or exit 1 to abort")
             if subshell(playground.location).returncode != 0:
@@ -48,6 +62,7 @@ def generate_diff(store: Store, *, from_index: int, to_index: int, interactive: 
 def _copy_files(
     store: Store, *, playground: Playground, snapshot_index: int, sources: dict[SnapperName, list[str]]
 ) -> None:
+    current_user = pwd.getpwuid(os.getuid()).pw_name
     for snapper_name, files in sources.items():
         snapshot_id = store.state.package_config.snapshots[snapshot_index][snapper_name]
         snapper = Snapper(snapper_name)
@@ -60,10 +75,22 @@ def _copy_files(
             if subprocess.run(['sudo', 'stat', str(src)], capture_output=True).returncode == 0:
                 dest.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
                 subprocess.run(
-                    ['sudo', 'cp', '--no-dereference', '--preserve=all', str(src), str(dest)],
+                    ['sudo', 'install', '-m', '755', '-o', current_user, '-g', current_user, str(src), str(dest)],
                     capture_output=True,
                     check=True,
                 )
+
+
+def _copy_permissions(
+    store: Store,
+    *,
+    playground: Playground,
+    files_modified: dict[SnapperName, list[str]],
+    snapshot_index: int,
+) -> None:
+    permissions = get_permissions(store, files_modified=files_modified, snapshot_index=snapshot_index)
+    dest = playground.location / "acl.txt"
+    dest.write_text("\n".join(permissions))
 
 
 def _initialize_playground(store: Store, playground: Playground) -> None:
@@ -80,7 +107,7 @@ def _initialize_playground(store: Store, playground: Playground) -> None:
 
 
 def _auto_commit(working_dir: Path, message: str) -> None:
-    git_add(working_dir, ['files'])
+    git_add(working_dir, ['files', 'acl.txt'])
     if git_are_files_staged(working_dir):
         git_commit(working_dir, message)
 
@@ -89,5 +116,5 @@ def _create_patch(store: Store, playground: Playground, from_index: int, to_inde
     if git_num_commits(playground.location) >= 2:
         patch_file = store.state.package_dir / f"{from_index:03}_to_{to_index:03}.patch"
         git_bundle(playground.location, patch_file.with_suffix(".pack"))
-        patch_file.write_text(git_diff(playground.location, "HEAD~1", "HEAD", subdirectory="files"))
+        patch_file.write_text(git_diff(playground.location, "HEAD~1", "HEAD"))
         click.echo(f"Created {patch_file.name}", err=True)

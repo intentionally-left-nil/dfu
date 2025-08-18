@@ -1,4 +1,6 @@
 import subprocess
+import sys
+from pathlib import Path
 from types import MappingProxyType
 
 from dfu.api import Store
@@ -19,7 +21,10 @@ def files_modified(store: Store, *, from_index: int, to_index: int, only_ignored
         deltas = snapper.get_delta(pre_id, post_id)
 
         ignored_files: set[str] = set(
-            git_check_ignore(store.state.package_dir, [f"files/{delta.path.removeprefix('/')}" for delta in deltas])
+            git_check_ignore(
+                store.state.package_dir,
+                [f"files/{delta.path.removeprefix('/')}" for delta in deltas],
+            )
         )
         ignored_files = {p.removeprefix("files") for p in ignored_files}
         if only_ignored:
@@ -58,3 +63,71 @@ done
     # Also important: Send a trailing newline so that the last file is read
     result = subprocess.run(args, capture_output=True, text=True, input="\0".join(paths) + "\0")
     return [p for p in result.stdout.splitlines()]
+
+
+def get_permissions(store: Store, *, files_modified: dict[SnapperName, list[str]], snapshot_index: int) -> list[str]:
+    """Returns a sorted list of permission metadata for the files and folders in a given snapshot
+    Each item contains a string in the format "path mode uid gid"
+    For example, given a Snapper snapshot mounted at /home with a file /home/user/file.txt
+    this might return:
+    [
+        "/home/user/ 755 user user",
+        "/home/user/file.txt 644 user user",
+    ]
+    """
+    permissions: set[str] = set()
+    snapshot = store.state.package_config.snapshots[snapshot_index]
+    for snapper_name, paths in files_modified.items():
+        paths = filter_files(store, snapshot, paths)
+        snapper = Snapper(snapper_name)
+        mountpoint = snapper.get_mountpoint()
+        snapshot_dir = snapper.get_snapshot_path(snapshot[snapper_name])
+        sub_path_directories: set[Path] = set()
+        for path in paths:
+            sub_path = Path(path).relative_to(mountpoint)
+            src = snapshot_dir / sub_path
+            dest = str(mountpoint / sub_path)
+            stats = subprocess.run(
+                ["sudo", "stat", "-c", "%F#%a#%U#%G", str(src)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            file_type, mode, uid, gid = stats.stdout.strip().split("#")
+
+            if file_type in [
+                "directory",
+                "regular file",
+                "regular empty file",
+                "symlink",
+                "symbolic link",
+            ]:
+                if file_type == "directory":
+                    sub_path_directories.add(sub_path)
+                    if not dest.endswith("/"):
+                        dest += "/"
+                else:
+                    if dest.endswith("/"):
+                        dest = dest[:-1]
+                    for parent in sub_path.parents:
+                        sub_path_directories.add(parent)
+                permissions.add(f"{dest} {mode} {uid} {gid}")
+            else:
+                print(f"{dest} is an unhandled file type. Ignoring", file=sys.stderr)
+                continue
+        sub_path_directories.discard(Path("."))
+        for sub_path in sub_path_directories:
+            dest = str(mountpoint / sub_path)
+            if not dest.endswith("/"):
+                dest += "/"
+            dir_src = snapshot_dir / sub_path
+            stats = subprocess.run(
+                ["sudo", "stat", "-c", "%a#%U#%G", str(dir_src)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            mode, uid, gid = stats.stdout.strip().split("#")
+            permissions.add(f"{dest} {mode} {uid} {gid}")
+
+    return list(sorted(permissions, key=lambda x: x.split()[0]))

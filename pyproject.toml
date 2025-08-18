@@ -73,10 +73,10 @@ dependencies = [
 typing = "mypy --install-types --non-interactive {args:dfu tests}"
 
 lint = "ruff check {args:.}"
-format = "ruff format {args:.}"
+format = "ruff format --check {args:.}"
 fix = [
   "ruff check --fix {args:.}",
-  "ruff format --fix {args:.}",
+  "ruff format {args:.}",
 ]
 
 all = [

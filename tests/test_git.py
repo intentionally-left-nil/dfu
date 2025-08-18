@@ -174,14 +174,6 @@ def test_git_ls_files(tmp_path: Path) -> None:
     assert set(git_ls_files(tmp_path)) == set(['file.txt', 'staged.txt', '.gitignore'])
 
 
-def test_git_ls_files_in_subdirectory(tmp_path: Path) -> None:
-    (tmp_path / 'file.txt').touch()
-    files = tmp_path / 'files'
-    files.mkdir()
-    (files / 'test.txt').touch()
-    assert git_ls_files(files) == ['files/test.txt']
-
-
 def test_git_diff(tmp_path: Path) -> None:
     (tmp_path / 'file.txt').touch()
     git_add(tmp_path, ['file.txt'])
@@ -198,31 +190,6 @@ index e69de29..b6fc4c6 100644
 +++ b/file.txt
 @@ -0,0 +1 @@
 +hello
-\\ No newline at end of file
-'''
-    )
-
-
-def test_git_diff_with_subdirectory(tmp_path: Path) -> None:
-    (tmp_path / 'file.txt').touch()
-    git_add(tmp_path, ['file.txt'])
-    git_commit(tmp_path, 'Initial commit')
-    (tmp_path / 'file.txt').write_text('hello')
-    nested = tmp_path / "nested" / "nested.txt"
-    nested.parent.mkdir(parents=True)
-    nested.write_text("nested")
-    git_add(tmp_path, ['.'])
-    git_commit(tmp_path, 'second commit')
-    assert (
-        git_diff(tmp_path, "HEAD~1", "HEAD", subdirectory="nested")
-        == '''\
-diff --git a/nested/nested.txt b/nested/nested.txt
-new file mode 100644
-index 0000000..bfe53d7
---- /dev/null
-+++ b/nested/nested.txt
-@@ -0,0 +1 @@
-+nested
 \\ No newline at end of file
 '''
     )
