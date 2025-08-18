@@ -1,7 +1,9 @@
+import os
+import pwd
 import subprocess
 from contextlib import contextmanager
 from pathlib import Path
-from shutil import copy2, rmtree
+from shutil import rmtree
 from tempfile import mkdtemp
 from typing import Generator
 
@@ -51,20 +53,29 @@ class Playground:
         return files
 
     def copy_files_from_filesystem(self, paths: list[Path] | set[Path]) -> None:
+        current_user = pwd.getpwuid(os.getuid()).pw_name
         for path in paths:
             if path.is_dir():
                 continue
             relative_path = path.resolve().relative_to(Path('/'))
             target = (self.location / 'files' / relative_path).resolve()
-            target.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                copy2(path, target, follow_symlinks=False)
-            except PermissionError:
-                subprocess.run(
-                    ["sudo", "cp", "-p", "-P", path.resolve(), target.resolve()],
-                    check=True,
-                    capture_output=True,
-                )
+            target.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+            subprocess.run(
+                [
+                    'sudo',
+                    'install',
+                    '-m',
+                    '755',
+                    '-o',
+                    current_user,
+                    '-g',
+                    current_user,
+                    str(path.resolve()),
+                    str(target),
+                ],
+                capture_output=True,
+                check=True,
+            )
 
     def apply_patch(self, patch: Path, *, reverse: bool = False) -> bool:
         self._fetch_bundle(patch.with_suffix('.pack'))

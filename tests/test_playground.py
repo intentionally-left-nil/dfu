@@ -1,3 +1,5 @@
+import os
+import pwd
 import subprocess
 from pathlib import Path
 from shutil import copy, rmtree
@@ -183,17 +185,17 @@ def test_copy_files_from_filesystem_no_files(playground: Playground) -> None:
     assert not (playground.location / 'files').exists()
 
 
-def test_copy_files_from_filesystem_absolute_file(tmp_path: Path, playground: Playground) -> None:
+def test_copy_files_from_filesystem_absolute_file(tmp_path: Path, playground: Playground, mock_install: Mock) -> None:
     file = tmp_path / 'file.txt'
     file.write_text('hello\nworld')
     file.chmod(0o777)
     playground.copy_files_from_filesystem([file])
     expected = playground.location / 'files' / Path(*tmp_path.parts[1:]) / 'file.txt'
     assert expected.read_text() == 'hello\nworld'
-    assert (expected.stat().st_mode & 0o777) == 0o777
+    assert (expected.stat().st_mode & 0o777) == 0o755
 
 
-def test_copy_files_from_filesystem_relative_file(tmp_path: Path, playground: Playground) -> None:
+def test_copy_files_from_filesystem_relative_file(tmp_path: Path, playground: Playground, mock_install: Mock) -> None:
     file = tmp_path / 'file.txt'
     file.write_text('hello\nworld')
     file.chmod(0o777)
@@ -209,17 +211,19 @@ def test_copy_files_from_filesystem_relative_file(tmp_path: Path, playground: Pl
     playground.copy_files_from_filesystem([relative_path])
     expected = playground.location / 'files' / Path(*tmp_path.parts[1:]) / 'file.txt'
     assert expected.read_text() == 'hello\nworld'
-    assert (expected.stat().st_mode & 0o777) == 0o777
+    assert (expected.stat().st_mode & 0o777) == 0o755
 
 
-def test_copy_files_from_filesystem_skip_directories(tmp_path: Path, playground: Playground) -> None:
+def test_copy_files_from_filesystem_skip_directories(
+    tmp_path: Path, playground: Playground, mock_install: Mock
+) -> None:
     file = tmp_path / 'file.txt'
     file.write_text('hello\nworld')
     file.chmod(0o777)
     playground.copy_files_from_filesystem([file, file.parent])
     expected = playground.location / 'files' / Path(*tmp_path.parts[1:]) / 'file.txt'
     assert expected.read_text() == 'hello\nworld'
-    assert (expected.stat().st_mode & 0o777) == 0o777
+    assert (expected.stat().st_mode & 0o777) == 0o755
 
 
 @patch('subprocess.run')
@@ -231,14 +235,18 @@ def test_copy_protected_file(mock_run: MagicMock, tmp_path: Path, playground: Pl
     mock_run.assert_called_once_with(
         [
             "sudo",
-            "cp",
-            "-p",
-            "-P",
-            file.resolve(),
-            Path(playground.location / 'files' / Path(*tmp_path.parts[1:]) / 'file.txt').resolve(),
+            "install",
+            "-m",
+            "755",
+            "-o",
+            pwd.getpwuid(os.getuid()).pw_name,
+            "-g",
+            pwd.getpwuid(os.getuid()).pw_name,
+            str(file.resolve()),
+            str(Path(playground.location / 'files' / Path(*tmp_path.parts[1:]) / 'file.txt').resolve()),
         ],
-        check=True,
         capture_output=True,
+        check=True,
     )
     assert mock_run.call_count == 1
 
@@ -438,7 +446,9 @@ def test_playground_apply_patch_version_validation(patch_playground: Playground,
     bundle_file = tmp_path / "v1_patch.pack"
     git_bundle(patch_playground.location, bundle_file)
 
-    with pytest.raises(ValueError, match="Unsupported pack version 1. Only version 2 is supported"):
+    with pytest.raises(
+        ValueError, match="Unsupported pack version 1 for patch v1_patch.patch. Only version 2 is supported"
+    ):
         patch_playground.apply_patch(patch_file)
 
 
