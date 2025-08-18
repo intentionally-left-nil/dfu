@@ -8,12 +8,7 @@ from typing import NamedTuple
 
 import click
 
-from dfu.api import (
-    InstallDependenciesEvent,
-    Playground,
-    Store,
-    UninstallDependenciesEvent,
-)
+from dfu.api import InstallDependenciesEvent, Playground, Store, UninstallDependenciesEvent
 from dfu.helpers.subshell import subshell
 from dfu.revision.git import git_add, git_are_files_staged, git_commit, git_init
 

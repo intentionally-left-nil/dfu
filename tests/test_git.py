@@ -318,6 +318,38 @@ def test_git_apply_reverse(tmp_path: Path) -> None:
     assert not (tmp_path / 'file.txt').exists()
 
 
+def test_git_apply_with_include_list(tmp_path: Path) -> None:
+    """Test applying a patch for multiple specific files."""
+    (tmp_path / '.gitignore').touch()
+    git_add(tmp_path, ['.gitignore'])
+    git_commit(tmp_path, 'Initial commit')
+
+    (tmp_path / 'file1.txt').write_text('hello')
+    (tmp_path / 'file2.txt').write_text('world')
+    (tmp_path / 'file3.txt').write_text('test')
+    git_add(tmp_path, ['file1.txt', 'file2.txt', 'file3.txt'])
+    git_commit(tmp_path, 'Created files')
+
+    (tmp_path / 'file1.txt').write_text('hello modified')
+    (tmp_path / 'file2.txt').write_text('world modified')
+    (tmp_path / 'file3.txt').write_text('test modified')
+    git_add(tmp_path, ['file1.txt', 'file2.txt', 'file3.txt'])
+    git_commit(tmp_path, 'Modified files')
+
+    diff = git_diff(tmp_path, "HEAD~1", "HEAD")
+
+    subprocess.run(['git', 'reset', '--hard', 'HEAD~1'], cwd=tmp_path, check=True, capture_output=True)
+
+    # Apply patch only for file1.txt and file2.txt
+    (tmp_path / 'changes.patch').write_text(diff)
+    assert git_apply(tmp_path, (tmp_path / 'changes.patch'), include=['file1.txt', 'file2.txt'])
+
+    # Check that only file1.txt and file2.txt were modified
+    assert (tmp_path / 'file1.txt').read_text() == 'hello modified'
+    assert (tmp_path / 'file2.txt').read_text() == 'world modified'
+    assert (tmp_path / 'file3.txt').read_text() == 'test'
+
+
 def test_git_bundle(tmp_path: Path) -> None:
     rmtree(tmp_path / '.git')
     src = tmp_path / 'src'

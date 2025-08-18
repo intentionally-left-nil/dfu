@@ -9,6 +9,7 @@ import click
 from unidiff import PatchedFile, PatchSet
 from unidiff.constants import DEV_NULL
 
+from dfu.package.patch_config import PatchConfig
 from dfu.revision.git import git_add_remote, git_apply, git_fetch
 
 
@@ -67,6 +68,17 @@ class Playground:
 
     def apply_patch(self, patch: Path, *, reverse: bool = False) -> bool:
         self._fetch_bundle(patch.with_suffix('.pack'))
+
+        try:
+            git_apply(self.location, patch, include=['config.json'])
+            config = PatchConfig.from_file(self.location / 'config.json')
+            if config.pack_version != 2:
+                raise ValueError(
+                    f"Unsupported pack version {config.pack_version} for patch {patch.name}. Only version 2 is supported."
+                )
+        except subprocess.CalledProcessError:
+            raise ValueError(f"Patch {patch.name} does not contain config.json. Only version 2 patches are supported.")
+
         try:
             click.echo(f"Applying patch {patch.name}", err=True)
             merged_cleanly = git_apply(self.location, patch, reverse=reverse)

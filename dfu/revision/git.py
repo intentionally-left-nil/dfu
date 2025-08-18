@@ -87,10 +87,13 @@ def git_are_files_staged(git_dir: Path) -> bool:
             raise subprocess.CalledProcessError(return_code, ['git', 'diff', '--cached', '--quiet'])
 
 
-def git_apply(git_dir: Path, patch: Path, reverse: bool = False) -> bool:
+def git_apply(git_dir: Path, patch: Path, reverse: bool = False, include: list[str] | None = None) -> bool:
     args: list[str] = ['git', 'apply', '--3way']
     if reverse:
         args.append('--reverse')
+    if include:
+        for file_path in include:
+            args.extend(['--include', file_path])
     args.append(str(patch.resolve()))
     try:
         # Since we're reading the output, set LC_ALL=C to ensure it's in English

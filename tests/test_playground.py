@@ -335,11 +335,14 @@ def patch_playground() -> Generator[Playground, None, None]:
 
 @pytest.fixture
 def file_patch(patch_playground: Playground, tmp_path: Path) -> Path:
+    config_file = patch_playground.location / 'config.json'
+    config_file.write_text('{"pack_version": 2, "version": "1.0.0"}')
     file = patch_playground.location / 'files' / 'file.txt'
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text('file')
-    git_add(patch_playground.location, ['files'])
-    git_commit(patch_playground.location, 'Added file')
+    git_add(patch_playground.location, ['config.json', 'files'])
+    git_commit(patch_playground.location, 'Added config.json and file')
+
     patch_file = tmp_path / "file.patch"
     patch_file.write_text(git_diff(patch_playground.location, "HEAD~1", "HEAD"))
     bundle_file = tmp_path / "file.pack"
@@ -349,11 +352,14 @@ def file_patch(patch_playground: Playground, tmp_path: Path) -> Path:
 
 @pytest.fixture
 def file2_patch(patch_playground: Playground, tmp_path: Path) -> Path:
+    config_file = patch_playground.location / 'config.json'
+    config_file.write_text('{"pack_version": 2, "version": "1.0.0"}')
     file = patch_playground.location / 'files' / 'file2.txt'
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text('file2')
-    git_add(patch_playground.location, ['files'])
-    git_commit(patch_playground.location, 'Added file2')
+    git_add(patch_playground.location, ['config.json', 'files'])
+    git_commit(patch_playground.location, 'Added config.json and file2')
+
     patch_file = tmp_path / "file2.patch"
     patch_file.write_text(git_diff(patch_playground.location, "HEAD~1", "HEAD"))
     bundle_file = tmp_path / "file2.pack"
@@ -390,7 +396,7 @@ def test_apply_patches_other_error(tmp_path: Path, playground: Playground, file_
     copy(file_patch, backup_patch)
 
     file_patch.write_text("THIS IS NOT A PATCH")
-    with pytest.raises(subprocess.CalledProcessError):
+    with pytest.raises(ValueError, match="does not contain config.json"):
         playground.apply_patch(file_patch)
 
 
@@ -417,3 +423,42 @@ def test_git_apply_merge_conflict_without_bundle(playground: Playground, file_pa
 
     assert not playground.apply_patch(file_patch)
     assert (playground.location / 'files' / 'file.txt').read_text() == FILE_MERGE_CONFLICT
+
+
+def test_playground_apply_patch_version_validation(patch_playground: Playground, tmp_path: Path) -> None:
+    """Test that apply_patch rejects patches without config.json (v1 format)."""
+    file = patch_playground.location / 'files' / 'file.txt'
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text('file')
+    git_add(patch_playground.location, ['files'])
+    git_commit(patch_playground.location, 'Added file')
+
+    patch_file = tmp_path / "v1_patch.patch"
+    patch_file.write_text(git_diff(patch_playground.location, "HEAD~1", "HEAD"))
+    bundle_file = tmp_path / "v1_patch.pack"
+    git_bundle(patch_playground.location, bundle_file)
+
+    with pytest.raises(ValueError, match="Unsupported pack version 1. Only version 2 is supported"):
+        patch_playground.apply_patch(patch_file)
+
+
+def test_playground_apply_patch_reverse_version_validation(patch_playground: Playground, tmp_path: Path) -> None:
+    """Test that reverse patch application correctly validates pack version."""
+    config_file = patch_playground.location / 'config.json'
+    config_file.write_text('{"pack_version": 2, "version": "1.0.0"}')
+    file = patch_playground.location / 'files' / 'file.txt'
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text('file')
+    git_add(patch_playground.location, ['config.json', 'files'])
+    git_commit(patch_playground.location, 'Added config.json and file')
+
+    patch_file = tmp_path / "v2_patch.patch"
+    patch_file.write_text(git_diff(patch_playground.location, "HEAD~1", "HEAD"))
+    bundle_file = tmp_path / "v2_patch.pack"
+    git_bundle(patch_playground.location, bundle_file)
+
+    try:
+        patch_playground.apply_patch(patch_file, reverse=True)
+    except (subprocess.CalledProcessError, ValueError) as e:
+        assert "Unsupported pack version" not in str(e)
+        assert "does not contain config.json" not in str(e)
