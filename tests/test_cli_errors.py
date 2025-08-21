@@ -44,6 +44,12 @@ def cli_with_value_error() -> None:
     raise ValueError("This is a test error")
 
 
+@handle_errors
+def cli_with_runtime_error() -> None:
+    """A handler function that raises a RuntimeError"""
+    raise RuntimeError("This is a test runtime error")
+
+
 def test_handles_subprocess_errors() -> None:
     runner = CliRunner()
 
@@ -82,6 +88,19 @@ def test_handles_value_error_with_stack_trace() -> None:
     result = runner.invoke(test_command)
 
     assert result.exit_code == 1
-    # The CLIRunner catches the errors and doesn't show the stack trace
-    # For now, just ensure the exception is unhandled by handle_errors
-    assert isinstance(result.exception, ValueError)
+    # The CLIRunner catches the errors and converts them to SystemExit
+    assert isinstance(result.exception, SystemExit)
+
+
+def test_runtime_error_shows_stack_trace() -> None:
+    runner = CliRunner()
+
+    @click.command()
+    def test_command() -> None:
+        cli_with_runtime_error()
+
+    result = runner.invoke(test_command)
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, RuntimeError)
+    assert "This is a test runtime error" in str(result.exception)

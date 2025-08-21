@@ -36,7 +36,7 @@ class AclFile:
                 continue
             parts = line.split()
             if len(parts) < 4:
-                raise ValueError(f"Invalid line: {line}")
+                raise ValueError(f"Invalid line in acl.txt: {line}")
             gid = parts[-1].strip()
             uid = parts[-2].strip()
             mode = parts[-3].strip()

@@ -1,7 +1,4 @@
 import json
-import os
-import pwd
-import subprocess
 from pathlib import Path
 from shutil import copy2
 
@@ -9,6 +6,7 @@ import click
 
 from dfu import __version__
 from dfu.api import Playground, Store, UpdateInstalledDependenciesEvent
+from dfu.api.playground import CopyFile
 from dfu.helpers.normalize_snapshot_index import normalize_snapshot_index
 from dfu.helpers.subshell import subshell
 from dfu.revision.git import (
@@ -34,19 +32,21 @@ def generate_diff(store: Store, *, from_index: int, to_index: int, interactive: 
     with Playground.temporary(prefix="dfu_diff_") as playground:
         _initialize_playground(store, playground)
         sources = files_modified(store, from_index=from_index, to_index=to_index, only_ignored=False)
-        _copy_files(store, playground=playground, snapshot_index=from_index, sources=sources)
+        pre_sources = {snapper_name: files.pre_files for snapper_name, files in sources.items()}
+        post_sources = {snapper_name: files.post_files for snapper_name, files in sources.items()}
+        _copy_files(store, playground=playground, snapshot_index=from_index, sources=pre_sources)
         _copy_permissions(
             store,
             playground=playground,
-            files_modified=sources,
+            files_modified=pre_sources,
             snapshot_index=from_index,
         )
         _auto_commit(playground.location, "Initial files", ['files', 'acl.txt'])
-        _copy_files(store, playground=playground, snapshot_index=to_index, sources=sources)
+        _copy_files(store, playground=playground, snapshot_index=to_index, sources=post_sources)
         _copy_permissions(
             store,
             playground=playground,
-            files_modified=sources,
+            files_modified=post_sources,
             snapshot_index=to_index,
         )
         _copy_config(playground)
@@ -63,32 +63,27 @@ def generate_diff(store: Store, *, from_index: int, to_index: int, interactive: 
 
 
 def _copy_files(
-    store: Store, *, playground: Playground, snapshot_index: int, sources: dict[SnapperName, list[str]]
+    store: Store, *, playground: Playground, snapshot_index: int, sources: dict[SnapperName, set[str]]
 ) -> None:
-    current_user = pwd.getpwuid(os.getuid()).pw_name
     for snapper_name, files in sources.items():
         snapshot_id = store.state.package_config.snapshots[snapshot_index][snapper_name]
         snapper = Snapper(snapper_name)
         mountpoint = snapper.get_mountpoint()
         snapshot_dir = snapper.get_snapshot_path(snapshot_id)
+        paths_to_copy: list[CopyFile] = []
         for file in files:
             sub_path = Path(file).relative_to(mountpoint)
             src = snapshot_dir / sub_path
-            dest = playground.location / 'files' / file.removeprefix('/')
-            if subprocess.run(['sudo', 'stat', str(src)], capture_output=True).returncode == 0:
-                dest.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
-                subprocess.run(
-                    ['sudo', 'install', '-m', '755', '-o', current_user, '-g', current_user, str(src), str(dest)],
-                    capture_output=True,
-                    check=True,
-                )
+            dest = Path(file.removeprefix('/'))
+            paths_to_copy.append(CopyFile(source=src, target=dest))
+        playground.copy_files_from_filesystem(paths_to_copy)
 
 
 def _copy_permissions(
     store: Store,
     *,
     playground: Playground,
-    files_modified: dict[SnapperName, list[str]],
+    files_modified: dict[SnapperName, set[str]],
     snapshot_index: int,
 ) -> None:
     acl_file = get_permissions(store, files_modified=files_modified, snapshot_index=snapshot_index)

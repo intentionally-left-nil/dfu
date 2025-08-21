@@ -1,3 +1,6 @@
+import grp
+import os
+import pwd
 import subprocess
 from pathlib import Path
 
@@ -35,6 +38,16 @@ def store(config: Config, package_config: PackageConfig) -> Store:
     )
     store = Store(state)
     return store
+
+
+@pytest.fixture
+def current_user() -> str:
+    return pwd.getpwuid(os.getuid()).pw_name
+
+
+@pytest.fixture
+def current_group() -> str:
+    return grp.getgrgid(os.getgid()).gr_name
 
 
 @pytest.fixture

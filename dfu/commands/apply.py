@@ -62,20 +62,21 @@ def _write_initial_permissions(*, playground: Playground, files: set[Path]) -> N
 
     for path in paths:
         try:
+            normalized_path = Path(os.path.abspath(str(path)))
             stats = subprocess.run(
-                ["sudo", "stat", "-c", "%a#%U#%G", str(path.resolve())],
+                ["sudo", "stat", "-c", "%a#%U#%G", str(normalized_path)],
                 capture_output=True,
                 text=True,
                 check=True,
             )
             mode, uid, gid = stats.stdout.strip().split("#")
             entry = AclEntry(
-                path=path.resolve(),
+                path=normalized_path,
                 mode=mode,
                 uid=uid,
                 gid=gid,
             )
-            acl_file.entries[path.resolve()] = entry
+            acl_file.entries[normalized_path] = entry
         except subprocess.CalledProcessError:
             continue
     acl_file.entries.pop(Path("/"), None)
@@ -150,9 +151,12 @@ def _patch_order_interactive(patches: list[Path], *, reverse: bool) -> list[Patc
 
 
 def _apply_metadata(playground: Playground) -> None:
-    acl_file = AclFile.from_file(playground.location / "acl.txt")
+    try:
+        acl_file = AclFile.from_file(playground.location / "acl.txt")
+    except FileNotFoundError:
+        raise ValueError("No acl.txt file found in the patch. This is unexpected")
     metadata: dict[Path, PathMetadata] = {}
-    for path in playground.location.glob("**/*"):
+    for path in playground.location.glob("files/**/*"):
         sub_path = path.relative_to(playground.location / "files")
         filesystem_path = Path("/") / sub_path
         if filesystem_path not in acl_file.entries:
@@ -167,13 +171,15 @@ def _apply_metadata(playground: Playground) -> None:
         )
     for path, data in metadata.items():
         playground_path = playground.location / "files" / path.relative_to(Path("/"))
+        normalized_path = Path(os.path.abspath(str(playground_path)))
         subprocess.run(
-            ["sudo", "chown", data.uid, data.gid, playground_path.resolve()], check=True, text=True, capture_output=True
+            ["sudo", "chown", "--no-dereference", f"{data.uid}:{data.gid}", str(normalized_path)],
+            check=True,
+            text=True,
+            capture_output=True,
         )
         if not data.is_symlink:
-            subprocess.run(
-                ["sudo", "chmod", data.mode, playground_path.resolve()], check=True, text=True, capture_output=True
-            )
+            subprocess.run(["sudo", "chmod", data.mode, normalized_path], check=True, text=True, capture_output=True)
 
 
 def _confirm_changes(playground: Playground) -> None:

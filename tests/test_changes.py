@@ -1,4 +1,3 @@
-import os
 import subprocess
 from contextlib import contextmanager
 from pathlib import Path
@@ -11,7 +10,7 @@ import pytest
 from dfu.api import Store
 from dfu.package.acl_file import AclEntry
 from dfu.revision.git import DEFAULT_GITIGNORE
-from dfu.snapshots.changes import files_modified, filter_files, get_permissions
+from dfu.snapshots.changes import FilesModified, files_modified, filter_files, get_permissions
 from dfu.snapshots.snapper import Snapper, SnapperName
 from dfu.snapshots.snapper_diff import FileChangeAction, SnapperDiff
 
@@ -82,26 +81,26 @@ def test_files_modified_no_snapshots(store: Store, mock_filter_files: MagicMock)
 
 def test_files_modified_no_changes(store: Store, mock_filter_files: MagicMock) -> None:
     with mock_get_delta({"root": []}):
-        assert files_modified(store, from_index=0, to_index=0, only_ignored=False) == {"root": []}
+        result = files_modified(store, from_index=0, to_index=0, only_ignored=False)
+        assert result == {"root": FilesModified(pre_files=set(), post_files=set())}
 
 
 def test_files_modified_nothing_ignored(store: Store, mock_filter_files: MagicMock) -> None:
     with mock_get_delta({"root": ["/etc/test.conf", "/etc/test2.conf"]}):
-        assert files_modified(store, from_index=0, to_index=1, only_ignored=False) == {
-            "root": ["/etc/test.conf", "/etc/test2.conf"]
-        }
+        result = files_modified(store, from_index=0, to_index=1, only_ignored=False)
+        assert result == {"root": FilesModified(pre_files=set(), post_files={"/etc/test.conf", "/etc/test2.conf"})}
 
 
 def test_files_modified_all_files_are_ignored(store: Store, mock_filter_files: MagicMock) -> None:
     with mock_get_delta({"root": ["/usr/bin/bash", "/usr/bin/zsh"]}):
-        assert files_modified(store, from_index=0, to_index=1, only_ignored=False) == {"root": []}
+        result = files_modified(store, from_index=0, to_index=1, only_ignored=False)
+        assert result == {"root": FilesModified(pre_files=set(), post_files=set())}
 
 
 def test_files_modified_only_show_ignored(store: Store, mock_filter_files: MagicMock) -> None:
     with mock_get_delta({"root": ["/usr/bin/bash", "/usr/bin/zsh", "/etc/test.conf"]}):
-        assert files_modified(store, from_index=0, to_index=1, only_ignored=True) == {
-            "root": ["/usr/bin/bash", "/usr/bin/zsh"]
-        }
+        result = files_modified(store, from_index=0, to_index=1, only_ignored=True)
+        assert result == {"root": FilesModified(pre_files=set(), post_files={"/usr/bin/bash", "/usr/bin/zsh"})}
 
 
 @pytest.fixture
@@ -153,15 +152,15 @@ def test_filter_files(tmp_path: Path, store: Store, mock_subprocess_run: MagicMo
         "file.txt",  # This is last on purpose, to test that the last file is read
     ]
 
-    assert filter_files(store, MappingProxyType({SnapperName("root"): 1}), []) == []
+    assert filter_files(store, MappingProxyType({SnapperName("root"): 1}), set()) == set()
 
-    assert filter_files(store, MappingProxyType({SnapperName("root"): 1}), paths) == [
+    assert filter_files(store, MappingProxyType({SnapperName("root"): 1}), set(paths)) == {
         "etc/file2.txt",
         "very/nested/file3.txt",
         "very/nested/symlink",
         "very_symlink",
         "file.txt",
-    ]
+    }
 
 
 @pytest.fixture
@@ -218,13 +217,14 @@ def test_get_permissions_empty_file_owned_by_user(
     mock_snapper: MagicMock,
     mock_stat: Any,
     mock_filter_files: MagicMock,
+    current_user: str,
+    current_group: str,
 ) -> None:
     (tmp_path / "user" / "snapshot" / "file.txt").touch()
-    current_user = os.getlogin()
     result = get_permissions(
-        store_with_user_snapper, files_modified={SnapperName("user"): ["/user/file.txt"]}, snapshot_index=1
+        store_with_user_snapper, files_modified={SnapperName("user"): set(["/user/file.txt"])}, snapshot_index=1
     )
-    expected_entry = AclEntry(Path("/user/file.txt"), "644", current_user, current_user)
+    expected_entry = AclEntry(Path("/user/file.txt"), "644", current_user, current_group)
     assert result.entries[Path("/user/file.txt")] == expected_entry
 
 
@@ -234,13 +234,14 @@ def test_get_permissions_file_owned_by_user(
     mock_snapper: MagicMock,
     mock_stat: Any,
     mock_filter_files: MagicMock,
+    current_user: str,
+    current_group: str,
 ) -> None:
     (tmp_path / "user" / "snapshot" / "file.txt").write_text("Hello, world!")
-    current_user = os.getlogin()
     result = get_permissions(
-        store_with_user_snapper, files_modified={SnapperName("user"): ["/user/file.txt"]}, snapshot_index=1
+        store_with_user_snapper, files_modified={SnapperName("user"): set(["/user/file.txt"])}, snapshot_index=1
     )
-    expected_entry = AclEntry(Path("/user/file.txt"), "644", current_user, current_user)
+    expected_entry = AclEntry(Path("/user/file.txt"), "644", current_user, current_group)
     assert result.entries[Path("/user/file.txt")] == expected_entry
 
 
@@ -250,18 +251,19 @@ def test_get_permissions_symlink_owned_by_user(
     mock_snapper: MagicMock,
     mock_stat: Any,
     mock_filter_files: MagicMock,
+    current_user: str,
+    current_group: str,
 ) -> None:
     real_file = tmp_path / "real_file.txt"
     real_file.write_text("Hello, world!")
     real_file.chmod(0o600)
     sym_path = tmp_path / "user" / "snapshot" / "symlink.txt"
     sym_path.symlink_to(real_file)
-    current_user = os.getlogin()
     # Symlinks are always 777
     result = get_permissions(
-        store_with_user_snapper, files_modified={SnapperName("user"): ["/user/symlink.txt"]}, snapshot_index=1
+        store_with_user_snapper, files_modified={SnapperName("user"): set(["/user/symlink.txt"])}, snapshot_index=1
     )
-    expected_entry = AclEntry(Path("/user/symlink.txt"), "777", current_user, current_user)
+    expected_entry = AclEntry(Path("/user/symlink.txt"), "777", current_user, current_group)
     assert result.entries[Path("/user/symlink.txt")] == expected_entry
 
 
@@ -271,6 +273,8 @@ def test_get_permission_subpath_owned_by_user(
     mock_snapper: MagicMock,
     mock_stat: Any,
     mock_filter_files: MagicMock,
+    current_user: str,
+    current_group: str,
 ) -> None:
     path = tmp_path / "user" / "snapshot" / "subpath" / "subpath2" / "file.txt"
     path.parent.mkdir(parents=True)
@@ -278,17 +282,16 @@ def test_get_permission_subpath_owned_by_user(
     path.parent.parent.chmod(0o766)
     path.write_text("Hello, world!")
     path.chmod(0o644)
-    current_user = os.getlogin()
     result = get_permissions(
         store_with_user_snapper,
-        files_modified={SnapperName("user"): ["/user/subpath/subpath2/file.txt"]},
+        files_modified={SnapperName("user"): set(["/user/subpath/subpath2/file.txt"])},
         snapshot_index=1,
     )
     expected_entries = {
-        Path("/user/subpath/"): AclEntry(Path("/user/subpath/"), "766", current_user, current_user),
-        Path("/user/subpath/subpath2/"): AclEntry(Path("/user/subpath/subpath2/"), "766", current_user, current_user),
+        Path("/user/subpath/"): AclEntry(Path("/user/subpath/"), "766", current_user, current_group),
+        Path("/user/subpath/subpath2/"): AclEntry(Path("/user/subpath/subpath2/"), "766", current_user, current_group),
         Path("/user/subpath/subpath2/file.txt"): AclEntry(
-            Path("/user/subpath/subpath2/file.txt"), "644", current_user, current_user
+            Path("/user/subpath/subpath2/file.txt"), "644", current_user, current_group
         ),
     }
     for path, expected_entry in expected_entries.items():
@@ -301,6 +304,8 @@ def test_get_permissions_setuid_setgid(
     mock_snapper: MagicMock,
     mock_stat: Any,
     mock_filter_files: MagicMock,
+    current_user: str,
+    current_group: str,
 ) -> None:
     setuid_file = tmp_path / "user" / "snapshot" / "setuid_file"
     setuid_file.write_text("setuid executable")
@@ -322,29 +327,29 @@ def test_get_permissions_setuid_setgid(
     setuid_dir.mkdir()
     setuid_dir.chmod(0o4755)
 
-    current_user = os.getlogin()
-
     result = get_permissions(
         store_with_user_snapper,
         files_modified={
-            SnapperName("user"): [
-                "/user/setuid_file",
-                "/user/setgid_file",
-                "/user/setuid_setgid_file",
-                "/user/setgid_dir",
-                "/user/setuid_dir",
-            ]
+            SnapperName("user"): set(
+                [
+                    "/user/setuid_file",
+                    "/user/setgid_file",
+                    "/user/setuid_setgid_file",
+                    "/user/setgid_dir",
+                    "/user/setuid_dir",
+                ]
+            )
         },
         snapshot_index=1,
     )
 
     expected_entries = {
-        Path("/user/setgid_dir/"): AclEntry(Path("/user/setgid_dir/"), "2755", current_user, current_user),
-        Path("/user/setgid_file"): AclEntry(Path("/user/setgid_file"), "2755", current_user, current_user),
-        Path("/user/setuid_dir/"): AclEntry(Path("/user/setuid_dir/"), "4755", current_user, current_user),
-        Path("/user/setuid_file"): AclEntry(Path("/user/setuid_file"), "4755", current_user, current_user),
+        Path("/user/setgid_dir/"): AclEntry(Path("/user/setgid_dir/"), "2755", current_user, current_group),
+        Path("/user/setgid_file"): AclEntry(Path("/user/setgid_file"), "2755", current_user, current_group),
+        Path("/user/setuid_dir/"): AclEntry(Path("/user/setuid_dir/"), "4755", current_user, current_group),
+        Path("/user/setuid_file"): AclEntry(Path("/user/setuid_file"), "4755", current_user, current_group),
         Path("/user/setuid_setgid_file"): AclEntry(
-            Path("/user/setuid_setgid_file"), "6755", current_user, current_user
+            Path("/user/setuid_setgid_file"), "6755", current_user, current_group
         ),
     }
 
@@ -358,6 +363,8 @@ def test_get_permissions_multiple_roots(
     mock_snapper: MagicMock,
     mock_stat: Any,
     mock_filter_files: MagicMock,
+    current_user: str,
+    current_group: str,
 ) -> None:
     test_file = tmp_path / "root" / "snapshot" / "subpath" / "test.txt"
     test_file.parent.mkdir(parents=True)
@@ -369,20 +376,19 @@ def test_get_permissions_multiple_roots(
     user_path.write_text("Hello, world!")
     user_path.chmod(0o600)
 
-    current_user = os.getlogin()
     result = get_permissions(
         store_with_user_snapper,
         files_modified={
-            SnapperName("root"): ["/root/subpath/test.txt"],
-            SnapperName("user"): ["/user/subpath/test.txt"],
+            SnapperName("root"): set(["/root/subpath/test.txt"]),
+            SnapperName("user"): set(["/user/subpath/test.txt"]),
         },
         snapshot_index=1,
     )
     expected_entries = {
-        Path("/root/subpath/"): AclEntry(Path("/root/subpath/"), "755", current_user, current_user),
-        Path("/root/subpath/test.txt"): AclEntry(Path("/root/subpath/test.txt"), "644", current_user, current_user),
-        Path("/user/subpath/"): AclEntry(Path("/user/subpath/"), "755", current_user, current_user),
-        Path("/user/subpath/test.txt"): AclEntry(Path("/user/subpath/test.txt"), "600", current_user, current_user),
+        Path("/root/subpath/"): AclEntry(Path("/root/subpath/"), "755", current_user, current_group),
+        Path("/root/subpath/test.txt"): AclEntry(Path("/root/subpath/test.txt"), "644", current_user, current_group),
+        Path("/user/subpath/"): AclEntry(Path("/user/subpath/"), "755", current_user, current_group),
+        Path("/user/subpath/test.txt"): AclEntry(Path("/user/subpath/test.txt"), "600", current_user, current_group),
     }
     for path, expected_entry in expected_entries.items():
         assert result.entries[path] == expected_entry
