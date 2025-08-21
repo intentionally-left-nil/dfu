@@ -49,6 +49,37 @@ def _copy_base_files(store: Store, *, playground: Playground) -> None:
     for patch in patch_files:
         files_to_copy.update(playground.list_files_in_patch(patch))
     playground.copy_files_from_filesystem(files_to_copy)
+    _write_initial_permissions(playground=playground, files=files_to_copy)
+
+
+def _write_initial_permissions(*, playground: Playground, files: set[Path]) -> None:
+    acl_file = AclFile(entries={})
+    paths: set[Path] = set()
+    for file in files:
+        for parent in file.parents:
+            paths.add(parent)
+    paths.update(files)
+
+    for path in paths:
+        try:
+            stats = subprocess.run(
+                ["sudo", "stat", "-c", "%a#%U#%G", str(path.resolve())],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            mode, uid, gid = stats.stdout.strip().split("#")
+            entry = AclEntry(
+                path=path.resolve(),
+                mode=mode,
+                uid=uid,
+                gid=gid,
+            )
+            acl_file.entries[path.resolve()] = entry
+        except subprocess.CalledProcessError:
+            continue
+    acl_file.entries.pop(Path("/"), None)
+    acl_file.write(playground.location / "acl.txt")
 
 
 def _apply_patches(store: Store, *, playground: Playground, reverse: bool, interactive: bool) -> None:

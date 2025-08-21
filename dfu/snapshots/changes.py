@@ -105,14 +105,10 @@ def get_permissions(store: Store, *, files_modified: dict[SnapperName, list[str]
             ]:
                 if file_type == "directory":
                     sub_path_directories.add(sub_path)
-                    if not dest.endswith("/"):
-                        dest += "/"
                 else:
-                    if dest.endswith("/"):
-                        dest = dest[:-1]
                     for parent in sub_path.parents:
                         sub_path_directories.add(parent)
-                path_obj = Path(dest)
+                path_obj = Path(dest).resolve()
                 entries[path_obj] = AclEntry(path_obj, mode, uid, gid)
             else:
                 print(f"{dest} is an unhandled file type. Ignoring", file=sys.stderr)
