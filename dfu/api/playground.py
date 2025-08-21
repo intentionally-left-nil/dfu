@@ -46,10 +46,13 @@ class Playground:
                 if source_path == Path(DEV_NULL) or source_path.parts[1:] == Path(DEV_NULL).parts[1:]:
                     continue
 
-                if len(source_path.parts) < 3 or source_path.parts[1] != "files":
+                if (len(source_path.parts) == 2 and source_path.parts[1] in ['acl.txt', 'config.json']) or (
+                    len(source_path.parts) >= 3 and source_path.parts[1] == 'files'
+                ):
+                    files.add(Path('/', *source_path.parts[2:]))
+                else:
                     raise ValueError(f"Unexpected source file path: {source_path}")
 
-                files.add(Path('/', *source_path.parts[2:]))
         return files
 
     def copy_files_from_filesystem(self, paths: list[Path] | set[Path]) -> None:
@@ -83,9 +86,9 @@ class Playground:
         try:
             git_apply(self.location, patch, include=['config.json'])
             config = PatchConfig.from_file(self.location / 'config.json')
-            if config.pack_version != 2:
+            if config.pack_format != 2:
                 raise ValueError(
-                    f"Unsupported pack version {config.pack_version} for patch {patch.name}. Only version 2 is supported."
+                    f"Unsupported pack version {config.pack_format} for patch {patch.name}. Only version 2 is supported."
                 )
         except subprocess.CalledProcessError:
             raise ValueError(f"Patch {patch.name} does not contain config.json. Only version 2 patches are supported.")
@@ -116,26 +119,15 @@ class Playground:
 
     def copy_files_to_filesystem(self, dest: Path = Path('/')) -> None:
         root_dir = self.location / 'files'
-        for file in root_dir.rglob('*'):
-            if file.is_dir():
-                continue
-            relative_path = file.relative_to(root_dir)
-            target = (dest / relative_path).resolve()
+        if not root_dir.exists():
+            return
 
-            mode = oct(file.stat(follow_symlinks=False).st_mode & 0o777)[2:]  # Strip out the leading 0o
-
-            args = ["sudo", "install", "-D"]
-            if target.exists():
-                target_stat = target.stat(follow_symlinks=False)
-                args.extend(["-o", str(target_stat.st_uid), "-g", str(target_stat.st_gid)])
-
-            args.extend(["-m", mode, str(file.resolve()), str(target)])
-            subprocess.run(
-                args,
-                check=True,
-                capture_output=True,
-            )
-            click.echo(f"Updated {target}", err=True)
+        subprocess.run(
+            ["sudo", "cp", "--recursive", "--preserve=all", str(root_dir.resolve()) + "/.", str(dest)],
+            check=True,
+            capture_output=True,
+        )
+        click.echo(f"Updated files in {dest}", err=True)
 
     def cleanup(self) -> None:
         rmtree(self.location, ignore_errors=True)

@@ -9,7 +9,7 @@ from dfu.helpers.json_serializable import JsonSerializableMixin
 class PatchConfig(JsonSerializableMixin):
     """Configuration for a patch file containing pack metadata."""
 
-    pack_version: int
+    pack_format: int
     version: str
 
     @classmethod
@@ -19,7 +19,7 @@ class PatchConfig(JsonSerializableMixin):
         if path.exists():
             return super().from_file(path)
         else:
-            return cls(pack_version=1, version="0.0.4")
+            return cls(pack_format=1, version="0.0.4")
 
     @classmethod
     def from_package_dir(cls, package_dir: Path) -> 'PatchConfig':

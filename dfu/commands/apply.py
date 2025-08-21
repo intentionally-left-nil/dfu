@@ -1,6 +1,7 @@
 import os
 import re
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
@@ -10,9 +11,15 @@ import click
 
 from dfu.api import InstallDependenciesEvent, Playground, Store, UninstallDependenciesEvent
 from dfu.helpers.subshell import subshell
+from dfu.package.acl_file import AclEntry, AclFile
 from dfu.revision.git import git_add, git_are_files_staged, git_commit, git_init
 
 PatchStep = NamedTuple("PatchStep", [("patch", Path), ("interactive", bool)])
+
+
+@dataclass(frozen=True)
+class PathMetadata(AclEntry):
+    is_symlink: bool
 
 
 def apply_package(store: Store, *, reverse: bool, interactive: bool, confirm: bool, dry_run: bool) -> None:
@@ -65,7 +72,9 @@ def _apply_patches(store: Store, *, playground: Playground, reverse: bool, inter
                 )
             )
             subshell(playground.location).check_returncode()
-        elif step.interactive:
+
+        _apply_metadata(playground)
+        if step.interactive:
             _confirm_changes(playground)
         _auto_commit(playground, f"Patch {step.patch.name}")
 
@@ -107,6 +116,33 @@ def _patch_order_interactive(patches: list[Path], *, reverse: bool) -> list[Patc
         else:
             steps.append(PatchStep(patch=Path(line), interactive=False))
     return steps
+
+
+def _apply_metadata(playground: Playground) -> None:
+    acl_file = AclFile.from_file(playground.location / "acl.txt")
+    metadata: dict[Path, PathMetadata] = {}
+    for path in playground.location.glob("**/*"):
+        sub_path = path.relative_to(playground.location / "files")
+        filesystem_path = Path("/") / sub_path
+        if filesystem_path not in acl_file.entries:
+            raise ValueError(f"File {filesystem_path} does not have an ACL entry")
+        acl_entry = acl_file.entries[filesystem_path]
+        metadata[filesystem_path] = PathMetadata(
+            path=filesystem_path,
+            mode=acl_entry.mode,
+            uid=acl_entry.uid,
+            gid=acl_entry.gid,
+            is_symlink=path.is_symlink(),
+        )
+    for path, data in metadata.items():
+        playground_path = playground.location / "files" / path.relative_to(Path("/"))
+        subprocess.run(
+            ["sudo", "chown", data.uid, data.gid, playground_path.resolve()], check=True, text=True, capture_output=True
+        )
+        if not data.is_symlink:
+            subprocess.run(
+                ["sudo", "chmod", data.mode, playground_path.resolve()], check=True, text=True, capture_output=True
+            )
 
 
 def _confirm_changes(playground: Playground) -> None:

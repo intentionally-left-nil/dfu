@@ -7,7 +7,7 @@ from dfu.package.patch_config import PatchConfig
 
 def test_patch_config_from_file() -> None:
     """Test loading PatchConfig from a JSON file."""
-    config_data = {"pack_version": 2, "version": "1.0.0"}
+    config_data = {"pack_format": 2, "version": "1.0.0"}
 
     with TemporaryDirectory() as temp_dir:
         config_path = Path(temp_dir) / "config.json"
@@ -15,7 +15,7 @@ def test_patch_config_from_file() -> None:
             json.dump(config_data, f)
 
         config = PatchConfig.from_file(config_path)
-        assert config.pack_version == 2
+        assert config.pack_format == 2
         assert config.version == "1.0.0"
 
 
@@ -25,13 +25,13 @@ def test_patch_config_from_file_missing() -> None:
         config_path = Path(temp_dir) / "missing_config.json"
 
         config = PatchConfig.from_file(config_path)
-        assert config.pack_version == 1
+        assert config.pack_format == 1
         assert config.version == "0.0.4"
 
 
 def test_patch_config_serialization() -> None:
     """Test that PatchConfig can be serialized and deserialized."""
-    original_config = PatchConfig(pack_version=2, version="1.5.0")
+    original_config = PatchConfig(pack_format=2, version="1.5.0")
 
     with TemporaryDirectory() as temp_dir:
         config_path = Path(temp_dir) / "config.json"

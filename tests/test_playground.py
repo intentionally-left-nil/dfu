@@ -260,7 +260,8 @@ def test_copy_files_to_filesystem_no_files(tmp_path: Path, playground: Playgroun
 def test_copy_files_to_filesystem_only_directories(tmp_path: Path, playground: Playground, mock_install: Mock) -> None:
     (playground.location / 'files' / 'many' / 'nested' / 'dirs').mkdir(parents=True, exist_ok=True)
     playground.copy_files_to_filesystem(dest=tmp_path)
-    assert [p for p in tmp_path.glob('**/*')] == []
+    assert len([p for p in tmp_path.glob('**/*')]) == 3
+    assert (tmp_path / 'many' / 'nested' / 'dirs').is_dir()
 
 
 def test_copy_files_to_filesystem_one_file(tmp_path: Path, playground: Playground, mock_install: Mock) -> None:
@@ -327,6 +328,29 @@ def test_overwrites_existing_file(tmp_path: Path, playground: Playground, mock_i
     assert existing.read_text() == 'file'
 
 
+def test_copy_files_to_filesystem_includes_hidden_files(
+    tmp_path: Path, playground: Playground, mock_install: Mock
+) -> None:
+    # Create regular and hidden files
+    regular_file = playground.location / 'files' / 'regular.txt'
+    hidden_file = playground.location / 'files' / '.hidden.txt'
+    nested_hidden = playground.location / 'files' / 'nested' / '.nested_hidden.txt'
+
+    regular_file.parent.mkdir(parents=True, exist_ok=True)
+    nested_hidden.parent.mkdir(parents=True, exist_ok=True)
+
+    regular_file.write_text('regular')
+    hidden_file.write_text('hidden')
+    nested_hidden.write_text('nested hidden')
+
+    playground.copy_files_to_filesystem(dest=tmp_path)
+
+    # Check that all files, including hidden ones, are copied
+    assert (tmp_path / 'regular.txt').read_text() == 'regular'
+    assert (tmp_path / '.hidden.txt').read_text() == 'hidden'
+    assert (tmp_path / 'nested' / '.nested_hidden.txt').read_text() == 'nested hidden'
+
+
 @pytest.fixture
 def patch_playground() -> Generator[Playground, None, None]:
     playground = Playground(prefix="unit_test_patch_playground")
@@ -344,7 +368,7 @@ def patch_playground() -> Generator[Playground, None, None]:
 @pytest.fixture
 def file_patch(patch_playground: Playground, tmp_path: Path) -> Path:
     config_file = patch_playground.location / 'config.json'
-    config_file.write_text('{"pack_version": 2, "version": "1.0.0"}')
+    config_file.write_text('{"pack_format": 2, "version": "1.0.0"}')
     file = patch_playground.location / 'files' / 'file.txt'
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text('file')
@@ -361,7 +385,7 @@ def file_patch(patch_playground: Playground, tmp_path: Path) -> Path:
 @pytest.fixture
 def file2_patch(patch_playground: Playground, tmp_path: Path) -> Path:
     config_file = patch_playground.location / 'config.json'
-    config_file.write_text('{"pack_version": 2, "version": "1.0.0"}')
+    config_file.write_text('{"pack_format": 2, "version": "1.0.0"}')
     file = patch_playground.location / 'files' / 'file2.txt'
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text('file2')
@@ -455,7 +479,7 @@ def test_playground_apply_patch_version_validation(patch_playground: Playground,
 def test_playground_apply_patch_reverse_version_validation(patch_playground: Playground, tmp_path: Path) -> None:
     """Test that reverse patch application correctly validates pack version."""
     config_file = patch_playground.location / 'config.json'
-    config_file.write_text('{"pack_version": 2, "version": "1.0.0"}')
+    config_file.write_text('{"pack_format": 2, "version": "1.0.0"}')
     file = patch_playground.location / 'files' / 'file.txt'
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text('file')
