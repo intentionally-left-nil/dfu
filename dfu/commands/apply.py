@@ -1,6 +1,7 @@
 import os
 import re
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
@@ -8,16 +9,17 @@ from typing import NamedTuple
 
 import click
 
-from dfu.api import (
-    InstallDependenciesEvent,
-    Playground,
-    Store,
-    UninstallDependenciesEvent,
-)
+from dfu.api import InstallDependenciesEvent, Playground, Store, UninstallDependenciesEvent
 from dfu.helpers.subshell import subshell
+from dfu.package.acl_file import AclEntry, AclFile
 from dfu.revision.git import git_add, git_are_files_staged, git_commit, git_init
 
 PatchStep = NamedTuple("PatchStep", [("patch", Path), ("interactive", bool)])
+
+
+@dataclass(frozen=True)
+class PathMetadata(AclEntry):
+    is_symlink: bool
 
 
 def apply_package(store: Store, *, reverse: bool, interactive: bool, confirm: bool, dry_run: bool) -> None:
@@ -47,6 +49,38 @@ def _copy_base_files(store: Store, *, playground: Playground) -> None:
     for patch in patch_files:
         files_to_copy.update(playground.list_files_in_patch(patch))
     playground.copy_files_from_filesystem(files_to_copy)
+    _write_initial_permissions(playground=playground, files=files_to_copy)
+
+
+def _write_initial_permissions(*, playground: Playground, files: set[Path]) -> None:
+    acl_file = AclFile(entries={})
+    paths: set[Path] = set()
+    for file in files:
+        for parent in file.parents:
+            paths.add(parent)
+    paths.update(files)
+
+    for path in paths:
+        try:
+            normalized_path = Path(os.path.abspath(str(path)))
+            stats = subprocess.run(
+                ["sudo", "stat", "-c", "%a#%U#%G", str(normalized_path)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            mode, uid, gid = stats.stdout.strip().split("#")
+            entry = AclEntry(
+                path=normalized_path,
+                mode=mode,
+                uid=uid,
+                gid=gid,
+            )
+            acl_file.entries[normalized_path] = entry
+        except subprocess.CalledProcessError:
+            continue
+    acl_file.entries.pop(Path("/"), None)
+    acl_file.write(playground.location / "acl.txt")
 
 
 def _apply_patches(store: Store, *, playground: Playground, reverse: bool, interactive: bool) -> None:
@@ -70,7 +104,9 @@ def _apply_patches(store: Store, *, playground: Playground, reverse: bool, inter
                 )
             )
             subshell(playground.location).check_returncode()
-        elif step.interactive:
+
+        _apply_metadata(playground)
+        if step.interactive:
             _confirm_changes(playground)
         _auto_commit(playground, f"Patch {step.patch.name}")
 
@@ -112,6 +148,38 @@ def _patch_order_interactive(patches: list[Path], *, reverse: bool) -> list[Patc
         else:
             steps.append(PatchStep(patch=Path(line), interactive=False))
     return steps
+
+
+def _apply_metadata(playground: Playground) -> None:
+    try:
+        acl_file = AclFile.from_file(playground.location / "acl.txt")
+    except FileNotFoundError:
+        raise ValueError("No acl.txt file found in the patch. This is unexpected")
+    metadata: dict[Path, PathMetadata] = {}
+    for path in playground.location.glob("files/**/*"):
+        sub_path = path.relative_to(playground.location / "files")
+        filesystem_path = Path("/") / sub_path
+        if filesystem_path not in acl_file.entries:
+            raise ValueError(f"File {filesystem_path} does not have an ACL entry")
+        acl_entry = acl_file.entries[filesystem_path]
+        metadata[filesystem_path] = PathMetadata(
+            path=filesystem_path,
+            mode=acl_entry.mode,
+            uid=acl_entry.uid,
+            gid=acl_entry.gid,
+            is_symlink=path.is_symlink(),
+        )
+    for path, data in metadata.items():
+        playground_path = playground.location / "files" / path.relative_to(Path("/"))
+        normalized_path = Path(os.path.abspath(str(playground_path)))
+        subprocess.run(
+            ["sudo", "chown", "--no-dereference", f"{data.uid}:{data.gid}", str(normalized_path)],
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+        if not data.is_symlink:
+            subprocess.run(["sudo", "chmod", data.mode, normalized_path], check=True, text=True, capture_output=True)
 
 
 def _confirm_changes(playground: Playground) -> None:

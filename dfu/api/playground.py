@@ -1,8 +1,12 @@
-import platform
+import grp
+import os
+import pwd
 import subprocess
+from collections.abc import Iterable
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
-from shutil import copy2, rmtree
+from shutil import rmtree
 from tempfile import mkdtemp
 from typing import Generator
 
@@ -10,7 +14,14 @@ import click
 from unidiff import PatchedFile, PatchSet
 from unidiff.constants import DEV_NULL
 
+from dfu.package.patch_config import PatchConfig
 from dfu.revision.git import git_add_remote, git_apply, git_fetch
+
+
+@dataclass
+class CopyFile:
+    source: Path
+    target: Path
 
 
 class Playground:
@@ -43,34 +54,93 @@ class Playground:
                 source_path = Path(source or DEV_NULL)
                 if source_path == Path(DEV_NULL) or source_path.parts[1:] == Path(DEV_NULL).parts[1:]:
                     continue
-
-                if len(source_path.parts) < 3 or source_path.parts[1] != "files":
+                if len(source_path.parts) == 2 and source_path.parts[1] in ['acl.txt', 'config.json']:
+                    continue
+                elif len(source_path.parts) >= 3 and source_path.parts[1] == 'files':
+                    files.add(Path('/', *source_path.parts[2:]))
+                else:
                     raise ValueError(f"Unexpected source file path: {source_path}")
 
-                files.add(Path('/', *source_path.parts[2:]))
         return files
 
-    def copy_files_from_filesystem(self, paths: list[Path] | set[Path]) -> None:
+    def copy_files_from_filesystem(self, paths: Iterable[Path] | Iterable[CopyFile]) -> None:
         for path in paths:
-            if path.is_dir():
-                continue
-            relative_path = path.resolve().relative_to(Path('/'))
-            target = (self.location / 'files' / relative_path).resolve()
-            target.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                copy2(path, target, follow_symlinks=False)
-            except PermissionError:
-                subprocess.run(
-                    ["sudo", "cp", "-p", "-P", path.resolve(), target.resolve()],
-                    check=True,
-                    capture_output=True,
-                )
+            # Do NOT call path.resolve() as it will resolve symlinks themselves. Instead, we want to copy the symlinks as-is
+            # Do not use the path modules as we want to fully resolve paths, not leaving in '../'
+            if isinstance(path, CopyFile):
+                source = Path(os.path.abspath(str(path.source)))
+                target = self.location / 'files' / Path(os.path.abspath(str(path.target)).removeprefix('/'))
+            else:
+                source = Path(os.path.abspath(str(path)))
+                target = self.location / 'files' / source.relative_to(Path('/'))
+
+            target.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+            subprocess.run(
+                [
+                    'sudo',
+                    'cp',
+                    '--preserve=all',
+                    '--no-dereference',
+                    os.path.abspath(str(source)),
+                    os.path.abspath(str(target)),
+                ],
+                capture_output=True,
+                check=True,
+                text=True,
+            )
+        self._apply_permissions_to_playground()
+
+    def _apply_permissions_to_playground(self) -> None:
+        if not (self.location / 'files').exists():
+            return
+
+        current_user = pwd.getpwuid(os.getuid()).pw_name
+        current_group = grp.getgrgid(os.getgid()).gr_name
+        subprocess.run(
+            [
+                "sudo",
+                "chown",
+                "--no-dereference",
+                "--recursive",
+                f"{current_user}:{current_group}",
+                str(self.location / 'files'),
+            ],
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["sudo", "chmod", "--no-dereference", "--recursive", "755", str(self.location / 'files')],
+            check=True,
+            text=True,
+            capture_output=True,
+        )
 
     def apply_patch(self, patch: Path, *, reverse: bool = False) -> bool:
         self._fetch_bundle(patch.with_suffix('.pack'))
         try:
             click.echo(f"Applying patch {patch.name}", err=True)
-            merged_cleanly = git_apply(self.location, patch, reverse=reverse)
+            try:
+                git_apply(self.location, patch, include=["config.json"])
+                config_file = self.location / 'config.json'
+                if config_file.exists():
+                    config = PatchConfig.from_file(config_file)
+                    if config.pack_format != 2:
+                        raise ValueError(
+                            f"Unsupported pack version {config.pack_format} for patch {patch.name}. Only version 2 is supported."
+                        )
+                    git_apply(self.location, patch, reverse=True, include=["config.json"])
+                else:
+                    raise ValueError(
+                        f"Patch {patch.name} does not contain config.json. Only version 2 patches are supported."
+                    )
+            except subprocess.CalledProcessError:
+                raise ValueError(
+                    f"Patch {patch.name} does not contain config.json. Only version 2 patches are supported."
+                )
+
+            merged_cleanly = git_apply(self.location, patch, reverse=reverse, exclude=["config.json"])
+
             return merged_cleanly
         except subprocess.CalledProcessError as e:
             click.echo(f"Failed to apply patch {patch.name}", err=True)
@@ -94,39 +164,28 @@ class Playground:
 
     def copy_files_to_filesystem(self, dest: Path = Path('/')) -> None:
         root_dir = self.location / 'files'
-        for file in root_dir.rglob('*'):
-            if file.is_dir():
-                continue
-            relative_path = file.relative_to(root_dir)
-            target = (dest / relative_path).resolve()
+        if not root_dir.exists():
+            return
 
-            mode = oct(file.stat(follow_symlinks=False).st_mode & 0o777)[2:]  # Strip out the leading 0o
-
-            args = ["sudo", "install"]
-            if target.exists():
-                target_stat = target.stat(follow_symlinks=False)
-                args.extend(["-o", str(target_stat.st_uid), "-g", str(target_stat.st_gid)])
-
-            if platform.system() == "Darwin":
-                # We have to create the directory first as a separate call, using the -d flag
-                create_dir_args = args[:]
-
-                create_dir_args.extend(["-m", "755", "-d", str(file.parent.resolve()), str(target.parent.resolve())])
-                subprocess.run(
-                    create_dir_args,
-                    check=True,
-                    capture_output=True,
-                )
-            else:
-                args.append("-D")
-
-            args.extend(["-m", mode, str(file.resolve()), str(target)])
-            subprocess.run(
-                args,
-                check=True,
-                capture_output=True,
-            )
-            click.echo(f"Updated {target}", err=True)
+        result = subprocess.run(
+            [
+                "sudo",
+                "cp",
+                "--recursive",
+                "--preserve=all",
+                '--no-dereference',
+                "--verbose",
+                str(root_dir) + "/.",
+                str(dest),
+            ],
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+        if result.stdout:
+            click.echo(result.stdout, err=True)
+        if result.stderr:
+            click.echo(result.stderr, err=True)
 
     def cleanup(self) -> None:
         rmtree(self.location, ignore_errors=True)

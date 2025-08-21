@@ -22,5 +22,11 @@ def handle_errors(func: Callable[P, R]) -> Callable[P, R]:
             if e.stderr:
                 click.echo(e.stderr)
             sys.exit(1)
+        except ValueError as e:
+            click.echo(click.style(str(e), fg="red"))
+            sys.exit(1)
+        except RuntimeError:
+            # Let RuntimeError bubble up to be handled by Click's CliRunner
+            raise
 
     return wrapper

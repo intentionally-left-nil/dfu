@@ -2,11 +2,11 @@ import subprocess
 from pathlib import Path
 from shutil import copy, rmtree
 from typing import Any, Generator
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from dfu.api.playground import Playground
+from dfu.api.playground import CopyFile, Playground
 from dfu.revision.git import git_add, git_bundle, git_commit, git_diff, git_init
 
 
@@ -21,11 +21,14 @@ def playground() -> Generator[Playground, None, None]:
 
 
 @pytest.fixture
-def mock_install() -> Generator[Mock, None, None]:
+def mock_subprocess() -> Generator[Mock, None, None]:
     original_subprocess_run = subprocess.run
 
     def side_effect(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
         assert args[0] == "sudo"
+        if args[1] in ('chown', 'chmod'):
+            # We don't actually want to run these commands since e.g. on the CI they require root
+            return subprocess.CompletedProcess(args, 0)
         return original_subprocess_run(args[1:], **kwargs)
 
     with patch('subprocess.run') as mock_run:
@@ -183,20 +186,21 @@ def test_copy_files_from_filesystem_no_files(playground: Playground) -> None:
     assert not (playground.location / 'files').exists()
 
 
-def test_copy_files_from_filesystem_absolute_file(tmp_path: Path, playground: Playground) -> None:
+def test_copy_files_from_filesystem_absolute_file(
+    tmp_path: Path, playground: Playground, mock_subprocess: Mock
+) -> None:
     file = tmp_path / 'file.txt'
     file.write_text('hello\nworld')
-    file.chmod(0o777)
     playground.copy_files_from_filesystem([file])
     expected = playground.location / 'files' / Path(*tmp_path.parts[1:]) / 'file.txt'
     assert expected.read_text() == 'hello\nworld'
-    assert (expected.stat().st_mode & 0o777) == 0o777
 
 
-def test_copy_files_from_filesystem_relative_file(tmp_path: Path, playground: Playground) -> None:
+def test_copy_files_from_filesystem_relative_file(
+    tmp_path: Path, playground: Playground, mock_subprocess: Mock
+) -> None:
     file = tmp_path / 'file.txt'
     file.write_text('hello\nworld')
-    file.chmod(0o777)
 
     cwd = Path(".").resolve()
     num_parents = len(cwd.parts[1:])
@@ -209,53 +213,136 @@ def test_copy_files_from_filesystem_relative_file(tmp_path: Path, playground: Pl
     playground.copy_files_from_filesystem([relative_path])
     expected = playground.location / 'files' / Path(*tmp_path.parts[1:]) / 'file.txt'
     assert expected.read_text() == 'hello\nworld'
-    assert (expected.stat().st_mode & 0o777) == 0o777
 
 
-def test_copy_files_from_filesystem_skip_directories(tmp_path: Path, playground: Playground) -> None:
+def test_copy_files_from_filesystem_absolute_file_with_dest(
+    tmp_path: Path, playground: Playground, mock_subprocess: Mock
+) -> None:
     file = tmp_path / 'file.txt'
     file.write_text('hello\nworld')
-    file.chmod(0o777)
-    playground.copy_files_from_filesystem([file, file.parent])
+    playground.copy_files_from_filesystem([CopyFile(source=file, target=file)])
     expected = playground.location / 'files' / Path(*tmp_path.parts[1:]) / 'file.txt'
     assert expected.read_text() == 'hello\nworld'
-    assert (expected.stat().st_mode & 0o777) == 0o777
 
 
-@patch('subprocess.run')
-def test_copy_protected_file(mock_run: MagicMock, tmp_path: Path, playground: Playground) -> None:
+def test_copy_files_from_filesystem_relative_file_with_dest(
+    tmp_path: Path, playground: Playground, mock_subprocess: Mock
+) -> None:
     file = tmp_path / 'file.txt'
     file.write_text('hello\nworld')
-    file.chmod(0o000)
-    playground.copy_files_from_filesystem([file, file.parent])
-    mock_run.assert_called_once_with(
-        [
-            "sudo",
-            "cp",
-            "-p",
-            "-P",
-            file.resolve(),
-            Path(playground.location / 'files' / Path(*tmp_path.parts[1:]) / 'file.txt').resolve(),
-        ],
-        check=True,
-        capture_output=True,
-    )
-    assert mock_run.call_count == 1
+
+    cwd = Path(".").resolve()
+    num_parents = len(cwd.parts[1:])
+
+    root_relative_to_cwd = Path("../" * num_parents)
+    assert root_relative_to_cwd.resolve() == Path("/").resolve()
+    relative_path = root_relative_to_cwd / Path(*file.parts[1:])
+    assert relative_path.resolve() == file.resolve()
+
+    playground.copy_files_from_filesystem([CopyFile(source=relative_path, target=file)])
+    expected = playground.location / 'files' / Path(*tmp_path.parts[1:]) / 'file.txt'
+    assert expected.read_text() == 'hello\nworld'
 
 
-def test_copy_files_to_filesystem_no_files(tmp_path: Path, playground: Playground, mock_install: Mock) -> None:
+def test_copy_protected_file(
+    tmp_path: Path, playground: Playground, mock_subprocess: Mock, current_user: str, current_group: str
+) -> None:
+    file = tmp_path / 'file.txt'
+    file.write_text('hello\nworld')
+    playground.copy_files_from_filesystem([file])
+
+    # Check that we have the expected calls: cp, chown, chmod
+    assert mock_subprocess.call_count == 3
+
+    cp_call = mock_subprocess.call_args_list[0]
+    assert cp_call[0][0] == [
+        "sudo",
+        "cp",
+        "--preserve=all",
+        "--no-dereference",
+        str(file),
+        str(Path(playground.location / 'files' / Path(*tmp_path.parts[1:]) / 'file.txt')),
+    ]
+
+    chown_call = mock_subprocess.call_args_list[1]
+    assert chown_call[0][0] == [
+        "sudo",
+        "chown",
+        "--no-dereference",
+        "--recursive",
+        f"{current_user}:{current_group}",
+        str(Path(playground.location / 'files')),
+    ]
+
+    chmod_call = mock_subprocess.call_args_list[2]
+    assert chmod_call[0][0] == [
+        "sudo",
+        "chmod",
+        "--no-dereference",
+        "--recursive",
+        "755",
+        str(Path(playground.location / 'files')),
+    ]
+
+
+def test_copy_symlink(
+    tmp_path: Path, playground: Playground, mock_subprocess: Mock, current_user: str, current_group: str
+) -> None:
+    target_file = tmp_path / 'target.txt'
+    target_file.write_text('target content')
+    symlink = tmp_path / 'symlink.txt'
+    symlink.symlink_to(target_file)
+
+    playground.copy_files_from_filesystem([symlink])
+
+    assert mock_subprocess.call_count == 3
+
+    cp_call = mock_subprocess.call_args_list[0]
+    assert cp_call[0][0] == [
+        "sudo",
+        "cp",
+        "--preserve=all",
+        "--no-dereference",
+        str(symlink),
+        str(Path(playground.location / 'files' / Path(*tmp_path.parts[1:]) / 'symlink.txt')),
+    ]
+
+    chown_call = mock_subprocess.call_args_list[1]
+    assert chown_call[0][0] == [
+        "sudo",
+        "chown",
+        "--no-dereference",
+        "--recursive",
+        f"{current_user}:{current_group}",
+        str(Path(playground.location / 'files')),
+    ]
+    chmod_call = mock_subprocess.call_args_list[2]
+    assert chmod_call[0][0] == [
+        "sudo",
+        "chmod",
+        "--no-dereference",
+        "--recursive",
+        "755",
+        str(Path(playground.location / 'files')),
+    ]
+
+
+def test_copy_files_to_filesystem_no_files(tmp_path: Path, playground: Playground, mock_subprocess: Mock) -> None:
     assert not (playground.location / 'files').exists()
     playground.copy_files_to_filesystem(dest=tmp_path)
     assert [p for p in tmp_path.glob('**/*')] == []
 
 
-def test_copy_files_to_filesystem_only_directories(tmp_path: Path, playground: Playground, mock_install: Mock) -> None:
+def test_copy_files_to_filesystem_only_directories(
+    tmp_path: Path, playground: Playground, mock_subprocess: Mock
+) -> None:
     (playground.location / 'files' / 'many' / 'nested' / 'dirs').mkdir(parents=True, exist_ok=True)
     playground.copy_files_to_filesystem(dest=tmp_path)
-    assert [p for p in tmp_path.glob('**/*')] == []
+    assert len([p for p in tmp_path.glob('**/*')]) == 3
+    assert (tmp_path / 'many' / 'nested' / 'dirs').is_dir()
 
 
-def test_copy_files_to_filesystem_one_file(tmp_path: Path, playground: Playground, mock_install: Mock) -> None:
+def test_copy_files_to_filesystem_one_file(tmp_path: Path, playground: Playground, mock_subprocess: Mock) -> None:
     file = playground.location / 'files' / 'file.txt'
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text('file')
@@ -271,13 +358,12 @@ def test_copy_files_to_filesystem_one_file(tmp_path: Path, playground: Playgroun
 
 
 def test_copy_files_to_filesystem_creates_directories(
-    tmp_path: Path, playground: Playground, mock_install: Mock
+    tmp_path: Path, playground: Playground, mock_subprocess: Mock
 ) -> None:
     # Create the test file
     file = playground.location / 'files' / 'etc' / 'nested' / 'file.txt'
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text('file')
-    file.chmod(0o777)
 
     # Set up the filesystem to have some existing files, but not nested
     (tmp_path / 'etc' / 'other').mkdir(parents=True, exist_ok=True)
@@ -294,29 +380,47 @@ def test_copy_files_to_filesystem_creates_directories(
     )
 
     actual = tmp_path / 'etc' / 'nested' / 'file.txt'
-    assert actual.stat().st_mode & 0o777 == 0o777
     assert actual.read_text() == 'file'
 
 
-def test_overwrites_existing_file(tmp_path: Path, playground: Playground, mock_install: Mock) -> None:
+def test_overwrites_existing_file(tmp_path: Path, playground: Playground, mock_subprocess: Mock) -> None:
     file = playground.location / 'files' / 'etc' / 'nested' / 'file.txt'
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text('file')
-    file.chmod(0o777)
 
     existing = tmp_path / 'etc' / 'nested' / 'file.txt'
     existing.parent.mkdir(parents=True, exist_ok=True)
     existing.write_text('existing')
-    existing.chmod(0o644)
-    assert (existing.stat().st_mode & 0o777) == 0o644
 
     playground.copy_files_to_filesystem(dest=tmp_path)
     assert [p for p in tmp_path.glob('**/*') if p.is_file()] == [
         Path(tmp_path / 'etc' / 'nested' / 'file.txt').resolve(),
     ]
 
-    assert existing.stat().st_mode & 0o777 == 0o777
     assert existing.read_text() == 'file'
+
+
+def test_copy_files_to_filesystem_includes_hidden_files(
+    tmp_path: Path, playground: Playground, mock_subprocess: Mock
+) -> None:
+    # Create regular and hidden files
+    regular_file = playground.location / 'files' / 'regular.txt'
+    hidden_file = playground.location / 'files' / '.hidden.txt'
+    nested_hidden = playground.location / 'files' / 'nested' / '.nested_hidden.txt'
+
+    regular_file.parent.mkdir(parents=True, exist_ok=True)
+    nested_hidden.parent.mkdir(parents=True, exist_ok=True)
+
+    regular_file.write_text('regular')
+    hidden_file.write_text('hidden')
+    nested_hidden.write_text('nested hidden')
+
+    playground.copy_files_to_filesystem(dest=tmp_path)
+
+    # Check that all files, including hidden ones, are copied
+    assert (tmp_path / 'regular.txt').read_text() == 'regular'
+    assert (tmp_path / '.hidden.txt').read_text() == 'hidden'
+    assert (tmp_path / 'nested' / '.nested_hidden.txt').read_text() == 'nested hidden'
 
 
 @pytest.fixture
@@ -335,11 +439,14 @@ def patch_playground() -> Generator[Playground, None, None]:
 
 @pytest.fixture
 def file_patch(patch_playground: Playground, tmp_path: Path) -> Path:
+    config_file = patch_playground.location / 'config.json'
+    config_file.write_text('{"pack_format": 2, "version": "1.0.0"}')
     file = patch_playground.location / 'files' / 'file.txt'
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text('file')
-    git_add(patch_playground.location, ['files'])
-    git_commit(patch_playground.location, 'Added file')
+    git_add(patch_playground.location, ['config.json', 'files'])
+    git_commit(patch_playground.location, 'Added config.json and file')
+
     patch_file = tmp_path / "file.patch"
     patch_file.write_text(git_diff(patch_playground.location, "HEAD~1", "HEAD"))
     bundle_file = tmp_path / "file.pack"
@@ -349,11 +456,14 @@ def file_patch(patch_playground: Playground, tmp_path: Path) -> Path:
 
 @pytest.fixture
 def file2_patch(patch_playground: Playground, tmp_path: Path) -> Path:
+    config_file = patch_playground.location / 'config.json'
+    config_file.write_text('{"pack_format": 2, "version": "1.0.0"}')
     file = patch_playground.location / 'files' / 'file2.txt'
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text('file2')
-    git_add(patch_playground.location, ['files'])
-    git_commit(patch_playground.location, 'Added file2')
+    git_add(patch_playground.location, ['config.json', 'files'])
+    git_commit(patch_playground.location, 'Added config.json and file2')
+
     patch_file = tmp_path / "file2.patch"
     patch_file.write_text(git_diff(patch_playground.location, "HEAD~1", "HEAD"))
     bundle_file = tmp_path / "file2.pack"
@@ -362,6 +472,7 @@ def file2_patch(patch_playground: Playground, tmp_path: Path) -> Path:
 
 
 def test_apply_patch_cleanly(playground: Playground, file_patch: Path, file2_patch: Path) -> None:
+    print(f"Patch file contents:\n{file_patch.read_text()}")
     assert playground.apply_patch(file_patch)
     assert (playground.location / 'files' / 'file.txt').read_text() == 'file'
 
@@ -390,7 +501,7 @@ def test_apply_patches_other_error(tmp_path: Path, playground: Playground, file_
     copy(file_patch, backup_patch)
 
     file_patch.write_text("THIS IS NOT A PATCH")
-    with pytest.raises(subprocess.CalledProcessError):
+    with pytest.raises(ValueError, match="does not contain config.json"):
         playground.apply_patch(file_patch)
 
 
@@ -417,3 +528,42 @@ def test_git_apply_merge_conflict_without_bundle(playground: Playground, file_pa
 
     assert not playground.apply_patch(file_patch)
     assert (playground.location / 'files' / 'file.txt').read_text() == FILE_MERGE_CONFLICT
+
+
+def test_playground_apply_patch_version_validation(patch_playground: Playground, tmp_path: Path) -> None:
+    """Test that apply_patch rejects patches without config.json (v1 format)."""
+    file = patch_playground.location / 'files' / 'file.txt'
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text('file')
+    git_add(patch_playground.location, ['files'])
+    git_commit(patch_playground.location, 'Added file')
+
+    patch_file = tmp_path / "v1_patch.patch"
+    patch_file.write_text(git_diff(patch_playground.location, "HEAD~1", "HEAD"))
+    bundle_file = tmp_path / "v1_patch.pack"
+    git_bundle(patch_playground.location, bundle_file)
+
+    with pytest.raises(ValueError, match="does not contain config.json"):
+        patch_playground.apply_patch(patch_file)
+
+
+def test_playground_apply_patch_reverse_version_validation(patch_playground: Playground, tmp_path: Path) -> None:
+    """Test that reverse patch application correctly validates pack version."""
+    config_file = patch_playground.location / 'config.json'
+    config_file.write_text('{"pack_format": 2, "version": "1.0.0"}')
+    file = patch_playground.location / 'files' / 'file.txt'
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text('file')
+    git_add(patch_playground.location, ['config.json', 'files'])
+    git_commit(patch_playground.location, 'Added config.json and file')
+
+    patch_file = tmp_path / "v2_patch.patch"
+    patch_file.write_text(git_diff(patch_playground.location, "HEAD~1", "HEAD"))
+    bundle_file = tmp_path / "v2_patch.pack"
+    git_bundle(patch_playground.location, bundle_file)
+
+    try:
+        patch_playground.apply_patch(patch_file, reverse=True)
+    except (subprocess.CalledProcessError, ValueError) as e:
+        assert "Unsupported pack version" not in str(e)
+        assert "does not contain config.json" not in str(e)

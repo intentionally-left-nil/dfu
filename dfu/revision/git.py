@@ -1,3 +1,4 @@
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -64,10 +65,8 @@ def git_ls_files(cwd: Path) -> list[str]:
     return tracked_files.stdout.splitlines() + untracked_files.stdout.splitlines()
 
 
-def git_diff(git_dir: Path, base: str, target: str, subdirectory: str | None = None) -> str:
+def git_diff(git_dir: Path, base: str, target: str) -> str:
     args = ['git', 'diff', '--patch', f'{base}..{target}']
-    if subdirectory:
-        args.extend(['--', subdirectory])
     return subprocess.run(
         args,
         cwd=git_dir,
@@ -88,16 +87,30 @@ def git_are_files_staged(git_dir: Path) -> bool:
             raise subprocess.CalledProcessError(return_code, ['git', 'diff', '--cached', '--quiet'])
 
 
-def git_apply(git_dir: Path, patch: Path, reverse: bool = False) -> bool:
+def git_apply(
+    git_dir: Path,
+    patch: Path,
+    reverse: bool = False,
+    include: list[str] | None = None,
+    exclude: list[str] | None = None,
+) -> bool:
     args: list[str] = ['git', 'apply', '--3way']
     if reverse:
         args.append('--reverse')
+    if include:
+        for file_path in include:
+            args.extend([f'--include={file_path}'])
+    if exclude:
+        for file_path in exclude:
+            args.extend([f'--exclude={file_path}'])
     args.append(str(patch.resolve()))
     try:
         # Since we're reading the output, set LC_ALL=C to ensure it's in English
         # TODO: If we ever end up displaying this to the user, then we should figure out another method
         # since this error won't be localized
-        subprocess.run(args, cwd=git_dir, check=True, text=True, capture_output=True, env={'LC_ALL': 'C'})
+        env = os.environ.copy()
+        env["LC_ALL"] = "C"
+        subprocess.run(args, cwd=git_dir, check=True, text=True, capture_output=True, env=env)
         return True
     except subprocess.CalledProcessError as e:
         if e.returncode == 1:

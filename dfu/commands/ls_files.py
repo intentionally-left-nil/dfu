@@ -11,5 +11,6 @@ def ls_files(store: Store, *, from_index: int, to_index: int, only_ignored: bool
     if from_index > to_index:
         raise ValueError(f"from_index {from_index} is greater than to_index {to_index}")
     for files in files_modified(store, from_index=from_index, to_index=to_index, only_ignored=only_ignored).values():
-        for file in files:
+        merged = files.pre_files | files.post_files
+        for file in merged:
             click.echo(file)
