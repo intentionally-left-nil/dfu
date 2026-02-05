@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.9.30,<0.10.0"]
+build-backend = "uv_build"
 
 [project]
 name = "dfu"
-dynamic = ["version"]
+version = "0.0.5"
 description = 'Create installers from btrfs snapshots'
 readme = "README.md"
 requires-python = ">=3.12"
@@ -33,18 +33,6 @@ Documentation = "https://github.com/intentionally-left-nil/dfu#readme"
 Issues = "https://github.com/intentionally-left-nil/dfu/issues"
 Source = "https://github.com/intentionally-left-nil/dfu"
 
-[tool.hatch.version]
-path = "dfu/__about__.py"
-
-[tool.hatch.build]
-exclude = [
-  "/tests",
-  "/typings"
-]
-
-[tool.hatch.build.targets.wheel]
-packages = ["dfu"]
-
 [project.scripts]
 dfu = "dfu.cli:main"
 
@@ -52,38 +40,23 @@ dfu = "dfu.cli:main"
 pacman = "dfu.plugins.pacman:entrypoint"
 autosave = "dfu.plugins.autosave:entrypoint"
 
-[tool.hatch.envs.default]
-dependencies = [
+[tool.uv.build-backend]
+module-name = "dfu"
+module-root = ""
+source-exclude = ["tests/**", "typings/**"]
+
+[dependency-groups]
+dev = [
   "pytest",
   "pytest-cov>=4.1.0",
 ]
-[tool.hatch.envs.default.scripts]
-test = "pytest {args:tests}"
-[[tool.hatch.envs.all.matrix]]
-python = ["3.12"]
-
-[tool.hatch.envs.lint]
-dependencies = [
-  "pytest",
-  "pytest-cov>=4.1.0",
+lint = [
   "ruff>=0.12.9",
   "mypy>=1.0.0",
 ]
-[tool.hatch.envs.lint.scripts]
-typing = "mypy --install-types --non-interactive {args:dfu tests}"
 
-lint = "ruff check {args:.}"
-format = "ruff format --check {args:.}"
-fix = [
-  "ruff check --fix {args:.}",
-  "ruff format {args:.}",
-]
-
-all = [
-  "lint",
-  "format",
-  "typing",
-]
+[tool.uv]
+default-groups = ["dev", "lint"]
 
 [tool.pytest.ini_options]
 addopts = "--cov --cov-report=xml --cov-report=html --cov-config=.coveragerc"

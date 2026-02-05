@@ -1,1 +1,6 @@
-__version__ = "0.0.5"
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("dfu")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
