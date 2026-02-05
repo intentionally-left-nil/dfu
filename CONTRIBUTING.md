@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
-- Python 3.12+
+- Python 3.14+
 
 Install uv: <https://docs.astral.sh/uv/getting-started/installation/>
 
