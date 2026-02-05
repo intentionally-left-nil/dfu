@@ -35,5 +35,9 @@ def find_package_config(path: Path) -> Path | None:
             return dfu_config
         elif path.parent == path or path.is_mount():  # Stop at the root or a filesystem boundary
             return None
+        elif not path.is_dir() and not path.is_symlink():
+            # Python 3.14 breakage - is_file() returns False for inaccessible paths
+            # So we need to affirmatively detect that it is a directory or symlink
+            return None
         else:
             path = path.parent  # Move up to the parent directory

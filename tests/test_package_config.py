@@ -98,8 +98,9 @@ def test_permissions_issue(tmp_path: Path) -> None:
     child_dir.mkdir()
     try:
         child_dir.chmod(0o000)  # Remove read permission
-        with pytest.raises(PermissionError):
-            find_package_config(child_dir)
+        # Starting with python 3.14, even with the directory permission removed,
+        # The code is able to find the dfu_config.json file
+        assert find_package_config(child_dir) == dfu_config
     finally:
         child_dir.chmod(0o755)
 

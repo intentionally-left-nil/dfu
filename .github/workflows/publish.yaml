@@ -17,7 +17,7 @@ jobs:
         with:
           enable-cache: true
       - name: Set up Python
-        run: uv python install 3.13
+        run: uv python install 3.14
       - name: Build the release
         run: make build
       - uses: actions/upload-artifact@v4
