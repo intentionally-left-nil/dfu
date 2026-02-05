@@ -12,27 +12,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
-          python-version: '3.13'
-      - name: cache-pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-${{ hashFiles('pyproject.toml') }}
-      - name: Install hatch
-        run: pipx install hatch
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.13
+      - name: Install dependencies
+        run: make install-locked
       - name: Run tests
-        run: hatch run test
+        run: make test
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: |
-            ./coverage.xml
+            coverage.xml
             htmlcov/
       - name: Run linters
-        run: hatch run lint:all
+        run: make all
   display-coverage:
     needs: ci
     runs-on: ubuntu-latest
