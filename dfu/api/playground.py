@@ -23,6 +23,12 @@ class CopyFile:
     source: Path
     target: Path
 
+    def __post_init__(self) -> None:
+        if not self.source.is_absolute():
+            raise ValueError(f"CopyFile source must be an absolute path, got: {self.source}")
+        if not self.target.is_absolute():
+            raise ValueError(f"CopyFile target must be an absolute path, got: {self.target}")
+
 
 class Playground:
     location: Path
@@ -68,8 +74,8 @@ class Playground:
             # Do NOT call path.resolve() as it will resolve symlinks themselves. Instead, we want to copy the symlinks as-is
             # Do not use the path modules as we want to fully resolve paths, not leaving in '../'
             if isinstance(path, CopyFile):
-                source = Path(os.path.abspath(str(path.source)))
-                target = self.location / 'files' / Path(os.path.abspath(str(path.target)).removeprefix('/'))
+                source = path.source
+                target = self.location / 'files' / path.target.relative_to('/')
             else:
                 source = Path(os.path.abspath(str(path)))
                 target = self.location / 'files' / source.relative_to(Path('/'))
