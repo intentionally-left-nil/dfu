@@ -19,7 +19,7 @@ jobs:
       - name: Set up Python
         run: uv python install 3.14
       - name: Install dependencies
-        run: make install-locked
+        run: make sync-locked
       - name: Run tests
         run: make test
       - name: Upload coverage report

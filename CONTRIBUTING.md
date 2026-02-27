@@ -23,9 +23,10 @@ Use the Makefile (or run the underlying `uv run` commands):
 
 | Target | Description |
 |--------|-------------|
-| `make install` | Sync all dependencies (default: dev + lint groups) |
-| `make install-locked` | Sync from lockfile (CI) |
-| `make install-prod` | Sync production dependencies only |
+| `make install` | Install tool locally via uv tool |
+| `make sync` | Sync all dependencies (dev + lint groups) |
+| `make sync-locked` | Sync from lockfile (CI) |
+| `make sync-prod` | Sync production dependencies only |
 | `make test` | Run pytest |
 | `make lint` | Run ruff check |
 | `make format` | Run ruff format (check only) |

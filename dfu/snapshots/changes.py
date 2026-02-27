@@ -43,10 +43,22 @@ def files_modified(
         else:
             deltas = [d for d in deltas if d.path not in ignored_files]
 
-        pre_files_to_check = set([delta.path for delta in deltas if delta.action == FileChangeAction.deleted])
+        pre_files_to_check = set(
+            [
+                delta.path
+                for delta in deltas
+                if delta.action not in (FileChangeAction.created, FileChangeAction.no_change)
+            ]
+        )
         pre_files = filter_files(store, pre_snapshot, pre_files_to_check)
 
-        post_files_to_check = set([delta.path for delta in deltas if delta.action != FileChangeAction.deleted])
+        post_files_to_check = set(
+            [
+                delta.path
+                for delta in deltas
+                if delta.action not in (FileChangeAction.deleted, FileChangeAction.no_change)
+            ]
+        )
         post_files = filter_files(store, post_snapshot, post_files_to_check)
         files_modified[snapper_name] = FilesModified(pre_files=pre_files, post_files=post_files)
     return files_modified

@@ -1,5 +1,6 @@
 import subprocess
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Generator
@@ -51,11 +52,17 @@ def store_with_user_snapper(tmp_path: Path, request: pytest.FixtureRequest, setu
     return base_store
 
 
+@dataclass
+class DeltaEntry:
+    path: str
+    action: FileChangeAction = FileChangeAction.created
+
+
 @contextmanager
-def mock_get_delta(responses: dict[str, list[str]]) -> Generator[MagicMock, None, None]:
+def mock_get_delta(responses: dict[str, list[DeltaEntry]]) -> Generator[MagicMock, None, None]:
     def side_effect(self: Any, pre_snapshot_id: int, post_snapshot_id: int) -> list[SnapperDiff]:
         response = responses[self.snapper_name]
-        return [SnapperDiff(path=path, action=FileChangeAction.created, permissions_changed=False) for path in response]
+        return [SnapperDiff(path=entry.path, action=entry.action, permissions_changed=False) for entry in response]
 
     with patch.object(Snapper, "get_delta", autospec=True) as mock_get_delta:
         mock_get_delta.side_effect = side_effect
@@ -86,21 +93,53 @@ def test_files_modified_no_changes(store: Store, mock_filter_files: MagicMock) -
 
 
 def test_files_modified_nothing_ignored(store: Store, mock_filter_files: MagicMock) -> None:
-    with mock_get_delta({"root": ["/etc/test.conf", "/etc/test2.conf"]}):
+    with mock_get_delta({"root": [DeltaEntry("/etc/test.conf"), DeltaEntry("/etc/test2.conf")]}):
         result = files_modified(store, from_index=0, to_index=1, only_ignored=False)
         assert result == {"root": FilesModified(pre_files=set(), post_files={"/etc/test.conf", "/etc/test2.conf"})}
 
 
 def test_files_modified_all_files_are_ignored(store: Store, mock_filter_files: MagicMock) -> None:
-    with mock_get_delta({"root": ["/usr/bin/bash", "/usr/bin/zsh"]}):
+    with mock_get_delta({"root": [DeltaEntry("/usr/bin/bash"), DeltaEntry("/usr/bin/zsh")]}):
         result = files_modified(store, from_index=0, to_index=1, only_ignored=False)
         assert result == {"root": FilesModified(pre_files=set(), post_files=set())}
 
 
 def test_files_modified_only_show_ignored(store: Store, mock_filter_files: MagicMock) -> None:
-    with mock_get_delta({"root": ["/usr/bin/bash", "/usr/bin/zsh", "/etc/test.conf"]}):
+    with mock_get_delta(
+        {"root": [DeltaEntry("/usr/bin/bash"), DeltaEntry("/usr/bin/zsh"), DeltaEntry("/etc/test.conf")]}
+    ):
         result = files_modified(store, from_index=0, to_index=1, only_ignored=True)
         assert result == {"root": FilesModified(pre_files=set(), post_files={"/usr/bin/bash", "/usr/bin/zsh"})}
+
+
+def test_files_modified_action_created(store: Store, mock_filter_files: MagicMock) -> None:
+    with mock_get_delta({"root": [DeltaEntry("/etc/fstab", FileChangeAction.created)]}):
+        result = files_modified(store, from_index=0, to_index=1, only_ignored=False)
+        assert result == {"root": FilesModified(pre_files=set(), post_files={"/etc/fstab"})}
+
+
+def test_files_modified_action_deleted(store: Store, mock_filter_files: MagicMock) -> None:
+    with mock_get_delta({"root": [DeltaEntry("/etc/fstab", FileChangeAction.deleted)]}):
+        result = files_modified(store, from_index=0, to_index=1, only_ignored=False)
+        assert result == {"root": FilesModified(pre_files={"/etc/fstab"}, post_files=set())}
+
+
+def test_files_modified_action_modified(store: Store, mock_filter_files: MagicMock) -> None:
+    with mock_get_delta({"root": [DeltaEntry("/etc/fstab", FileChangeAction.modified)]}):
+        result = files_modified(store, from_index=0, to_index=1, only_ignored=False)
+        assert result == {"root": FilesModified(pre_files={"/etc/fstab"}, post_files={"/etc/fstab"})}
+
+
+def test_files_modified_action_type_changed(store: Store, mock_filter_files: MagicMock) -> None:
+    with mock_get_delta({"root": [DeltaEntry("/etc/fstab", FileChangeAction.type_changed)]}):
+        result = files_modified(store, from_index=0, to_index=1, only_ignored=False)
+        assert result == {"root": FilesModified(pre_files={"/etc/fstab"}, post_files={"/etc/fstab"})}
+
+
+def test_files_modified_action_no_change(store: Store, mock_filter_files: MagicMock) -> None:
+    with mock_get_delta({"root": [DeltaEntry("/etc/fstab", FileChangeAction.no_change)]}):
+        result = files_modified(store, from_index=0, to_index=1, only_ignored=False)
+        assert result == {"root": FilesModified(pre_files=set(), post_files=set())}
 
 
 @pytest.fixture
