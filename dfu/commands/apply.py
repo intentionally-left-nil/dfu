@@ -10,6 +10,7 @@ from typing import NamedTuple
 import click
 
 from dfu.api import InstallDependenciesEvent, Playground, Store, UninstallDependenciesEvent
+from dfu.api.playground import CopyFile
 from dfu.helpers.subshell import subshell
 from dfu.package.acl_file import AclEntry, AclFile
 from dfu.revision.git import git_add, git_are_files_staged, git_commit, git_init
@@ -48,7 +49,7 @@ def _copy_base_files(store: Store, *, playground: Playground) -> None:
     files_to_copy: set[Path] = set()
     for patch in patch_files:
         files_to_copy.update(playground.list_files_in_patch(patch))
-    playground.copy_files_from_filesystem(files_to_copy)
+    playground.copy_files_from_filesystem([CopyFile(source=f, target=f) for f in files_to_copy])
     _write_initial_permissions(playground=playground, files=files_to_copy)
 
 

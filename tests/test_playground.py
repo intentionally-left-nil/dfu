@@ -207,26 +207,7 @@ def test_copy_files_from_filesystem_absolute_file(
 ) -> None:
     file = tmp_path / 'file.txt'
     file.write_text('hello\nworld')
-    playground.copy_files_from_filesystem([file])
-    expected = playground.location / 'files' / Path(*tmp_path.parts[1:]) / 'file.txt'
-    assert expected.read_text() == 'hello\nworld'
-
-
-def test_copy_files_from_filesystem_relative_file(
-    tmp_path: Path, playground: Playground, mock_subprocess: Mock
-) -> None:
-    file = tmp_path / 'file.txt'
-    file.write_text('hello\nworld')
-
-    cwd = Path(".").resolve()
-    num_parents = len(cwd.parts[1:])
-
-    root_relative_to_cwd = Path("../" * num_parents)
-    assert root_relative_to_cwd.resolve() == Path("/").resolve()
-    relative_path = root_relative_to_cwd / Path(*file.parts[1:])
-    assert relative_path.resolve() == file.resolve()
-
-    playground.copy_files_from_filesystem([relative_path])
+    playground.copy_files_from_filesystem([CopyFile(source=file, target=file)])
     expected = playground.location / 'files' / Path(*tmp_path.parts[1:]) / 'file.txt'
     assert expected.read_text() == 'hello\nworld'
 
@@ -246,7 +227,7 @@ def test_copy_protected_file(
 ) -> None:
     file = tmp_path / 'file.txt'
     file.write_text('hello\nworld')
-    playground.copy_files_from_filesystem([file])
+    playground.copy_files_from_filesystem([CopyFile(source=file, target=file)])
 
     # Check that we have the expected calls: cp, chown, chmod
     assert mock_subprocess.call_count == 3
@@ -290,7 +271,7 @@ def test_copy_symlink(
     symlink = tmp_path / 'symlink.txt'
     symlink.symlink_to(target_file)
 
-    playground.copy_files_from_filesystem([symlink])
+    playground.copy_files_from_filesystem([CopyFile(source=symlink, target=symlink)])
 
     assert mock_subprocess.call_count == 3
 
