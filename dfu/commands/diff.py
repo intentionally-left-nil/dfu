@@ -74,7 +74,7 @@ def _copy_files(
         for file in files:
             sub_path = Path(file).relative_to(mountpoint)
             src = snapshot_dir / sub_path
-            dest = Path(file.removeprefix('/'))
+            dest = Path(file)
             paths_to_copy.append(CopyFile(source=src, target=dest))
         playground.copy_files_from_filesystem(paths_to_copy)
 

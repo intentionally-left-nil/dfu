@@ -23,6 +23,12 @@ class CopyFile:
     source: Path
     target: Path
 
+    def __post_init__(self) -> None:
+        if not self.source.is_absolute():
+            raise ValueError(f"CopyFile source must be an absolute path, got: {self.source}")
+        if not self.target.is_absolute():
+            raise ValueError(f"CopyFile target must be an absolute path, got: {self.target}")
+
 
 class Playground:
     location: Path
@@ -63,16 +69,10 @@ class Playground:
 
         return files
 
-    def copy_files_from_filesystem(self, paths: Iterable[Path] | Iterable[CopyFile]) -> None:
+    def copy_files_from_filesystem(self, paths: Iterable[CopyFile]) -> None:
         for path in paths:
-            # Do NOT call path.resolve() as it will resolve symlinks themselves. Instead, we want to copy the symlinks as-is
-            # Do not use the path modules as we want to fully resolve paths, not leaving in '../'
-            if isinstance(path, CopyFile):
-                source = Path(os.path.abspath(str(path.source)))
-                target = self.location / 'files' / Path(os.path.abspath(str(path.target)).removeprefix('/'))
-            else:
-                source = Path(os.path.abspath(str(path)))
-                target = self.location / 'files' / source.relative_to(Path('/'))
+            source = path.source
+            target = self.location / 'files' / path.target.relative_to('/')
 
             target.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
             subprocess.run(
@@ -81,8 +81,8 @@ class Playground:
                     'cp',
                     '--preserve=all',
                     '--no-dereference',
-                    os.path.abspath(str(source)),
-                    os.path.abspath(str(target)),
+                    str(source),
+                    str(target),
                 ],
                 capture_output=True,
                 check=True,
